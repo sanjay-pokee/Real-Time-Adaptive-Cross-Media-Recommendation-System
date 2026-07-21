@@ -1,0 +1,63 @@
+datasets:
+  movies:
+    content_type: movie
+    source: tmdb_5000_movies
+    path: datasets/movies/movies/tmdb_5000_movies.csv
+    id_column: id
+    title_column: title
+    description_column: overview
+    category_columns:
+      - genres
+    creator_columns: []
+    release_date_column: release_date
+    popularity_column: popularity
+    rating_column: vote_average
+    metadata_columns:
+      - title
+      - genres
+      - keywords
+      - overview
+
+  books:
+    content_type: book
+    source: google_books_dataset
+    path: datasets/books/archive/google_books_dataset.csv
+    id_column: book_id
+    title_column: title
+    description_column: description
+    category_columns:
+      - categories
+      - search_category
+    creator_columns:
+      - authors
+    release_date_column: published_date
+    popularity_column: ratings_count
+    rating_column: average_rating
+    metadata_columns:
+      - title
+      - subtitle
+      - authors
+      - categories
+      - description
+
+  music:
+    content_type: music
+    source: spotify_songs
+    path: datasets/music/songs/spotify_songs.csv
+    id_column: track_id
+    title_column: track_name
+    description_column: null
+    category_columns:
+      - playlist_genre
+      - playlist_subgenre
+    creator_columns:
+      - track_artist
+    release_date_column: track_album_release_date
+    popularity_column: track_popularity
+    rating_column: null
+    metadata_columns:
+      - track_name
+      - track_artist
+      - track_album_name
+      - playlist_genre
+      - playlist_subgenre

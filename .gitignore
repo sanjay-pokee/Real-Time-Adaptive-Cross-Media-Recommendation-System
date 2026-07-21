@@ -1,0 +1,18 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Datasets & Processed Data
+data/processed/
+datasets/
+
+# Logs & Models
+logs/
+*.log
