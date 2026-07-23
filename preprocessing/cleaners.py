@@ -1,4 +1,7 @@
+"""Text cleaning and hashing utilities for the content catalog pipeline."""
+
 import ast
+import hashlib
 import re
 from typing import Iterable
 
@@ -9,6 +12,7 @@ WHITESPACE_PATTERN = re.compile(r"\s+")
 
 
 def clean_text(value: object) -> str:
+    """Normalize a value to a clean string; returns empty string for null/blank."""
     if pd.isna(value):
         return ""
 
@@ -18,6 +22,10 @@ def clean_text(value: object) -> str:
 
 
 def parse_name_list(value: object) -> list[str]:
+    """
+    Parse a stringified list (e.g. JSON-like ``[{'name': 'Action'}, ...]``)
+    or a plain delimited string into a list of clean name strings.
+    """
     text = clean_text(value)
     if not text:
         return []
@@ -40,6 +48,7 @@ def parse_name_list(value: object) -> list[str]:
 
 
 def split_delimited_text(value: object) -> list[str]:
+    """Split a comma/pipe/semicolon-delimited string into clean parts."""
     text = clean_text(value)
     if not text:
         return []
@@ -49,5 +58,11 @@ def split_delimited_text(value: object) -> list[str]:
 
 
 def join_non_empty(values: Iterable[object], separator: str = " ") -> str:
+    """Join non-blank values with the given separator."""
     cleaned_values = [clean_text(value) for value in values]
     return separator.join(value for value in cleaned_values if value)
+
+
+def make_text_hash(text: str) -> str:
+    """Return the SHA-256 hex digest of the given text (UTF-8 encoded)."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()

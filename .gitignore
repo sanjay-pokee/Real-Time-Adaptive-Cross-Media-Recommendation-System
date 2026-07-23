@@ -16,3 +16,9 @@ datasets/
 # Logs & Models
 logs/
 *.log
+
+# Large Generated Embeddings & FAISS Index
+embeddings/*.npy
+embeddings/*.index
+embeddings/*.csv
+

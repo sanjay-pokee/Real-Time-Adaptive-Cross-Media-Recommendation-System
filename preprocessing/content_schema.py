@@ -1,47 +1,67 @@
+"""Shared schema definitions for the unified content catalog."""
+
 from dataclasses import dataclass
 from typing import Optional
 
 
+# Ordered list of all columns in content_catalog.csv.
 CONTENT_COLUMNS = [
-    "content_id",
+    "global_id",
     "content_type",
+    "source",
+    "source_id",
     "title",
     "description",
-    "categories",
     "creators",
+    "categories",
     "release_date",
     "popularity",
     "rating",
     "metadata_text",
-    "source",
+    "embedding_text",
+    "text_hash",
 ]
+
+# Columns that must always be present and non-empty for a valid row.
+REQUIRED_NON_EMPTY = ["global_id", "title", "embedding_text", "text_hash"]
+
+
+def make_global_id(content_type: str, source: str, source_id: str) -> str:
+    """Build the stable primary key: {content_type}:{source}:{source_id}."""
+    return f"{content_type}:{source}:{source_id}"
 
 
 @dataclass(frozen=True)
 class ContentRecord:
-    content_id: str
+    global_id: str
     content_type: str
+    source: str
+    source_id: str
     title: str
     description: str
-    categories: str
     creators: str
+    categories: str
     release_date: Optional[str]
     popularity: Optional[float]
     rating: Optional[float]
     metadata_text: str
-    source: str
+    embedding_text: str
+    text_hash: str
 
     def to_dict(self) -> dict[str, object]:
         return {
-            "content_id": self.content_id,
+            "global_id": self.global_id,
             "content_type": self.content_type,
+            "source": self.source,
+            "source_id": self.source_id,
             "title": self.title,
             "description": self.description,
-            "categories": self.categories,
             "creators": self.creators,
+            "categories": self.categories,
             "release_date": self.release_date,
             "popularity": self.popularity,
             "rating": self.rating,
             "metadata_text": self.metadata_text,
-            "source": self.source,
+            "embedding_text": self.embedding_text,
+            "text_hash": self.text_hash,
         }
