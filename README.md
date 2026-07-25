@@ -19,3 +19,81 @@ Invoke-RestMethod -Method Post `
   -ContentType "application/json" `
   -Body '{"query":"space adventure with aliens","top_k":5,"content_type":"movie"}'
 ```
+
+## Qdrant + MySQL Backend Setup
+
+The backend now uses Qdrant for vector search instead of FAISS.
+
+Install the new Python dependency:
+
+```powershell
+pip install -r requirements.txt
+```
+
+Run Qdrant locally with Docker:
+
+```powershell
+docker run -p 6333:6333 -p 6334:6334 -v ${PWD}/qdrant_storage:/qdrant/storage qdrant/qdrant
+```
+
+Set optional environment variables if you do not want the defaults:
+
+```powershell
+$env:QDRANT_URL="http://127.0.0.1:6333"
+$env:QDRANT_COLLECTION="content"
+```
+
+Build the recommendation artifacts and upload vectors to Qdrant:
+
+```powershell
+python -m preprocessing.build_content_catalog
+python -m embeddings.build_embeddings
+python -m embeddings.build_qdrant_collection
+```
+
+For MySQL interaction logging, set:
+
+```powershell
+$env:MYSQL_HOST="127.0.0.1"
+$env:MYSQL_PORT="3306"
+$env:MYSQL_USER="root"
+$env:MYSQL_PASSWORD="your_password"
+$env:MYSQL_DATABASE="cross_media_recs"
+```
+
+Create the database and tables automatically:
+
+```powershell
+python -m scripts.init_mysql
+```
+
+You do not need to manually create tables. You only need a running MySQL server and a user with permission to create the configured database.
+
+External API ingestion helpers are available for TMDb movies, Open Library books, and MusicBrainz recordings. Set `TMDB_API_KEY` before using TMDb. Open Library and MusicBrainz do not need API keys, but MusicBrainz requires a descriptive `MUSICBRAINZ_USER_AGENT` for production use.
+
+Load the processed catalog into MySQL after building it:
+
+```powershell
+python -m scripts.load_catalog_mysql
+```
+
+This command creates the database/tables if needed, then upserts all rows from `data/processed/content_catalog.csv` into `content_entities`.
+
+Seed demo users for personalization and future LightGCN experiments:
+
+```powershell
+python -m scripts.seed_demo_interactions
+```
+
+Then call `/recommend` with a `user_id` to rerank results using that user's interaction history:
+
+```json
+{
+  "query": "space adventure",
+  "user_id": "user_scifi",
+  "top_k": 5,
+  "content_type": null
+}
+```
+
+Demo users include `user_scifi`, `user_fantasy`, `user_romance`, `user_action`, `user_music_pop`, `user_music_rock`, `user_books_learning`, `user_family`, `user_dark_thriller`, and `user_balanced`.
