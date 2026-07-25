@@ -22,3 +22,7 @@ embeddings/*.npy
 embeddings/*.index
 embeddings/*.csv
 
+# Local Environment & Storage
+.env
+qdrant_storage/
+
