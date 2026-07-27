@@ -1,4 +1,4 @@
-"""API schemas for the recommendation backend."""
+﻿"""API schemas for the recommendation backend."""
 
 from __future__ import annotations
 
@@ -66,6 +66,8 @@ class RecommendationItem(BaseModel):
     popularity: float | str = ""
     rating: float | str = ""
     score: float
+    semantic_score: float | None = None
+    graph_score: float | None = None
 
 
 class RecommendResponse(BaseModel):

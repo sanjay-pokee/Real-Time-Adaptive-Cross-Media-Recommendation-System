@@ -24,6 +24,8 @@ class FakeRecommender:
                 "popularity": 1.0,
                 "rating": 8.0,
                 "score": 0.99,
+                "semantic_score": 0.9,
+                "graph_score": 0.45,
             }
         ][:top_k]
 
@@ -57,5 +59,8 @@ def test_recommend_endpoint_returns_results():
     assert body["query"] == "space adventure with aliens"
     assert body["top_k"] == 1
     assert body["results"][0]["title"] == "Test Movie"
+    assert body["results"][0]["semantic_score"] == 0.9
+    assert body["results"][0]["graph_score"] == 0.45
 
     app.dependency_overrides.clear()
+

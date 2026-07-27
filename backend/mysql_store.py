@@ -1,4 +1,4 @@
-"""MySQL schema initialization and interaction persistence."""
+﻿"""MySQL schema initialization and interaction persistence."""
 
 from __future__ import annotations
 
@@ -266,6 +266,20 @@ class MySQLStore:
             "category_weights": category_weights,
             "content_type_weights": content_type_weights,
         }
+
+    def get_lightgcn_interactions(self, limit: int = 100_000) -> pd.DataFrame:
+        conn = self._connect_database()
+        try:
+            query = """
+                SELECT user_id, entity_id, event_type, event_value, timestamp
+                FROM user_interactions
+                ORDER BY timestamp DESC, id DESC
+                LIMIT %s
+            """
+            return pd.read_sql(query, conn, params=(limit,))
+        finally:
+            conn.close()
+
 
     def bulk_log_interactions(self, interactions: list[dict[str, Any]]) -> int:
         if not interactions:

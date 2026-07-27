@@ -1,4 +1,4 @@
-# Virtual Environment
+﻿# Virtual Environment
 .venv/
 venv/
 ENV/
@@ -16,6 +16,7 @@ datasets/
 # Logs & Models
 logs/
 *.log
+models/graph/artifacts/
 
 # Large Generated Embeddings & FAISS Index
 embeddings/*.npy

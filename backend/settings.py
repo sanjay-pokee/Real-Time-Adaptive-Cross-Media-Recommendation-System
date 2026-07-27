@@ -1,9 +1,12 @@
-"""Runtime settings loaded from environment variables."""
+﻿"""Runtime settings loaded from environment variables."""
 
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 from dotenv import load_dotenv
 
@@ -26,7 +29,13 @@ class Settings:
         "MUSICBRAINZ_USER_AGENT",
         "cross-media-recommender/0.1 (local-development)",
     )
+    lightgcn_artifact_path: str = os.getenv(
+        "LIGHTGCN_ARTIFACT_PATH",
+        str(PROJECT_ROOT / "models" / "graph" / "artifacts" / "lightgcn_embeddings.npz"),
+    )
+    lightgcn_weight: float = float(os.getenv("LIGHTGCN_WEIGHT", "0.2"))
 
 
 def get_settings() -> Settings:
     return Settings()
+

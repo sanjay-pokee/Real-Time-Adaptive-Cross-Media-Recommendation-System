@@ -97,3 +97,32 @@ Then call `/recommend` with a `user_id` to rerank results using that user's inte
 ```
 
 Demo users include `user_scifi`, `user_fantasy`, `user_romance`, `user_action`, `user_music_pop`, `user_music_rock`, `user_books_learning`, `user_family`, `user_dark_thriller`, and `user_balanced`.
+
+## LightGCN Collaborative Filtering
+
+LightGCN is implemented in PyTorch under `models/graph`. It trains from the MySQL `user_interactions` table and exports user/item embeddings that the backend can use for hybrid reranking.
+
+Train LightGCN after MySQL has catalog rows and interactions:
+
+```powershell
+python -m scripts.load_catalog_mysql
+python -m scripts.seed_demo_interactions
+python -m models.graph.train_lightgcn --epochs 50
+```
+
+The trainer writes:
+
+```text
+models/graph/artifacts/lightgcn_embeddings.npz
+models/graph/artifacts/lightgcn_embeddings.json
+```
+
+After that, restart `uvicorn`. Calls to `/recommend` with a `user_id` will use semantic Qdrant search, the existing interaction-profile reranker, and the LightGCN graph score when the user and item exist in the trained artifact.
+
+Evaluate LightGCN with holdout metrics:
+
+```powershell
+python -m models.graph.evaluate_lightgcn --epochs 20 --k 10
+```
+
+The evaluator hides recent positive interactions per user, trains on the remaining interactions, then reports `HitRate@K`, `Recall@K`, `Precision@K`, `NDCG@K`, and `MRR@K`.
