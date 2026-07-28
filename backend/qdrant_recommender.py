@@ -14,6 +14,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from backend.ema_recommender import EMAEmbeddingStore
 from backend.graph_recommender import GraphEmbeddingStore
 from backend.mysql_store import MySQLStore
 from backend.settings import Settings, get_settings
@@ -52,6 +53,7 @@ class QdrantRecommender:
         self.client = self._load_qdrant_client()
         self.model = self._load_model()
         self.graph_store = self._load_graph_store()
+        self.ema_store = self._load_ema_store()
         self._validate_artifacts()
 
     def recommend(
@@ -75,6 +77,7 @@ class QdrantRecommender:
         results = self._search_vector(query_vector, search_k, content_type)
         results = self._personalize_results(results, search_k, user_id)
         results = self._graph_rerank(results, user_id)
+        results = self._ema_rerank(results, user_id)
         return results[:top_k]
 
     def recommend_from_item(
@@ -104,6 +107,7 @@ class QdrantRecommender:
         results = [item for item in results if item["global_id"] != global_id]
         results = self._personalize_results(results, search_k, user_id)
         results = self._graph_rerank(results, user_id)
+        results = self._ema_rerank(results, user_id)
         return results[:top_k]
 
     def _search_vector(
@@ -200,6 +204,23 @@ class QdrantRecommender:
             results,
             graph_weight=self.settings.lightgcn_weight,
         )
+
+    def _ema_rerank(
+        self,
+        results: list[dict[str, Any]],
+        user_id: str | None,
+    ) -> list[dict[str, Any]]:
+        if not user_id or self.ema_store is None:
+            return results
+        try:
+            user_vector = MySQLStore(self.settings).get_user_ema_vector(user_id)
+        except Exception:
+            return results
+        return self.ema_store.rerank(
+            user_vector,
+            results,
+            ema_weight=self.settings.ema_weight,
+        )
     def _build_qdrant_filter(self, content_type: str | None):
         if content_type is None:
             return None
@@ -240,6 +261,17 @@ class QdrantRecommender:
         except FileNotFoundError:
             return None
         except Exception:
+            return None
+
+    def _load_ema_store(self) -> EMAEmbeddingStore | None:
+        try:
+            return EMAEmbeddingStore(
+                Path(self.settings.content_embeddings_path),
+                Path(self.settings.content_embedding_index_path),
+            )
+        except FileNotFoundError:
+            return None
+        except ValueError:
             return None
     def _load_model(self):
         try:
@@ -343,4 +375,5 @@ def _clean_value(value: Any) -> Any:
 def _split_categories(value: Any) -> list[str]:
     text = str(value or "").lower()
     return [part.strip() for part in text.split(",") if part.strip()]
+
 

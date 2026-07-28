@@ -126,3 +126,24 @@ python -m models.graph.evaluate_lightgcn --epochs 20 --k 10
 ```
 
 The evaluator hides recent positive interactions per user, trains on the remaining interactions, then reports `HitRate@K`, `Recall@K`, `Precision@K`, `NDCG@K`, and `MRR@K`.
+
+## EMA Real-Time Personalization
+
+The backend updates a user EMA vector whenever `/interactions` logs a meaningful event. Positive events such as `like`, `bookmark`, `complete`, and high `rating` pull the user vector toward the content embedding. Negative events such as `skip` push it away.
+
+Useful tuning variables:
+
+```powershell
+$env:EMA_ALPHA="0.25"
+$env:EMA_WEIGHT="0.15"
+```
+
+Backfill EMA vectors from existing interactions:
+
+```powershell
+python -m scripts.rebuild_ema_profiles
+```
+
+After an interaction is logged, later `/recommend` calls with the same `user_id` include `ema_score` and use it for instant reranking. This works immediately without retraining LightGCN.
+
+

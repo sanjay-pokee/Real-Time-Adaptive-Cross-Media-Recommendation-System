@@ -8,6 +8,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from backend.ema_recommender import EMAEmbeddingStore
 from backend.graph_recommender import GraphEmbeddingStore
 from models.graph.evaluate_lightgcn import evaluate_rankings, split_holdout_by_user
 from models.graph.lightgcn import (
@@ -147,3 +148,43 @@ def test_evaluate_rankings_calculates_metrics():
     assert metrics.ndcg == pytest.approx(1.0)
     assert metrics.mrr == pytest.approx(1.0)
 
+
+
+def test_ema_embedding_store_updates_and_reranks(tmp_path):
+    embeddings_path = tmp_path / "content_embeddings.npy"
+    index_path = tmp_path / "content_embedding_index.csv"
+    np.save(
+        embeddings_path,
+        np.array([[1.0, 0.0], [0.0, 1.0]], dtype=np.float32),
+    )
+    pd.DataFrame(
+        [
+            {"global_id": "i1", "embedding_row": 0},
+            {"global_id": "i2", "embedding_row": 1},
+        ]
+    ).to_csv(index_path, index=False)
+    store = EMAEmbeddingStore(embeddings_path, index_path)
+
+    vector = store.update_profile_vector([], "i1", "like", 1, alpha=0.5)
+    assert vector is not None
+    assert store.score(vector, "i1") == pytest.approx(1.0)
+
+    reranked = store.rerank(
+        vector,
+        [{"global_id": "i2", "score": 0.9}, {"global_id": "i1", "score": 0.8}],
+        ema_weight=0.2,
+    )
+    assert reranked[0]["global_id"] == "i1"
+    assert reranked[0]["ema_score"] == pytest.approx(1.0)
+
+
+def test_ema_embedding_store_negative_interaction_moves_away(tmp_path):
+    embeddings_path = tmp_path / "content_embeddings.npy"
+    index_path = tmp_path / "content_embedding_index.csv"
+    np.save(embeddings_path, np.array([[1.0, 0.0]], dtype=np.float32))
+    pd.DataFrame([{"global_id": "i1", "embedding_row": 0}]).to_csv(index_path, index=False)
+    store = EMAEmbeddingStore(embeddings_path, index_path)
+
+    vector = store.update_profile_vector([], "i1", "skip", 1, alpha=1.0)
+
+    assert store.score(vector, "i1") == pytest.approx(-1.0)

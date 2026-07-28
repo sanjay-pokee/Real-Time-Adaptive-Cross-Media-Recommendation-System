@@ -1,4 +1,4 @@
-﻿"""API schemas for the recommendation backend."""
+"""API schemas for the recommendation backend."""
 
 from __future__ import annotations
 
@@ -68,6 +68,7 @@ class RecommendationItem(BaseModel):
     score: float
     semantic_score: float | None = None
     graph_score: float | None = None
+    ema_score: float | None = None
 
 
 class RecommendResponse(BaseModel):
@@ -98,3 +99,17 @@ class InteractionResponse(BaseModel):
     user_id: str
     entity_id: str
     event_type: str
+
+
+class UserInteractionState(BaseModel):
+    """Current interaction state for a user+entity pair."""
+    user_id: str
+    entity_id: str
+    # Boolean flags for toggle-able interactions
+    view: bool = False
+    like: bool = False
+    bookmark: bool = False
+    skip: bool = False
+    complete: bool = False
+    # Last rating (1-5), or 0 if none
+    rating: float = 0

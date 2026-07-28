@@ -34,6 +34,16 @@ class Settings:
         str(PROJECT_ROOT / "models" / "graph" / "artifacts" / "lightgcn_embeddings.npz"),
     )
     lightgcn_weight: float = float(os.getenv("LIGHTGCN_WEIGHT", "0.2"))
+    ema_weight: float = float(os.getenv("EMA_WEIGHT", "0.15"))
+    ema_alpha: float = float(os.getenv("EMA_ALPHA", "0.25"))
+    content_embeddings_path: str = os.getenv(
+        "CONTENT_EMBEDDINGS_PATH",
+        str(PROJECT_ROOT / "embeddings" / "content_embeddings.npy"),
+    )
+    content_embedding_index_path: str = os.getenv(
+        "CONTENT_EMBEDDING_INDEX_PATH",
+        str(PROJECT_ROOT / "embeddings" / "content_embedding_index.csv"),
+    )
 
 
 def get_settings() -> Settings:

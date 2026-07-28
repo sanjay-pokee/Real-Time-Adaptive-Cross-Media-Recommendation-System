@@ -1,4 +1,4 @@
-﻿"""MySQL schema initialization and interaction persistence."""
+"""MySQL schema initialization and interaction persistence."""
 
 from __future__ import annotations
 
@@ -188,7 +188,76 @@ class MySQLStore:
         finally:
             conn.close()
 
+    def get_user_interaction_state(
+        self, user_id: str, entity_id: str
+    ) -> dict[str, Any]:
+        """Return the latest interaction state for a user/entity pair.
 
+        For toggle interactions (view, like, bookmark, skip, complete) we treat
+        them as *active* when the total count is **odd** (first click on,
+        second click off, etc.).  For rating we return the most recent value.
+        """
+        conn = self._connect_database()
+        try:
+            with conn.cursor(dictionary=True) as cursor:
+                cursor.execute(
+                    """
+                    SELECT event_type, event_value, COUNT(*) AS cnt
+                    FROM user_interactions
+                    WHERE user_id = %s AND entity_id = %s
+                      AND event_type IN ('view','like','bookmark','skip','complete','rating')
+                    GROUP BY event_type, event_value
+                    ORDER BY event_type, cnt DESC
+                    """,
+                    (user_id, entity_id),
+                )
+                rows = cursor.fetchall()
+        finally:
+            conn.close()
+
+        # Aggregate: count total interactions per toggle type
+        toggle_counts: dict[str, int] = {}
+        latest_rating: float = 0
+        for row in rows:
+            etype = row["event_type"]
+            if etype == "rating":
+                # Take the event_value of the row with the highest count
+                # (i.e. the most frequently submitted rating)
+                # But we want the *most recent* rating, so we need a different
+                # query for that.  For now, pick whichever row appeared first.
+                if latest_rating == 0 and row["event_value"] is not None:
+                    latest_rating = float(row["event_value"])
+            else:
+                toggle_counts[etype] = toggle_counts.get(etype, 0) + int(row["cnt"])
+
+        # Also fetch the single most recent rating separately
+        conn2 = self._connect_database()
+        try:
+            with conn2.cursor(dictionary=True) as cursor:
+                cursor.execute(
+                    """
+                    SELECT event_value FROM user_interactions
+                    WHERE user_id = %s AND entity_id = %s AND event_type = 'rating'
+                    ORDER BY timestamp DESC, id DESC
+                    LIMIT 1
+                    """,
+                    (user_id, entity_id),
+                )
+                rating_row = cursor.fetchone()
+        finally:
+            conn2.close()
+
+        if rating_row and rating_row["event_value"] is not None:
+            latest_rating = float(rating_row["event_value"])
+
+        return {
+            "view": (toggle_counts.get("view", 0) % 2) == 1,
+            "like": (toggle_counts.get("like", 0) % 2) == 1,
+            "bookmark": (toggle_counts.get("bookmark", 0) % 2) == 1,
+            "skip": (toggle_counts.get("skip", 0) % 2) == 1,
+            "complete": (toggle_counts.get("complete", 0) % 2) == 1,
+            "rating": latest_rating,
+        }
 
     def upsert_user_profiles(self, profiles: list[dict[str, Any]]) -> int:
         if not profiles:
@@ -219,6 +288,49 @@ class MySQLStore:
             conn.close()
 
         return len(profiles)
+
+    def get_user_ema_vector(self, user_id: str) -> list[float]:
+        conn = self._connect_database()
+        try:
+            with conn.cursor(dictionary=True) as cursor:
+                cursor.execute(
+                    "SELECT ema_vector FROM user_profiles WHERE user_id = %s",
+                    (user_id,),
+                )
+                row = cursor.fetchone()
+        finally:
+            conn.close()
+
+        if not row or not row.get("ema_vector"):
+            return []
+        value = row["ema_vector"]
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError:
+                return []
+        else:
+            parsed = value
+        if not isinstance(parsed, list):
+            return []
+        return [float(item) for item in parsed]
+
+    def update_user_ema_vector(self, user_id: str, ema_vector: list[float]) -> None:
+        conn = self._connect_database()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO user_profiles (user_id, preferences, ema_vector)
+                    VALUES (%s, %s, %s)
+                    ON DUPLICATE KEY UPDATE ema_vector = VALUES(ema_vector)
+                    """,
+                    (user_id, json.dumps({}), json.dumps(ema_vector)),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
 
     def get_user_preference_profile(self, user_id: str) -> dict[str, Any]:
         conn = self._connect_database()

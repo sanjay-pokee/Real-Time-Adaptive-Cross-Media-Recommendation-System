@@ -1,4 +1,4 @@
-﻿"""FastAPI backend for semantic cross-media recommendations.
+"""FastAPI backend for semantic cross-media recommendations.
 
 Run locally:
     uvicorn backend.app:app --reload
@@ -11,6 +11,7 @@ from functools import lru_cache
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.ema_recommender import EMAEmbeddingStore
 from backend.mysql_store import MySQLStore
 from backend.qdrant_recommender import QdrantRecommender
 from backend.schemas import (
@@ -20,6 +21,7 @@ from backend.schemas import (
     ItemRecommendResponse,
     RecommendRequest,
     RecommendResponse,
+    UserInteractionState,
 )
 
 
@@ -31,7 +33,17 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
+        "http://127.0.0.1:3000",
+    ],
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,6 +59,16 @@ def get_recommender() -> QdrantRecommender:
 @lru_cache(maxsize=1)
 def get_mysql_store() -> MySQLStore:
     return MySQLStore()
+
+
+@lru_cache(maxsize=1)
+def get_ema_store() -> EMAEmbeddingStore | None:
+    try:
+        return EMAEmbeddingStore()
+    except FileNotFoundError:
+        return None
+    except ValueError:
+        return None
 
 
 @app.get("/")
@@ -139,6 +161,7 @@ def recommend_from_item(
 def log_interaction(
     payload: InteractionRequest,
     store: MySQLStore = Depends(get_mysql_store),
+    ema_store: EMAEmbeddingStore | None = Depends(get_ema_store),
 ) -> InteractionResponse:
     try:
         if not store.content_exists(payload.entity_id):
@@ -150,6 +173,17 @@ def log_interaction(
                 ),
             )
         store.log_interaction(payload.model_dump())
+        if ema_store is not None:
+            current_vector = store.get_user_ema_vector(payload.user_id)
+            updated_vector = ema_store.update_profile_vector(
+                current_vector,
+                payload.entity_id,
+                payload.event_type,
+                payload.event_value,
+                alpha=store.settings.ema_alpha,
+            )
+            if updated_vector is not None:
+                store.update_user_ema_vector(payload.user_id, updated_vector)
     except HTTPException:
         raise
     except ImportError as exc:
@@ -165,4 +199,32 @@ def log_interaction(
         user_id=payload.user_id,
         entity_id=payload.entity_id,
         event_type=payload.event_type,
+    )
+
+
+@app.get("/interactions/{user_id}/{entity_id:path}", response_model=UserInteractionState)
+def get_interaction_state(
+    user_id: str,
+    entity_id: str,
+    store: MySQLStore = Depends(get_mysql_store),
+) -> UserInteractionState:
+    """Return the current interaction state (likes, bookmarks, rating, etc.) for
+    a specific user + content entity combination."""
+    try:
+        state = store.get_user_interaction_state(user_id, entity_id)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Could not fetch interaction state: {exc}",
+        ) from exc
+
+    return UserInteractionState(
+        user_id=user_id,
+        entity_id=entity_id,
+        view=state["view"],
+        like=state["like"],
+        bookmark=state["bookmark"],
+        skip=state["skip"],
+        complete=state["complete"],
+        rating=state["rating"],
     )

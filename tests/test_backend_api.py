@@ -64,3 +64,4 @@ def test_recommend_endpoint_returns_results():
 
     app.dependency_overrides.clear()
 
+
