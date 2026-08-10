@@ -315,6 +315,30 @@ class MySQLStore:
             return []
         return [float(item) for item in parsed]
 
+    def get_user_profile_preferences(self, user_id: str) -> dict[str, Any]:
+        conn = self._connect_database()
+        try:
+            with conn.cursor(dictionary=True) as cursor:
+                cursor.execute(
+                    "SELECT preferences FROM user_profiles WHERE user_id = %s",
+                    (user_id,),
+                )
+                row = cursor.fetchone()
+        finally:
+            conn.close()
+
+        if not row or not row.get("preferences"):
+            return {}
+        value = row["preferences"]
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+            except json.JSONDecodeError:
+                return {}
+        else:
+            parsed = value
+        return parsed if isinstance(parsed, dict) else {}
+
     def update_user_ema_vector(self, user_id: str, ema_vector: list[float]) -> None:
         conn = self._connect_database()
         try:

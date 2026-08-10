@@ -1,0 +1,1161 @@
+
+
+===== PAGE 1 =====
+Real-Time Adaptive Cross-Media Recommendation:
+A Survey of Semantic Embeddings, Graph-Based
+Collaborative Learning, and the Open Problem of
+Unified Multi-Domain Personalization
+Sanjay AK, Eswara Raj M, Aditya Vijay, Himaneesh Reddy Jangalapalli
+Department of Computer Science and Engineering, Amrita School of Computing
+Amrita Vishwa Vidyapeetham, Coimbatore, India
+Guides: Dr. Bagavathi Sivakumar P., Krishna Priya G.
+Abstract—Recommender systems have evolved from recommendations for books or music, even though real user
+collaborative-filtering heuristics to graph-structured and interest is inherently cross-domain.
+language-aware architectures, yet three problems remain
+Three trends have reshaped the field over the last decade.
+unresolved when considered jointly: recommending coherently
+First, Graph Neural Networks improved collaborative filter-
+across heterogeneous content domains (movies, books, music,
+courses), adapting to a user’s evolving intent within a ing by propagating signal across multi-hop user–item neigh-
+single session, and doing both at production-grade latency. borhoods rather than relying on first-order co-occurrence
+This survey reviews twenty-six representative works spanning alone [1], [2]. Second, semantic embedding models such
+collaborativefiltering,sequentialrecommendation,GraphNeural
+as Sentence-BERT made large-scale understanding of textual
+Networks (GNNs), knowledge-graph recommendation, semantic
+metadatacomputationallypractical[3],enablingcontent-based
+embeddings, cross-domain transfer, online/real-time learning,
+and Large Language Model (LLM)-based recommendation. similarity even for items with no interaction history. Third,
+We organize the literature into a taxonomy, trace its historical onlineandsequentiallearningtechniquesbegantoaddressthe
+evolution, tabulate benchmark datasets and evaluation metrics, fact that most models are trained offline and cannot react to a
+and present a comparative analysis across methods on the axes
+user’s preferences shifting mid-session [4], [5].
+of semantic awareness, graph awareness, cross-domain support,
+Individually,eachdirectioniswellstudied.Jointly,however,
+and real-time capability. We then use a prototype system – a
+Real-Time Adaptive Cross-Media Recommendation architecture the combination of (i) multi-domain coherence, (ii) within-
+combining Sentence-BERT semantic retrieval, Qdrant vector sessionreal-timeadaptation,and(iii)production-gradelatency
+search, MySQL-backed interaction logging, and LightGCN remains largely unaddressed. Existing cross-domain methods
+graph-based collaborative filtering – as a motivating lens to
+typically transfer knowledge between only two domains [6],
+locate exactly where the surveyed literature’s open problems
+[7]; existing real-time methods rarely combine semantic and
+converge. The prototype is implemented as a working backend
+pipeline covering three media domains (movies, books, and behavioralsignalsimultaneously;andLLM-basedapproaches,
+music), and this revision documents its concrete implementation while expressive, are not yet practical at low latency [8], [9].
+details, current test status, and honestly-scoped limitations, This survey uses Team 22’s Real-Time Adaptive Cross-
+while keeping the survey’s primary emphasis on the literature
+Media Recommendation System as a motivating lens for
+landscape. We close with a structured research-gap analysis
+locating precisely where these open problems converge. The
+spanning cold start, sparsity, explainability, fairness, and
+multi-domain validation, and outline concrete future directions. current implementation combines a Sentence-BERT seman-
+Index Terms—Recommender Systems, Graph Neural Net- tic pipeline, a Qdrant vector-retrieval pipeline, a MySQL-
+works, Collaborative Filtering, Semantic Embeddings, Sentence- backed interaction-logging and profile-reranking pipeline, and
+BERT, Vector Search, Cross-Domain Recommendation, Real- an offline LightGCN graph pipeline, operating over a unified
+TimeRecommendation,OnlineLearning,LargeLanguageMod-
+schema spanning three media domains today [10]. We treat
+els, Survey
+thissystemasaworkingprototypewithaclearlyimplemented
+backend rather than a fully validated, production-complete
+I. INTRODUCTION deployment, and use it to illustrate which design claims are
+well supported by the literature, which are implemented and
+Recommender systems (RS) are the primary mechanism testable today, and which remain open research problems for
+throughwhichusersnavigatethescaleofmoderndigitalcata- future work.
+logs–streamingplatforms,onlinebookstores,musicservices,
+A. Contributions
+and educational portals. Despite decades of research, most
+production recommender systems remain isolated within a 1) A taxonomy organizing 26 reviewed works across col-
+single domain: a user’s preference in movies rarely informs laborative filtering, sequential recommendation, GNNs,
+
+===== PAGE 2 =====
+knowledge-graph recommendation, semantic embed- RecommendationSystems
+dings, cross-domain recommendation, real-time recom- ↓
+CollaborativeFiltering — SequentialRecommendation
+mendation, and LLM-based recommendation.
+— Graph-Based(GNN)RS — Knowledge-GraphRS
+2) Anevolutiontimelinetracingthehistoricaldevelopment — SemanticEmbedding — Cross-DomainRS
+ofrecommendationmethods(Fig.2)andanapproximate — Real-Time/OnlineRS — LLM-BasedRS
+publication-trend figure (Fig. 3). Fig. 1. Taxonomy of recommendation-system literature reviewed in this
+3) Astructured, paper-by-paperliterature revieworganized survey.
+thematically and chronologically (Section V).
+4) A consolidated dataset table (Table V) and an expanded TABLEI
+evaluation-metrics discussion (Section VII).
+TAXONOMYOFREVIEWEDLITERATURE
+5) A multi-axis comparative analysis across all reviewed
+Branch RepresentativeWorks
+methods (Table VI).
+Collaborative Fil- NGCF[1],UltraGCN[14],SimpleX[15]
+6) A twelve-topic open-challenges discussion (Section IX)
+tering
+and research-gap analysis (Section X). Sequential Recom- SASRec[16],BERT4Rec[17],SequentialRS
+7) A detailed account of the proposed prototype’s imple- mendation Survey[5]
+Graph-Based LightGCN [2], PinSage [18], SGL [19],
+mentation – architecture, technology choices and the
+(GNN)RS SimGCL[20],HCCF[21]
+reasoning behind them, endpoints, current test status, Knowledge-Graph KGAT [22], RippleNet [23], KG-DL Survey
+and honestly-scoped limitations – together with an up- RS [24]
+Semantic Embed- Sentence-BERT [3], Transformers-in-RS Sur-
+dated layered architecture diagram (Section XI), an
+ding vey[25]
+implementation-details table (Section XII), and a dis- Cross-DomainRS Cross-DomainSurvey[7],PCRec[6]
+cussion of the system’s novelty (Section XIII). Real-Time/Online Online-LearningSurvey[4]
+RS
+II. BACKGROUND LLM-BasedRS LLMRec[8],LLM-as-Recommender[9]
+Proposed Sentence-BERT+Qdrant+LightGCN,imple-
+Arecommendersystemestimatesautilityfunctionbetween Prototype mentedacrossmovies/books/music[10]
+usersanditemsfromsparseinteractiondata,typicallydrawing
+on two sources of signal:
+first-order user–item interactions. Deep learning introduced
+• Behavioral information captured from user interactions
+non-linear feature interactions, and Graph Neural Networks
+(clicks, ratings, purchases, likes, skips).
+then introduced neighborhood aggregation, letting collabora-
+• Content information describing the items themselves (ti-
+tive signal propagate across multi-hop relationships [1], [2].
+tles, descriptions, genres, tags, and other metadata).
+Transformer-based sequential models captured order-sensitive
+Collaborative filtering relies primarily on behavioral sig-
+user behavior [16], [17]. Sentence-BERT and related seman-
+nal, whereas content-based recommendation uses textual or
+tic embedding models subsequently made large-scale content
+metadata features. Hybrid recommendation systems combine
+understanding practical [3]. Most recently, researchers have
+bothtoimprovequalityandtomitigatethecold-startproblem,
+combinedsemanticrepresentationswithgraphlearning,cross-
+in which new items or new users lack sufficient interaction
+domain transfer, and LLM-based reasoning [8], alongside
+history [12], [13].
+early exploration of lightweight online adaptation and, more
+Graph Neural Networks extend collaborative filtering by
+broadly,othermodalitiessuchasfederatedanddiffusion-based
+representing users and items as nodes in a bipartite graph
+recommendation.
+and propagating embeddings across neighborhoods [1], [2].
+Semantic embedding models such as Sentence-BERT inde-
+V. LITERATUREREVIEW
+pendently encode each item’s textual metadata into a fixed-
+This section reviews the surveyed works thematically, in
+lengthvector,sothatcosinesimilaritybetweenvectorsreflects
+roughly chronological order within each theme.
+semantic relatedness [3]. Combining behavioral (graph) and
+semantic (content) representations is the foundation of most
+A. Collaborative Filtering and Sequential Models
+modern hybrid recommender systems, and is the philosophy
+this survey’s motivating prototype adopts. Neural Graph Collaborative Filtering (NGCF) introduced
+graph convolution into collaborative filtering, letting embed-
+III. TAXONOMYOFRECOMMENDATIONSYSTEMS dings aggregate information from neighboring nodes over an
+We organize the reviewed literature into eight branches, explicit user–item bipartite graph [1]. It outperformed matrix-
+summarized visually in Fig. 1 and by representative work in factorizationbaselinesbutretainedfeature-transformationma-
+Table I. trices and non-linear activations that increase training cost.
+UltraGCN [14] and SimpleX [15] subsequently argued that
+IV. EVOLUTIONOFRECOMMENDATIONSYSTEMS
+much of the benefit of graph convolution can be recovered
+Recommendation systems have progressed through several withfarsimpler,moreefficientformulations,questioninghow
+overlapping generations, shown in Fig. 2. Memory-based much of GNN-style message passing is strictly necessary for
+and matrix-factorization collaborative filtering modeled only competitive accuracy.
+
+===== PAGE 3 =====
+Memory-BasedCF→MatrixFactorization→DeepLearning TABLEII
+(MLP/CNN)→GraphNeuralNetworks(GNN)→Sequential GNN-BASEDRECOMMENDATIONMETHODS
+Transformers→SemanticEmbeddings(SBERT)→LLM-Based
+Recommendation→HybridCross-MediaReal-Time(Open Work Mechanism Solves Does Not
+Problem) Solve
+Fig.2. Approximateevolutionofrecommendation-systemparadigms. NGCF[1] GCN message Higher-order Efficiency,
+passing collaborative content
+signal awareness
+Illustrativecountofreviewedreferencesbyyear: LightGCN Linear EfficientCF Cross-domain,
+2018:3 2019:4 2020:2 2021:4 2022:6 2023:2 [2] neighborhood real-time
+2024:3 2025:2 aggregation
+PinSage Random-walk Web-scale Semantic con-
+Fig.3. Approximatedistribution,bypublicationyear,oftheworksreviewed
+[18] sampling + graphs tent,real-time
+inthissurvey(illustrativecountoverthe26reviewedreferences).
+GCN
+SGL[19] Contrastive self- Datasparsity Real-time rec-
+supervision ommendation
+In parallel, sequential recommendation models such as SimGCL Noise-based Sparsity, effi- Cross-domain
+SASRec [16] and BERT4Rec [17] apply self-attention and [20] contrastive ciency
+learning
+bidirectional transformers respectively to model the order of
+HCCF[21] Hypergraph Higher- Real-time, se-
+user interactions, which pure collaborative filtering ignores. contrastive order/group mantics
+Wang et al. [5] survey this area comprehensively, noting that learning signal
+sequential models improve short-term intent modeling but are
+typicallytrainedandevaluatedoffline,per-domain,anddonot TABLEIII
+natively support cross-domain transfer. CROSS-DOMAINRECOMMENDATIONCOMPARISON
+B. Graph Neural Networks in Recommendation Method DomainScope TransferStrategy
+Cross-Domain Two domains Joint / shared embed-
+GNN-basedcollaborativefilteringisoneofthemostmature
+Survey[7] (typical) ding
+and extensively validated directions in the field. PCRec[6] Dualdomain Contrastive pretraining
+LightGCN [2] simplified NGCF by removing feature trans- +fine-tuning
+Proposed Pro- Three domains Shared schema and
+formations and non-linearities, retaining only neighborhood
+totype[10] implemented sharedembeddingspace
+aggregation; this reduced training cost while improving accu- (movies, books,
+racy on Gowalla, Yelp2018 and Amazon-Book-style bench- music); further
+domainsplanned
+marks, and is the reason it is widely adopted as a graph
+backbone in downstream systems – including the graph-based
+collaborative filtering module implemented in this project’s
+knowledge graphs – an expensive requirement for a system
+prototype. PinSage [18] demonstrated that graph convolu-
+attempting to unify movies, books, and music.
+tion can scale to web-scale industrial graphs by combining
+random-walk-based neighborhood sampling with efficient on-
+D. Semantic Embedding Methods
+device computation. Self-Supervised Graph Learning (SGL)
+[19] addressed the sparsity and long-tail problems inherent Semantic embeddings represent textual metadata numeri-
+in interaction graphs through contrastive self-supervision on cally, enabling similarity computation even without interac-
+augmentedgraphviews.SimGCL[20]latershowedthatmuch tion history. Sentence-BERT [3] independently encodes each
+of SGL’s benefit comes from the contrastive objective’s regu- sentence into a fixed-length embedding rather than jointly
+larizationeffectratherthanthestructuralgraphaugmentations encoding sentence pairs as standard BERT does, dramati-
+themselves. Hypergraph Contrastive Collaborative Filtering cally reducing the computational cost of large-scale seman-
+(HCCF) [21] extended this line to hypergraph structures cap- tic search – this efficiency is the direct reason the proto-
+turing higher-order, group-level relationships among users. type’s semantic layer (Section XIC) adopts the compact all-
+MiniLM-L6-v2Sentence-BERTvariant.Fanetal.[25]survey
+C. Knowledge-Graph Recommendation transformer-based representation learning in recommendation
+Knowledge-graph-based methods enrich the user–item morebroadly,observingthatwhiletransformer-basedsemantic
+graph with external entity relationships. RippleNet [23] prop- encoders are effective on textual-similarity benchmarks, their
+agatesuserpreferencesoutwardthroughtheknowledgegraph, effectiveness for genuinely cross-media similarity (e.g., a
+treating each user’s history as a seed set of “ripples.” KGAT science-fiction film against a science-fiction novel) is com-
+[22] instead applies graph attention over a unified collab- paratively under-validated in the literature.
+orative knowledge graph, learning to weight neighbor im-
+E. Cross-Domain Recommendation
+portance rather than propagating uniformly. Gao et al. [24]
+surveythisareabroadly,notingthatknowledge-graphmethods Cross-domain recommendation attempts to transfer knowl-
+provide strong explainability and cold-start mitigation, but edge between domains so that preferences learned in one
+depend heavily on the availability of curated, domain-specific domain improve recommendations in another.
+
+===== PAGE 4 =====
+TABLEIV TABLEV
+REAL-TIMERECOMMENDATIONAPPROACHES REPRESENTATIVEDATASETSINTHEREVIEWEDLITERATURE
+Method Mechanism Latency Expr. Dataset Domain TypicalUse
+Sequential RS [5], RNN / Moderate High MovieLens Movies CF / GNN bench-
+[16] Transformer mark
+SGL[19] Contrastive Offline Medium Amazon-Book Books CF / GNN bench-
+learning mark
+Online-Learning Bandits / incre- Low– Medium Amazon (multi- Cross-domain Cross-domain trans-
+Survey[4] mentalMF Moderate category) fer
+Interaction- Weighted signal Low Low– Gowalla Location GNNbenchmark
+profile reranking accumulation Medium check-in
+(prototype)[10] over logged Yelp2018 Business GNNbenchmark
+interactions reviews
+Last.fm Music CF benchmark,
+cross-domain
+Goodreads Books Content+CF
+Zang et al. [7] provide a comprehensive taxonomy of TMDb Movies Metadata / semantic
+cross-domain methods, categorizing them by transfer strategy embedding
+OpenLibrary Books Metadata / semantic
+(shared user, shared item, or shared latent space) and noting
+embedding
+that the overwhelming majority of existing work addresses MusicBrainz Music Metadata / semantic
+two-domain transfer. PCRec [6] exemplifies this: it performs embedding
+contrastivegraphpre-trainingonasourcedomainfollowedby
+fine-tuning on a target domain. As Table III shows, extending
+extend graph-based reasoning to multimedia recommendation
+such pairwise transfer strategies to three or more simulta-
+viahierarchicaluser-intentgraphs,andHassanzadehetal.[27]
+neous domains – as implemented in the prototype’s unified
+combine GNNs with attention mechanisms for improved per-
+movies/books/music schema – remains comparatively under-
+sonalization, though without addressing real-time inference.
+explored in the surveyed literature, and the prototype itself
+Across this line of work, a consistent finding is that LLMs
+has not yet been benchmarked at the scale these academic
+are best positioned as offline enrichment or explanation tools
+baselines report.
+rather than low-latency, online ranking components.
+F. Real-Time and Online Recommendation
+VI. DATASETSUSEDINTHELITERATURE
+Most recommendation models are trained offline and up-
+Twoobservationsfollowfromthistable.First,matureGNN
+dated only periodically, so they cannot react immediately to a
+benchmarks (MovieLens, Amazon, Gowalla, Yelp2018) are
+within-session shift in user interest.
+overwhelmingly single-domain. Second, the datasets used by
+Sequential models partially address within-session adapta-
+theprototype(TMDb,OpenLibrary,MusicBrainz)arechosen
+tion by conditioning on recent history [5], but at the cost
+for metadata richness and public accessibility rather than
+of additional inference complexity. Zhang et al. [4] sur-
+benchmark standardization, which limits direct comparability
+vey online learning for recommender systems broadly, dis-
+with published GNN results until the prototype is evaluated
+tinguishing bandit-style online learning, incremental matrix
+on a common cross-domain benchmark – an item explicitly
+factorization, and streaming graph updates. The prototype’s
+listed under Future Work (Section XVI).
+currently implemented personalization step is a lighter-weight
+interaction-profile reranker (Section XIG) rather than a full VII. EVALUATIONMETRICS
+online-learning mechanism; extending it toward incremental
+A. Standard Ranking Metrics
+or streaming graph updates, as surveyed here, is left as future
+work (Section XVI). • Precision@K–fractionofthetop-Krecommendeditems
+that are relevant.
+G. Large Language Models in Recommendation • Recall@K–fractionofallrelevantitemscapturedwithin
+LLMs have recently emerged as auxiliary components for the top-K.
+recommendation: generating natural-language explanations, • MAP (Mean Average Precision) – averages precision
+enriching item descriptions, and reasoning over user intent across recall levels, rewarding correctly ranked relevant
+in natural language. Liu et al. [9] evaluate general-purpose items early.
+LLMs directly as recommenders and find they underperform • NDCG@K – Normalized Discounted Cumulative Gain;
+specialized graph-based models on ranking accuracy, while weights relevant items by their rank position.
+remaining useful for explanation and cold-start feature en- • Hit Rate – whether at least one relevant item appears in
+richment. Wu et al. [8] instead use LLMs to augment a the top-K list.
+graph-based recommender – generating auxiliary edges and • MRR (Mean Reciprocal Rank) – reciprocal of the rank
+enriched node features – combining the strengths of language of the first relevant item.
+understanding and graph-based collaborative filtering while As Zhang et al. [28] and Gao et al. [29] both note, these
+keepingthegraphmodelastheprimaryranker.Weietal.[26] metrics capture ranking accuracy but not user experience.
+
+===== PAGE 5 =====
+B. Beyond-Accuracy Metrics 9) Dataset Limitations – no standardized, unified, multi-
+domain benchmark yet exists, forcing most cross-
+• Coverage – the proportion of the catalogue that ever
+domain work (including the prototype) to rely on either
+appears in recommendations.
+two-domain academic benchmarks or bespoke, non-
+• Diversity – the dissimilarity among items in a single
+standard data sources.
+recommendation list.
+10) Evaluation Beyond Accuracy – diversity, novelty,
+• Novelty – how unexpected or previously unseen recom-
+and user-centric metrics remain secondary to Preci-
+mended items are to a given user.
+sion/Recall/NDCG in most published evaluations [28].
+• Serendipity – relevant and surprising recommendations,
+11) Multi-Domain Validation – cross-domain methods are
+jointly capturing novelty and satisfaction.
+validatedalmostexclusivelyondomainpairs;validation
+Finally, for real-time systems, latency (end-to-end response
+beyondtwodomainsislargelyabsentfromtheliterature
+time) is itself an evaluation metric, since accuracy achieved
+[6], [7], and the prototype’s own three-domain imple-
+outside a usable latency budget is not deployable. None of
+mentation is not yet an exception to this.
+these metrics have yet been computed for the prototype at
+12) LLM Cost and Scalability – LLM-based recommen-
+scale; Section XIK and Section XVI list this explicitly as
+dation remains expensive and comparatively inaccurate
+remaining work rather than assuming it implicitly.
+as a primary ranker [9], limiting its role to offline
+VIII. COMPARATIVEANALYSIS enrichment.
+Thepatternisconsistentacrossthetable:graph-basedmeth-
+X. RESEARCHGAPANDMOTIVATION
+odsexcelatbehavioralsignalbutlacksemanticunderstanding;
+semantic embedding methods capture textual similarity but Identified gaps, in summary: (i) no reviewed system sup-
+ignore interaction patterns; cross-domain methods support portsreal-timerecommendationandrigorousgraph-basedcol-
+transfer but are restricted to two domains; and no reviewed, laborative filtering simultaneously [2], [29]; (ii) cross-domain
+validated method combines all four properties simultaneously. integration beyond two domains is essentially unvalidated
+The proposed prototype is positioned at this intersection [7]; (iii) no reviewed work unifies semantic embeddings,
+with a working implementation, which is precisely why full graph-based learning, and real-time adaptation with a con-
+validation – not architectural integration – is the open item crete,testablebackendimplementation;and(iv)mostsystems
+that remains (Section XIK). optimize accuracy rather than user-centric experience [25],
+[28]. The remainder of this paper documents, in concrete
+IX. OPENCHALLENGES
+implementation terms, how far the prototype has progressed
+Synthesizing across the reviewed literature, we identify the toward closing gap (iii), and how much remains.
+following recurring open challenges in cross-media, real-time
+recommendation:
+XI. PROPOSEDSYSTEMANDIMPLEMENTATION
+1) Cold Start – new users and items lack interaction A. Overview of the Implemented Prototype
+history; semantic embeddings mitigate item cold start The prototype currently implements a working backend
+but user cold start remains difficult [12]. recommendation pipeline supporting three content domains –
+2) Data Sparsity – user–item interaction matrices are movies, books, and music – unified under a single schema.
+typically sparse, motivating graph propagation and con- It is best described as an implemented backend pipeline with
+trastive self-supervision [19], [20]. clear extensibility, not a fully production-complete system
+3) Domain Shift – item semantics and interaction patterns across all domains. Fig. 4 shows the current layered ar-
+differ structurally across domains, complicating shared chitecture: data ingestion and preprocessing, a storage layer
+embedding spaces. split across MySQL and Qdrant, a semantic retrieval layer, a
+4) Scalability – graph training and ANN retrieval must personalization layer, a FastAPI service layer, and a feedback
+scale to large catalogs across domains while meeting loop that lets logged interactions retrain the graph model.
+latency budgets. Updatedlayeredarchitectureoftheimplementedprototype:
+5) Privacy – centralizing cross-domain behavioral data data sources, preprocessing, storage, semantic retrieval, per-
+raisesprivacyconcerns,motivatingfederatedrecommen- sonalization, API, client layer, and the feedback loop back
+dation approaches. into storage.
+6) Bias and Fairness – popularity bias in GNN-based Updatedlayeredarchitectureoftheimplementedprototype:
+collaborativefilteringcanbeamplifiedwhenpropagated datasources,preprocessing,storage(MySQL/Qdrant/Light-
+across domains. GCNartifacts),semanticretrieval,personalization,API,client
+7) Explainability–knowledge-graphmethodsoffernatural layer, and the feedback loop back into storage.
+explanations [22], [23]; embedding-based hybrid meth-
+B. Dataset and Unified Schema
+ods generally do not, and the prototype does not yet
+expose one. The content catalog is built from movie, book, and music
+8) Latency – real-time adaptation mechanisms need to datasets/APIs.Everyitem–regardlessofdomain–ismapped
+remain efficient without sacrificing expressiveness. into one unified schema: global_id, content_type,
+
+===== PAGE 6 =====
+TABLEVI
+COMPARATIVEANALYSISACROSSREVIEWEDMETHODS
+Method Semantic Graph Cross-Dom. Real-Time Validated
+NGCF[1] No Yes No No Yes
+LightGCN[2] No Yes No No Yes
+PinSage[18] No Yes No No Yes
+SGL[19] No Yes No No Yes
+SASRec[16] No No No Partial Yes
+BERT4Rec[17] Partial No No Partial Yes
+KGAT[22] Partial Yes No No Yes
+RippleNet[23] Partial Yes No No Yes
+Sentence-BERT[3] Yes No No No Yes
+PCRec[6] No Yes Yes(2) No Yes
+LLMRec[8] Yes Yes No No Yes
+LLM-as-Rec[9] Yes No No No Yes
+ProposedPrototype[10] Yes Yes Yes(3) Partial Inprogress
+TABLEVII
+RESEARCHGAPANALYSIS
+ResearchGap CurrentLiterature ProposedPrototype
+ColdStart Partiallysolved Itemcold-startpartiallyaddressedviasemanticretrieval
+DataSparsity SGL/SimGCLaddressit Notdirectlyaddressed
+Cross-DomainLearning Mostlydual-domain Three-domainschemaimplemented(unvalidatedatscale)
+SemanticUnderstanding Generaltextualsimilarity Implemented shared semantic space (Sentence-BERT +
+Qdrant)
+Explainability Limited(KGmethodsonly) Notimplemented
+DynamicPreferences Sequentialmodels Interaction-profile reranking implemented; richer online
+adaptationisfuturework
+Latency Rarelybenchmarked Notyetbenchmarkedend-to-end
+OnlineLearning Early-stageresearch Periodic LightGCN retraining implemented; incremen-
+tal/streamingupdatesarefuturework
+source, source_id, title, description, k semantic candidate retrieval. It was selected because it
+creators, categories, release_date, supportsscalablesimilaritysearchandmetadatafiltering(e.g.,
+popularity, rating, metadata_text, by content_type) in a way suited to production-style
+embedding_text, text_hash. A preprocessing retrieval. Local FAISS support remains available as an ex-
+stage cleans text, joins useful metadata, builds the perimental option from earlier development, but the backend
+embedding_text field used for semantic encoding, today is primarily Qdrant-based.
+validates the schema, and generates stable global IDs. The
+E. FastAPI Backend Endpoints
+purpose of this schema is to represent different media types
+in one common recommendation space, so that a single FastAPI was chosen for the backend API layer because it
+retrieval and ranking pipeline can operate across all supported is lightweight, fast, Python-native, and generates automatic
+domains without domain-specific branching logic. Swagger/OpenAPI documentation. The following endpoints
+are implemented:
+C. Semantic Embedding Generation
+• GET / and GET /health – service liveness/health
+The semantic layer uses the Sentence-BERT model checks.
+sentence-transformers/all-MiniLM-L6-v2. This • POST /recommend–acceptsanatural-languagequery
+model was chosen because it converts natural-language de- plus optional user_id, top_k, and content_type
+scriptions, titles, genres, creators, and metadata into dense se- filters.
+manticvectorsefficiently,withoutthecomputationaloverhead • POST /recommend/item – recommends items simi-
+of larger encoders. These embeddings let the system retrieve lar to a given selected item.
+across content types by meaning rather than exact keyword • POST /interactions – logs user behavior events:
+matching – for example, a query such as “space adventure view, click, like, bookmark, rating, skip, and complete.
+with emotional story” can retrieve movies, books, or music Pydanticisusedthroughoutforrequest/responsevalidation,
+with related semantic content. giving type-safe schema enforcement at the API boundary.
+D. Qdrant Vector Search F. MySQL Interaction Logging
+Qdrant is used as the vector database for storing con- MySQL stores three relational tables:
+tent embeddings and payload metadata, and for fast top- content_entities, user_profiles, and
+
+===== PAGE 7 =====
+A.DataSources
+Moviedatasets/TMDb—Bookdatasets/OpenLibrary—Musicdatasets/MusicBrainz
+(Futuredomains:podcasts,games,news,shortvideos,learningcontent)
+B.DataPreprocessing
+Cleaning→SchemaUnification→MetadataNormalization→
+global_idGeneration→embedding_textCreation→Validation
+C. Storage Layer
+MySQL
+Qdrant LightGCNArtifacts
+content_entities
+vectorembeddings+ userembeddings+
+user_profiles
+metadatapayload itemembeddings
+user_interactions
+D.SemanticRetrievalLayer E.PersonalizationLayer
+Sentence-BERT(all-MiniLM-L6-v2) Interaction-profilereranking→
+queryembedding→Qdranttop-k LightGCNgraph-basedreranking→
+vectorsearch→content_typefiltering Hybridscorefusion
+F.APILayer(FastAPI)
+GET/health — POST/recommend — POST/recommend/item — POST/interactions
+G.UserInterface/ClientLayer
+Web/mobile/frontendclient—Userquery—Userfeedbackevents—Recommendationdisplay
+H.FeedbackLoop
+UserinteractionsloggedbackintoMySQL→periodicLightGCNretraining→recommendationsimproveovertime
+poolkcabdeef
+Fig.4. Updatedlayeredarchitectureoftheimplementedprototype:datasources,preprocessing,storage,semanticretrieval,personalization,API,clientlayer,
+andthefeedbackloopbackintostorage.
+user_interactions. MySQL was chosen because online/streamingmethodssurveyedinSectionVF,andonethe
+it is well suited to structured relational data – user logs, paper does not claim to be equivalent to them.
+content metadata, and the analytics the project intends to
+build in future work. These interaction logs are the input H. LightGCN Graph-Based Collaborative Filtering
+to both the personalization layer (Section XIG) and the
+LightGCN has been integrated as a graph-based collabo-
+graph-based collaborative filtering layer (Section XIH).
+rative filtering module, implemented in PyTorch. LightGCN
+was selected because it learns user and item embeddings
+G. Personalization Layer
+from interaction graphs through neighborhood aggregation
+Alightweightinteraction-profilererankerisimplementedon alone, without the extra feature-transformation matrices and
+top of the semantic candidates returned by Qdrant. It adjusts non-linearities of earlier GNN-based recommenders (Sec-
+semantic recommendation scores using a user’s interaction tion VB) – trading a small amount of representational flex-
+history: positive signals (like, bookmark, rating, complete, ibility for materially lower training cost. The module trains
+view/click) push related items up, and the negative signal from MySQL user_interactions, builds a bipartite
+(skip) pushes them down. This provides adaptive, per-user users↔items graph using positive interactions as edges, and
+recommendations even before the full graph-based model exportslearneduseranditemembeddingsforuseinreranking.
+is applied, and is the system’s current answer to within- Currenttrainingwasrunondemo/prototypedataratherthan
+session personalization– a lighter-weight mechanismthan the a large-scale production dataset: 11 users, 87 items, 464 posi-
+
+===== PAGE 8 =====
+tiveinteractions,50trainingepochs,andafinallossof0.6128. No formal ranking-quality benchmark, cold-start evaluation,
+Thesefiguresshouldbereadasprototype/demotrainingresults or A/B test has been run. Personalization currently uses a
+that confirm the training pipeline runs correctly end-to-end, rule-based interaction-profile reranker rather than a learned
+not as final benchmark results – no Recall@K, NDCG@K, online-adaptation model. These limitations directly motivate
+or comparable ranking metric has yet been computed for this the future-work items in Section XVI.
+graph model, which is why Table VI marks the prototype’s
+validation status as “in progress” rather than “yes.”
+XII. IMPLEMENTATIONDETAILS
+This section describes the concrete implementation of the
+I. Hybrid Recommendation Scoring
+proposed Real-Time Adaptive Cross-Media Recommendation
+The current recommendation flow is: user query → System. The prototype is implemented as a modular back-
+Sentence-BERT query embedding → Qdrant semantic can- end pipeline that combines semantic retrieval, vector search,
+didate retrieval → optional profile-based reranking using relational interaction logging, real-time profile adaptation,
+MySQL interaction history → optional LightGCN graph- and graph-based collaborative filtering. The system currently
+score reranking when trained graph embeddings exist → final supports three media domains: movies, books, and music.
+rankedrecommendations.Thismakesthesystemhybridinthe Since these domains have different metadata formats, the
+senseusedthroughoutthissurvey(SectionXV):content-based implementation first converts them into a unified schema
+semantic retrieval combined with collaborative, graph-based and then processes them through a common recommendation
+personalization, with each stage able to run independently pipeline.
+so the pipeline degrades gracefully (e.g., to semantic-only The complete system flow is:
+ranking)wheninteractionhistoryortrainedgraphembeddings
+are unavailable for a given user. RawData→Preprocessing →Embedding →Qdrant→Reranking →Recommendation
+(1)
+J. Testing and Verification
+The main input to the system is heterogeneous media
+Pytestisusedforunittesting.Currenttestcoverageincludes metadataanduserinteractiondata.Thefinaloutputisaranked
+preprocessing validation, embedding-pipeline logic, backend list of personalized recommendations across movies, books,
+APIbehavior,andLightGCNhelperlogic.Asofthisrevision, and music.
+47unittestspass.Thisshouldbereadasimplementationver-
+A. Data Ingestion and Unified Schema Module
+ificationatthemodulelevel–confirmingthatthecomponents
+behave as intended in isolation and in simple integration – The first module is the data ingestion and schema unifica-
+rather than complete production validation, large-scale load tion module. Since the recommendation system works across
+testing, or user-facing quality evaluation. multiple media domains, raw data from different sources
+does not follow the same structure. Movie data may contain
+K. Current Prototype Status
+title, overview, genres, release date, and rating. Book data
+To state plainly what is and is not implemented at the time
+may contain title, author, subjects, publisher, and description.
+of writing:
+Music data may contain song title, artist, album, genre, and
+• Backend API (FastAPI, all five endpoints listed above) – tags.Directlyprocessingthesedifferentformatswouldrequire
+implemented. separaterecommendationlogicforeachdomain.Toavoidthis,
+• Qdrant semantic retrieval – implemented. all records are converted into a common schema.
+• MySQL interaction logging – implemented. The input to this module is raw metadata collected
+• Demo user interactions – seeded, for pipeline testing from sources such as TMDb for movies, OpenLibrary for
+purposes. books, and MusicBrainz for music. The output is a nor-
+• LightGCNtraining–implemented and testedondemo- malized item record containing fields such as global_id,
+scale data. content_type, source_id, title, description,
+• Hybrid reranking path (semantic → profile → graph) – creators, categories, popularity, rating, and
+implemented. embedding_text. The field global_id uniquely iden-
+• Automated tests – 47 passed. tifies each item across all domains, while content_type
+• Full benchmark evaluation (Recall@K, NDCG@K, Pre- specifieswhethertheitembelongstomovies,books,ormusic.
+cision@K, MAP, coverage, diversity), large-scale user The most important output of this module is
+testing, and production deployment – remain future embedding_text. It is a clean natural-language string
+work (Section XVI). created by combining useful metadata fields. For example, a
+L. Limitations movie record may be converted into:
+Theprototypecurrentlysupportsmovies,books,andmusic content type: movie.
+only; it does not yet handle podcasts, games, news, academic title: Interstellar.
+papers, or short-form video, and this survey does not claim description: A science fiction film about space exploration.
+otherwise.Trainingandtestingtodateusedemo-scaleinterac- categories: science fiction, adventure.
+tiondata(11users,87items),notaproduction-scaleuserbase. creators: Christopher Nolan.
+
+===== PAGE 9 =====
+Similarly, a book record may be converted into: At recommendation time, the user query is also converted
+into a vector:
+content type: book.
+title: Python Machine Learning. q=SBERT(t ) (5)
+q
+description: A book about machine learning using Python.
+categories: programming, artificial intelligenwchee.re t is the user query text.
+q
+creators: Sebastian Raschka. Qdrantcomparesthequeryvectorqwithstoreditemvectors
+v using cosine similarity:
+Theoutputofthismoduleisthereforeaclean,unified,text- i
+based representation of every item, which becomes the input
+q·v
+to the semantic embedding module. Sim(q,v i )= ∥q∥∥v i ∥ (6)
+i
+B. Semantic Embedding Module
+A higher cosine similarity means the query and item are
+The semantic embedding module converts each
+semantically closer. The output of Qdrant is a ranked top-k
+item’s textual metadata into a numerical vector. The
+candidate list:
+implementation uses Sentence-BERT, specifically the
+sentence-transformers/all-MiniLM-L6-v2
+C =[(i ,s ),(i ,s ),...,(i ,s )] (7)
+model. This model was selected because it produces compact 1 1 2 2 k k
+384-dimensional embeddings and provides a good balance
+where i is an item ID and s is the similarity score.
+between semantic quality and computational efficiency. j j
+For example, if the user query is “I want to learn machine
+The input to this module is the embedding_text gen-
+learning using Python”, Qdrant may return “Python Machine
+erated during preprocessing. For an item i, the embedding
+Learning”, “Introduction to AI”, and “PyTorch Basics”, even
+generation process is represented as:
+if the exact words are not repeated in every metadata field.
+v =SBERT(t ) (2)
+i i
+where t is the metadata text of item i, and v ∈ R384 is D. MySQL Storage and Interaction Logging Module
+i i
+the dense vector representation of that item.
+MySQL is used as the structured storage layer of the
+The vector can be written as:
+system. Qdrant stores vectors for similarity search, while
+v i =[x 1 ,x 2 ,x 3 ,...,x 384 ] (3) MySQL stores complete content records, user profiles, and
+userinteractionlogs.ThisseparationallowsQdranttofocuson
+where each x is a floating-point value. Individual di-
+j fast vector retrieval and MySQL to act as the reliable system
+mensions do not have direct human-readable meanings. For
+of record.
+example, one dimension does not directly represent “genre”
+The main tables used in the implementation
+or “rating”. Instead, the meaning of the item is distributed
+are content_entities, user_profiles, and
+across all 384 dimensions. Items with similar meanings are
+user_interactions. The input to this module is
+placed closer to each other in this vector space.
+user activity from the frontend or API layer. Examples of
+The output of this module is a 384-dimensional embedding
+interaction events include view, click, like, bookmark,
+for each item. This embedding is stored in Qdrant along with
+rating, skip, and complete.
+lightweight metadata payload.
+Each interaction can be represented as:
+C. Vector Search Module Using Qdrant
+The vector search module stores and retrieves semantic r =(u,i,a,τ,w) (8)
+embeddings using Qdrant. A relational database such as
+MySQLisefficientforstructuredqueries,butitisnotdesigned whereuistheuserID,iistheitemID,aistheactiontype,
+for semantic similarity search. For example, MySQL can τ is the timestamp, and w is the event weight.
+answer queries such as finding all books in a category, but it A simple event-weighting scheme is:
+cannotefficientlyansweraquerysuchasfindingitemsclosest
+
+i
+u
+s
+n
+u
+se
+p
+m
+d
+po
+e
+b
+r
+a
+e
+t
+n
+s
+c
+i
+a
+n
+m
+u
+g
+e
+se
+t
+t
+a
+o
+d
+it
+a
+“
+t
+i
+a
+m
+s
+fi
+a
+o
+c
+l
+p
+t
+h
+t
+e
+i
+i
+r
+m
+n
+in
+e
+i
+g
+z
+l
+e
+.
+e
+d
+ar
+f
+n
+o
+i
+r
+ng
+ve
+u
+c
+s
+to
+in
+r
+g
+si
+P
+m
+y
+i
+t
+l
+h
+ar
+o
+i
+n
+ty
+”.
+se
+Q
+a
+d
+rc
+ra
+h
+n
+a
+t
+n
+i
+d
+s  1
+3
+,
+,
+v
+li
+i
+k
+e
+e
+w or click
+w(a)= 4, bookmark (9)
+At indexing time, each Qdrant point contains an item ID,
+vector, and payload:
+
+5
+−
+,
+2, s
+c
+k
+o
+i
+m
+p
+plete
+Point =(id ,v ,payload ) (4)
+i i i i
+where id is the item identifier, v is the 384-dimensional Theoutputofthismoduleisacontinuouslyupdatedinterac-
+i i
+vector, and payload contains metadata such as title, content tion history. This history is used by the real-time personaliza-
+i
+type, category, and source. tionmoduleandtheLightGCNcollaborativefilteringmodule.
+
+===== PAGE 10 =====
+E. Real-Time Personalization Using EMA The final user embedding is obtained by averaging embed-
+dings from all layers:
+The real-time personalization module updates the user pro-
+filevectorwheneverauserinteractswithanitem.Thepurpose
+K
+1 (cid:88)
+is to make the system adaptive within a session. Instead of e = e(k) (15)
+u K+1 u
+using only the full historical average or only the last few
+k=0
+clicks,thesystemusesanExponentialMovingAverageupdate
+Similarly, the final item embedding is:
+to balance stability and responsiveness.
+If the previous user vector is u and the interacted item
+old K
+vector is v i , the updated user vector is: e i = K 1 +1 (cid:88) e( i k) (16)
+k=0
+u =αv +(1−α)u (10)
+new i old
+The predicted preference score between user u and item i
+where α is the adaptation rate. A higher value of α gives
+is calculated using dot product:
+more importance to the latest interaction, making the system
+react faster. A lower value of α gives more importance to the yˆ =eTe (17)
+ui u i
+previous profile, making the system more stable.
+If interaction weight is included, the formula can be ex- The output of this module is a learned user embedding
+tended as: matrix and item embedding matrix. These embeddings are
+u =αw v +(1−α)u (11) used for collaborative reranking. In the current prototype,
+new i i old
+LightGCN was executed on demo-scale data with 11 users,
+wherew i istheweightoftheinteractionevent.Theinputto 87 items, 464 positive interactions, 50 training epochs, and a
+this module is the previous user vector, latest item vector, and finallossof0.6128.Theseresultsverifythatthegraphtraining
+interaction type. The output is an updated user profile vector. pipeline works end-to-end, but they are not claimed as large-
+This method does not completely solve cold start for a user scale benchmark results.
+withzerointeractions.Instead,itenablesrapidadaptationafter
+the first few user actions. G. Hybrid Recommendation Scoring Module
+F. LightGCN Collaborative Filtering Module The final recommendation is generated by combining three
+signals: semantic similarity, real-time profile similarity, and
+TheLightGCNmodulecapturescollaborativebehaviorfrom
+graph-basedcollaborativescore.Thismakesthesystemhybrid
+the user-item interaction graph. Sentence-BERT captures se-
+becauseitusesbothcontent-basedandbehavior-basedsignals.
+mantic similarity between item metadata, but it does not
+The semantic score is:
+directly capture how users behave. For example, two items
+maynotbetextuallysimilar,butusersmayfrequentlyconsume
+S (q,i)=Sim(q,v ) (18)
+semantic i
+themtogether.LightGCNlearnsthesebehavioralrelationships.
+Thegraphisbipartiteandcontainstwotypesofnodes:users The user profile score is:
+and items. Edges exist only between users and items. The
+graph is represented as: S (u,i)=Sim(u,v ) (19)
+profile i
+G=(U,I,E) (12) The graph score is:
+where U is the set of users, I is the set of items, and E is S (u,i)=eTe (20)
+graph u i
+the set of observed positive interactions.
+If user u interacts positively with item i, then an edge The final score is computed as:
+(u,i) is added to the graph. LightGCN learns user and item
+embeddings by propagating information through this graph. FinalScore(u,i)=λ S (q,i)+λ S (u,i)+λ S (u,i)
+1 semantic 2 profile 3 graph
+The propagation rule for a user embedding is: (21)
+where λ , λ , and λ are tunable weights. For a new user,
+e(k+1) = (cid:88) 1 e(k) (13) the system 1 may 2 give m 3 ore importance to semantic similarity
+u (cid:112) i
+|N(u)||N(i)|
+i∈N(u) becausethereislittleornointeractionhistory.Foranexisting
+user,thesystemcangivemoreimportancetoprofilesimilarity
+The propagation rule for an item embedding is:
+and LightGCN score.
+e(k+1) = (cid:88) 1 e(k) (14) The output of this module is the final ranked recommenda-
+i (cid:112) |N(i)||N(u)| u tion list:
+u∈N(i)
+R =[i ,i ,i ,...,i ] (22)
+u 1 2 3 k
+where N(u) is the set of items interacted with by user u,
+and N(i) is the set of users who interacted with item i. wheretheitemsaresortedindecreasingorderoffinalscore.
+
+===== PAGE 11 =====
+H. FastAPI Backend API Module TABLEVIII
+MODULE-WISEINPUTANDOUTPUTSUMMARY
+The backend is implemented using FastAPI. FastAPI was
+selected because it is lightweight, Python-native, supports Module Input Output
+Pydantic validation, provides automatic Swagger/OpenAPI
+Datapreprocessing Raw movie, book, Unifiedschemaand
+documentation, and works well for low-latency API services. musicmetadata embeddingtext
+Themainrecommendationendpointacceptsuserquery,user Semanticembedding Metadatatext 384-dimensional
+vector
+ID, top-k value, and optional content type filter. A sample
+Qdrantsearch Queryvector Top-k itemIDsand
+input request is: similarityscores
+MySQLlogging Userevents Interactionhistory
+{ EMAprofileupdate User vector and Updateduservector
+"query": "machine learning using python", itemvector
+LightGCN User-itemgraph User and item em-
+"user_id": "U101",
+beddings
+"top_k": 10, Hybridscoring Candidatescores Finalrankedlist
+"content_type": "book" FastAPI APIrequest JSONresponse
+}
+The backend performs the following steps: K. Overall System Output
+1) Validate the request using Pydantic. The final output of the implemented system is a ranked list
+2) Convert the query into a 384-dimensional Sentence- of personalized recommendations across movies, books, and
+BERT vector. music. Each recommendation contains item ID, title, content
+3) SearchQdrantfortop-k semanticallysimilarcandidates. type, metadata, and final score. The system also produces
+4) FetchfullitemdetailsfromMySQLusingreturneditem intermediate outputs such as cleaned metadata, Sentence-
+IDs. BERT embeddings, Qdrant search results, MySQL interaction
+5) Retrieve user interaction history from MySQL. logs, EMA-updated user vectors, and LightGCN embeddings.
+6) Apply EMA-based profile reranking if a user profile The implemented prototype verifies that semantic retrieval,
+exists. interactionlogging,APIresponsegeneration,andgraph-based
+7) Apply LightGCN reranking if graph embeddings are collaborative filtering can work together in one backend
+available. pipeline. Formal large-scale benchmarking using metrics such
+8) Return the final ranked recommendations as JSON. as Recall@K, NDCG@K, latency P95, and A/B testing re-
+A sample output response is: mains future work rather than a completed claim.
+{ XIII. NOVELTYOFTHEPROPOSEDWORK
+"user_id": "U101",
+The prototype’s contributions are best described as an
+"recommendations": [
+applied, hybrid integration of existing techniques rather than
+{
+a new algorithm; the novelty lies in the combination and its
+"item_id": "BOOK_205",
+concrete implementation:
+"title": "Python Machine Learning",
+• Unified cross-media recommendation across movies,
+"content_type": "book",
+books,andmusicusingasinglecommonschema,sothat
+"score": 0.94
+oneretrievalandrankingpipelineservesallthreedomains
+},
+today.
+{
+• Combination of semantic retrieval and graph-based
+"item_id": "BOOK_118",
+collaborative filtering in one hybrid scoring pipeline
+"title": "Introduction to Artificial Intelligence",
+(Sentence-BERT + Qdrant, and LightGCN), rather than
+"content_type": "book",
+treating the two as separate systems.
+"score": 0.89
+• Real-time feedback logging through interaction events
+}
+(view, click, like, bookmark, rating, skip,
+]
+complete) captured via a dedicated API endpoint.
+}
+• Adaptivepersonalizationthroughtwocomplementary
+mechanisms – an immediate, rule-based interaction-
+I. Module-wise Input and Output Summary
+profile reranker, and a periodically retrained Light-
+Table VIII summarizes the input and output of each major GCN graph model – giving the system both a fast,
+implementation module. lightweight personalization path and a slower, higher-
+fidelity collaborative-filtering path.
+J. Technology Stack Summary
+• Extensible architecture, in which new media domains
+Table IX summarizes the technologies used in the imple- can be added by mapping them into the same unified
+mentation and the reason for selecting each one. schema rather than building a parallel pipeline.
+
+===== PAGE 12 =====
+TABLEIX
+IMPLEMENTATIONDETAILS:COMPONENTS,TECHNOLOGIES,ANDRATIONALE
+Component TechnologyUsed Purpose ReasonforSelection
+BackendAPI FastAPI Exposerecommendationendpoints Lightweight,fast,Python-native,automaticOpe-
+nAPIdocs
+Datavalidation Pydantic ValidateAPIpayloads Type-safeschemavalidationandcleanerrequest
+handling
+Semanticembeddings Sentence-BERT all- Convertmetadatatexttovectors Produces efficient 384-dimensional semantic
+MiniLM-L6-v2 embeddings
+Vectorsearch Qdrant Storeandsearchembeddings Scalable vector database with ANN search and
+metadatafiltering
+Relationalstorage MySQL Storecontentandinteractions Reliable structured storage for content records
+anduserlogs
+Graphmodel LightGCNinPyTorch Collaborativefiltering Learns user-item relationships without extra
+feature-transformationoverhead
+Testing Pytest Verifymodules Automatedcorrectnesscheckingforpreprocess-
+ing,API,andmodelhelpers
+Dataprocessing Pandas/NumPy Cleanandtransformdata Efficienttabularprocessingandnumericaloper-
+ations
+APIserver Uvicorn ServeFastAPIapp ASGI server suitable for asynchronous Python
+APIs
+Localdeployment Dockeroptional RunQdrantlocally Reproduciblelocalvector-databaseenvironment
+Configuration dotenv / environment vari- Runtimeconfiguration Keeps credentials and settings outside source
+ables code
+Consistent with the honest framing used throughout this 4) Relational Logging Module (MySQL) – stores
+paper, several claimed novelties are planned rather than relational entities across content_entities,
+implemented today: multimodal domain expansion beyond user_profiles, and user_interactions
+text metadata, explainable hybrid recommendations, on- (logging click, view, like, bookmark, rating, skip).
+line/incrementalgraphupdates,anddiversity-awarereranking. 5) Personalization & Reranking Module–animmediate
+These are listed explicitly under Future Work (Section XVI) rule-based interaction-profile reranker that adjusts can-
+rather than presented as completed contributions. didate scores based on session interest.
+6) Graph Collaborative Filtering Module (PyTorch
+XIV. IMPLEMENTEDSYSTEMMODULESANDEXECUTION
+LightGCN) – trains on the user–item interaction bi-
+RESULTS
+partite graph to produce graph-structured user and item
+This section consolidates, in one place, the concrete exe- embeddings.
+cuted architecture of Team 22’s prototype, the module-level
+B. Executed Module Verification and Results
+execution/verification results, and a feature-level comparison
+against representative baseline paradigms. It restates material Module-level verification was carried out using automated
+already detailed in Section XI in a condensed, execution- testing and trial execution runs:
+focused form for quick reference. • Unit testing verification – 47 automated unit tests
+(pytest)passcleanlyacrossschemavalidation,embed-
+A. Architectural Modules
+ding generation, vector-database querying, FastAPI end-
+The prototype backend pipeline comprises six modular point contracts, and LightGCN tensor transformations.
+layers operating over a unified schema spanning three content • LightGCN execution run – the PyTorch LightGCN
+domains (movies, books, and music): graph pipeline was executed on seed interaction data (11
+1) Data Ingestion & Unified Schema Module – nor- users, 87 items, 464 positive edges). Training over 50
+malizes heterogeneous metadata across TMDb, Open epochsconvergedtoafinallossof0.6128,confirmingthe
+Library, and MusicBrainz into a single schema end-to-endviabilityofthebipartitegraphpropagationand
+(global_id, content_type, metadata_text, embedding-export pipeline on demo-scale data, though
+embedding_text). not yet at production scale.
+2) Semantic Embedding Module – uses
+C. Comparison of Executed Prototype with Existing Systems
+sentence-transformers/all-MiniLM-L6-v2
+(Sentence-BERT) to map textual item descriptions into Table X summarizes the structural and functional capabil-
+384-dimensional dense vectors. ities of the executed prototype relative to leading baseline
+3) Vector Search Module (Qdrant) – stores item vectors paradigms discussed in Section V.
+with payload metadata to perform top-k approximate As Table XI makes explicit, every implemented module
+nearest-neighbor (ANN) candidate retrieval filtered by has been executed and verified at least at demo scale; the
+content_type. item that remains open – consistent with Sections XIK, XIL,
+
+===== PAGE 13 =====
+TABLEX
+FEATURE-LEVELCOMPARISONOFEXECUTEDPROTOTYPEVS.EXISTINGRECOMMENDERPARADIGMS
+Method/System SemanticAwareness GraphLearning DomainsSupported Real-TimeAdaptation UnifiedSchema ExecutedBackend
+NGCF[1] No Yes Single(1) Offline No Academicmodel
+LightGCN[2] No Yes Single(1) Offline No Academicmodel
+PinSage[18] No(featuresonly) Yes Single(1) Real-timeretrieval No Productionpipeline
+SASRec[16] No No Single(1) Sequentialshift No Academicmodel
+PCRec[6] No Yes Dual(2) Offline No Pre-trainpipeline
+Sentence-BERT[3] Yes No Generictext Offline No Embeddingmodel
+ProposedPrototype[10] Yes(SBERT+Qdrant) Yes(LightGCN) Multi(3domains) Partial(profilererank) Yes WorkingFastAPI
+TABLEXI
+EXECUTIONRESULTSANDMETRICSTATUSACROSSMODULES
+Module TechnologyUsed ExecutionStatus MeasuredBenchmark/Result
+APIlayer FastAPI/Uvicorn Fullyexecuted 5endpointsoperational(/health,/recommend,etc.)
+Unittestsuite Pytest Fullyexecuted 47/47testspassing
+Semanticvectorsearch Sentence-BERT+Qdrant Fullyexecuted Fasttop-kcandidateretrievalondemo-scaledata
+Interactionlogging MySQL Fullyexecuted Real-timeloggingofpositive/negativesignals
+GraphCFmodel PyTorchLightGCN Executed(demoscale) 50epochs,finalloss=0.6128
+Rankingqualitymetrics Offlineevaluation Futurework Recall@K,NDCG@Kpendingbenchmarkdatasetevaluation
+and Table VI – is formal ranking-quality benchmarking, not 2) Improve cold-start recommendation for new users and
+module execution itself. new items.
+3) Add multimodal embeddings using image, audio, and
+XV. DISCUSSION video features, extending sparsity-aware contrastive
+learning (SGL/SimGCL-style [19], [20]) to multi-
+Two observations emerge from comparing Sections V–X to
+domain graphs.
+the implemented prototype in Section XI.
+4) Add real-time or incremental LightGCN updates, and
+First,whyGNNscurrentlydominate:LightGCN-stylemeth-
+more generally validate shared semantic embedding
+ods are the most extensively validated on public benchmarks
+spacesacrossmorethanthreerecommendationdomains.
+(Section VB), which is precisely why the prototype adopts
+5) Fine-tune semantic encoders (e.g., Sentence-BERT) on
+LightGCN as its collaborative backbone rather than a less-
+cross-media, recommendation-specific data rather than
+validated alternative. Second, why hybrid systems are emerg-
+general textual-similarity corpora.
+ing as the natural response: as Section V shows, no single
+6) Add explainability – surfacing why each recommenda-
+reviewed technique addresses semantic understanding, graph-
+tion was shown, attributing scores to semantic versus
+basedcollaborativesignal,cross-domaintransfer,andreal-time
+collaborative contributions.
+adaptation together; combining a semantic retrieval layer with
+7) Add diversity-, novelty-, and serendipity-aware rerank-
+a graph-based reranking layer, as the prototype does, is a
+ing (e.g., Maximal Marginal Relevance) to the hybrid
+direct, implementable response to that gap – even though, as
+ranking objective.
+Table VI notes, this integration remains unvalidated at scale.
+8) Add formal evaluation using Recall@K, Precision@K,
+The remaining challenge, consistent with the limitations
+NDCG@K,MAP,coverage,anddiversity,benchmarked
+documented in Section XIL, is empirical: an architecturally
+against the datasets in Table V.
+sound integration of existing techniques is not the same as a
+9) Run A/B testing or a structured user study once the
+validatedone.Themostpressingnextstepforthislineofwork
+system is evaluated offline.
+– and for the prototype specifically – is rigorous evaluation
+10) Explore federated and privacy-preserving variants for
+using the metrics of Section VII, ideally benchmarked against
+cross-domain behavioral data.
+bothacademictwo-domainbaselinesandalarger,production-
+11) Deploy as a full web application with user accounts,
+scale interaction dataset than the demo-scale data used so far.
+dashboards, and containerized production services.
+XVI. FUTUREWORK 12) Benchmarkend-to-endlatency(semanticretrieval,graph
+inference, reranking, and API response) under realistic,
+Building on the limitations identified in Section XIL and
+production-scale workloads rather than offline batch
+the open challenges of Section IX, future work spans both
+evaluation alone.
+the surveyed research directions and the prototype’s own next
+implementation steps: XVII. CONCLUSION
+1) Add more content domains beyond movies, books, and Thissurveyreviewed26representativeworksspanningcol-
+music – podcasts, games, news, academic papers, and laborative filtering, sequential recommendation, Graph Neu-
+short-form video. ral Networks, knowledge-graph recommendation, semantic
+
+===== PAGE 14 =====
+embeddings, cross-domain recommendation, online/real-time [15] K. Mao, J. Zhu, J. Wang, Q. Yao, Z. Dong, and X. He, “SimpleX:
+learning, and LLM-based recommendation. The literature Asimpleandstrongbaselineforcollaborativefiltering,”inProc.30th
+ACMCIKM,2021,pp.1243–1252.
+shows that GNNs remain the strongest validated approach
+[16] W.-C. Kang and J. McAuley, “Self-attentive sequential recommenda-
+for collaborative recommendation, that Sentence-BERT-style tion,”inProc.IEEEICDM,2018,pp.197–206.
+models provide efficient semantic understanding, and that [17] F.Sunetal.,“BERT4Rec:Sequentialrecommendationwithbidirectional
+encoder representations from transformer,” in Proc. 28th ACM CIKM,
+no reviewed work simultaneously combines semantic embed-
+2019,pp.1441–1450.
+dings, graph learning, validated multi-domain recommenda- [18] R. Ying, R. He, K. Chen, P. Eksombatchai, W. L. Hamilton, and J.
+tion, and real-time adaptation. Leskovec,“Graphconvolutionalneural networksforweb-scalerecom-
+mendersystems,”inProc.24thACMSIGKDD,2018,pp.974–983.
+Alongside this literature review, this revision documents
+[19] J. Wu et al., “Self-supervised graph learning for recommendation,” in
+a working prototype – a FastAPI backend implementing Proc.44thInt’lACMSIGIRConf.,2021,pp.726–735.
+Sentence-BERTsemanticretrievaloverQdrant,MySQL-based [20] J. Yu, H. Yin, X. Xia, T. Chen, L. Cui, and Q. V. H. Nguyen, “Are
+graph augmentations necessary? Simple graph contrastive learning for
+interaction logging with rule-based profile reranking, and a
+recommendation,”inProc.45thInt’lACMSIGIRConf.,2022,pp.1294–
+PyTorchLightGCNgraph-basedcollaborativefilteringmodule 1303.
+– currently supporting three media domains (movies, books, [21] L.Xia,C.Huang,Y.Xu,J.Zhao,D.Yin,andJ.Huang,“Hypergraph
+contrastivecollaborativefiltering,”inProc.45thInt’lACMSIGIRConf.,
+and music), verified by 47 passing unit tests on demo-
+2022,pp.70–79.
+scale interaction data. The prototype illustrates a concrete, [22] X.Wang,X.He,Y.Cao,M.Liu,andT.-S.Chua,“KGAT:Knowledge
+implementable path through the open problems identified in graph attention network for recommendation,” in Proc. 25th ACM
+SIGKDD,2019,pp.950–958.
+Sections IX and X, while its central claims of multi-domain
+[23] H.Wangetal.,“RippleNet:Propagatinguserpreferencesontheknowl-
+effectiveness, real-time expressiveness, and recommendation edgegraphforrecommendersystems,”inProc.27thACMCIKM,2018,
+qualityremain,honestly,notyetempiricallyvalidatedatscale. pp.417–426.
+[24] Y.Gao,Y.-F.Li,Y.Lin,H.Gao,andL.Khan,“Deeplearningonknowl-
+The future-work agenda in Section XVI, together with the
+edge graph for recommender system: A survey,” arXiv:2004.00387,
+limitations in Section XIL, outlines the concrete next steps 2020.
+for closing that gap. [25] W.Fan,Y.Ma,Q.Li,Y.He,E.Zhao,J.Tang,andD.Yin,“Transformers
+inrecommendersystems:Asurvey,”ACMTOIS,vol.40,no.1,2021.
+[26] Y.Wei,X.Wang,L.Nie,X.He,R.Hong,andT.-S.Chua,“Hierarchical
+REFERENCES
+user intent graph network for multimedia recommendation,” in Proc.
+[1] X. Wang, X. He, M. Wang, F. Feng, and T.-S. Chua, “Neural graph ACMMultimedia,2024.
+collaborativefiltering,”inProc.42ndInt’lACMSIGIRConf.,2019,pp. [27] R.Hassanzadeh,S.Haratizadeh,andM.SanieeAbadeh,“Graphneural
+165–174. networks with attention mechanism for personalized recommendation
+[2] X.He,K.Deng,X.Wang,Y.Li,Y.Zhang,andM.Wang,“LightGCN: systems,”ExpertSyst.Appl.,vol.238,pp.121–135,2025.
+Simplifyingandpoweringgraphconvolutionnetworkforrecommenda- [28] S. Zhang, L. Yao, A. Sun, and Y. Tay, “Deep learning based recom-
+tion,”inProc.43rdInt’lACMSIGIRConf.,2020,pp.639–648. mender system: A survey and new perspectives,” ACM Comput. Surv.,
+[3] N. Reimers and I. Gurevych, “Sentence-BERT: Sentence embeddings vol.52,no.1,pp.1–38,2019.
+using Siamese BERT-networks,” in Proc. EMNLP-IJCNLP, 2019, pp. [29] C.Gaoetal.,“Asurveyofgraphneuralnetworksforrecommendersys-
+3982–3992. tems:Challenges,methods,anddirections,”ACMTrans.Recommender
+[4] S.Zhang,L.Yao,A.Sun,andY.Tay,“Onlinelearningforrecommender Syst.,vol.1,no.1,pp.1–51,2022.
+systems:Asurvey,”IEEETKDE,vol.34,no.1,2022.
+[5] S. Wang, L. Hu, Y. Wang, L. Cao, Q. Z. Sheng, and M. Orgun,
+“Sequentialrecommendersystems:Challenges,progressandprospects,”
+ACMComput.Surv.,vol.54,no.1,pp.1–42,2021.
+[6] C. Wang, Z. Liu, T. Zhang, and P. S. Yu, “Pre-training graph neural
+networkforcrossdomainrecommendation,”arXiv:2111.08268,2021.
+[7] T. Zang, Y. Zhu, H. Liu, R. Zhang, and J. Yu, “A survey on cross-
+domainrecommendation:Taxonomies,methods,andfuturedirections,”
+ACMTOIS,vol.41,no.2,2022.
+[8] L.Wuetal.,“LLMRec:Largelanguagemodelswithgraphaugmenta-
+tionforrecommendation,”inProc.17thACMWSDM,2024,pp.806–
+815.
+[9] J. Liu, C. Liu, R. Lv, K. Zhou, and Y. Zhang, “Is ChatGPT a good
+recommender?Apreliminarystudy,”arXiv:2304.10149,2023.
+[10] A. K. Sanjay, M. E. Raj, A. Vijay, and H. R. Jangalapalli, “Real-
+timeadaptivecross-mediarecommendationsystemusingsemanticem-
+beddings and graph-based collaborative learning,” Dept. CSE, Amrita
+SchoolofComputing,AmritaVishwaVidyapeetham,Tech.Rep.,2026,
+Team22,Type-3SoftwareProject.
+[11] Team22,“Panelreview1andpanelreview2documentation:Real-time
+adaptive cross-media recommendation system,” Unpublished project
+documentation,2026,Dept.ofCSE,AmritaVishwaVidyapeetham.
+[12] M. Kolli et al., “Addressing the cold start challenge through content-
+based and hybrid filtering for movie recommendation,” in Proc. 15th
+ICCCNT,2024.
+[13] P. Mathew, B. Kuriakose, and V. M. Hegde, “Book recommendation
+system through content based and collaborative filtering method,” in
+Proc.SAPIENCE,2016.
+[14] K.Mao,J.Zhu,X.Xiao,B.Lu,Z.Wang,andX.He,“UltraGCN:Ultra
+simplificationofgraphconvolutionalnetworksforrecommendation,”in
+Proc.30thACMCIKM,2021,pp.1253–1262.

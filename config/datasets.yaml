@@ -3,6 +3,7 @@ datasets:
     content_type: movie
     source: tmdb_5000_movies
     path: datasets/movies/movies/tmdb_5000_movies.csv
+    credits_path: datasets/movies/movies/tmdb_5000_credits.csv
     id_column: id
     title_column: title
     description_column: overview
@@ -17,6 +18,7 @@ datasets:
       - genres
       - keywords
       - overview
+    credits_top_cast: 5
 
   books:
     content_type: book

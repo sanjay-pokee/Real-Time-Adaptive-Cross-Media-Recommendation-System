@@ -179,7 +179,7 @@ export default function Home({ authenticatedUser, onLogout }) {
                 </div>
               </div>
 
-              <SearchBar value={query} onChange={setQuery} onSearch={() => handleSearch()} loading={loading} disabled={backendStatus === 'offline'} />
+              <SearchBar value={query} onChange={setQuery} onSearch={(q) => handleSearch(q)} loading={loading} disabled={backendStatus === 'offline'} />
             </div>
           </GlassPanel>
 

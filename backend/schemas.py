@@ -69,6 +69,8 @@ class RecommendationItem(BaseModel):
     semantic_score: float | None = None
     graph_score: float | None = None
     ema_score: float | None = None
+    kg_score: float | None = None
+    profile_score: float | None = None
 
 
 class RecommendResponse(BaseModel):
@@ -113,3 +115,16 @@ class UserInteractionState(BaseModel):
     complete: bool = False
     # Last rating (1-5), or 0 if none
     rating: float = 0
+
+
+class SuggestItem(BaseModel):
+    """A single autocomplete suggestion."""
+    label: str
+    hint: str
+    kind: str  # "title" | "person" | "category"
+    query: str  # text to place in the search box when chosen
+
+
+class SuggestResponse(BaseModel):
+    q: str
+    suggestions: list[SuggestItem]

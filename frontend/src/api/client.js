@@ -42,4 +42,13 @@ export async function getUserInteractionState(userId, entityId) {
   return res.data;
 }
 
+/**
+ * Fetch autocomplete suggestions for a partial query.
+ * Returns: { q, suggestions: [{ label, hint, kind, query }] }
+ */
+export async function getSuggestions(q, limit = 8) {
+  const res = await api.get('/search/suggest', { params: { q, limit } });
+  return res.data;
+}
+
 export default api;

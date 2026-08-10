@@ -1,4 +1,4 @@
-﻿"""Qdrant-backed semantic recommendation search.
+"""Qdrant-backed semantic recommendation search.
 
 Qdrant is the production vector backend. Build the collection with:
     python -m embeddings.build_qdrant_collection
@@ -7,6 +7,7 @@ Qdrant is the production vector backend. Build the collection with:
 from __future__ import annotations
 
 import sys
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,7 @@ import pandas as pd
 
 from backend.ema_recommender import EMAEmbeddingStore
 from backend.graph_recommender import GraphEmbeddingStore
+from backend.knowledge_graph import CatalogKnowledgeGraph
 from backend.mysql_store import MySQLStore
 from backend.settings import Settings, get_settings
 
@@ -54,6 +56,7 @@ class QdrantRecommender:
         self.model = self._load_model()
         self.graph_store = self._load_graph_store()
         self.ema_store = self._load_ema_store()
+        self.knowledge_graph = CatalogKnowledgeGraph(self.catalog)
         self._validate_artifacts()
 
     def recommend(
@@ -68,16 +71,27 @@ class QdrantRecommender:
         if top_k <= 0:
             raise ValueError("top_k must be greater than zero.")
 
+        person_results = self._search_person_matches(
+            query,
+            top_k=min(5, top_k),
+            content_type=content_type,
+        )
+        person_ids = {item["global_id"] for item in person_results}
+
         query_vector = self.model.encode(
             [query],
             convert_to_numpy=True,
             normalize_embeddings=True,
         ).astype(np.float32)[0]
-        search_k = top_k * 5 if user_id else top_k
+        search_k = max(top_k * 5 if user_id else top_k, top_k + len(person_results))
         results = self._search_vector(query_vector, search_k, content_type)
+        if person_ids:
+            results = [item for item in results if item["global_id"] not in person_ids]
+            results = person_results + results
         results = self._personalize_results(results, search_k, user_id)
         results = self._graph_rerank(results, user_id)
         results = self._ema_rerank(results, user_id)
+        results = self._knowledge_graph_rerank(query, results, user_id)
         return results[:top_k]
 
     def recommend_from_item(
@@ -108,6 +122,7 @@ class QdrantRecommender:
         results = self._personalize_results(results, search_k, user_id)
         results = self._graph_rerank(results, user_id)
         results = self._ema_rerank(results, user_id)
+        results = self._knowledge_graph_rerank(source_text, results, user_id)
         return results[:top_k]
 
     def _search_vector(
@@ -150,6 +165,45 @@ class QdrantRecommender:
             results.append(item)
         return results
 
+    def _search_person_matches(
+        self,
+        query: str,
+        top_k: int,
+        content_type: str | None,
+    ) -> list[dict[str, Any]]:
+        """Return catalog rows whose creator/cast/director list matches query."""
+        normalized_content_type = normalize_content_type(content_type)
+        q_norm = _normalize_lookup_text(query)
+        if len(q_norm) < 2 or "creators" not in self.catalog.columns:
+            return []
+
+        catalog = self.catalog
+        if normalized_content_type is not None:
+            catalog = catalog[catalog["content_type"] == normalized_content_type]
+
+        rows: list[tuple[int, float, str, dict[str, Any]]] = []
+        for _, row in catalog.iterrows():
+            creator_names = _split_creators(row.get("creators"))
+            normalized_names = [_normalize_lookup_text(name) for name in creator_names]
+
+            if q_norm in normalized_names:
+                match_rank = 0
+            elif any(name.startswith(q_norm) for name in normalized_names):
+                match_rank = 1
+            elif any(q_norm in name for name in normalized_names):
+                match_rank = 2
+            else:
+                continue
+
+            item = {column: _clean_value(row.get(column, "")) for column in RESULT_COLUMNS}
+            popularity = _safe_float(row.get("popularity"), 0.0)
+            rating = _safe_float(row.get("rating"), 0.0)
+            item["score"] = 1.2 - (match_rank * 0.1) + min(popularity, 250.0) / 10000.0
+            item["semantic_score"] = None
+            rows.append((match_rank, -(popularity + rating), str(item.get("title", "")).casefold(), item))
+
+        rows.sort(key=lambda row: (row[0], row[1], row[2]))
+        return [item for _, _, _, item in rows[:top_k]]
 
     def _personalize_results(
         self,
@@ -221,6 +275,24 @@ class QdrantRecommender:
             results,
             ema_weight=self.settings.ema_weight,
         )
+
+    def _knowledge_graph_rerank(
+        self,
+        query: str,
+        results: list[dict[str, Any]],
+        user_id: str | None,
+    ) -> list[dict[str, Any]]:
+        if not hasattr(self, "knowledge_graph"):
+            self.knowledge_graph = CatalogKnowledgeGraph(self.catalog)
+
+        user_profile: dict[str, Any] = {}
+        if user_id:
+            try:
+                user_profile = MySQLStore(self.settings).get_user_profile_preferences(user_id)
+            except Exception:
+                user_profile = {}
+        return self.knowledge_graph.rerank(query, results, user_profile=user_profile)
+
     def _build_qdrant_filter(self, content_type: str | None):
         if content_type is None:
             return None
@@ -376,4 +448,21 @@ def _split_categories(value: Any) -> list[str]:
     text = str(value or "").lower()
     return [part.strip() for part in text.split(",") if part.strip()]
 
+def _split_creators(value: Any) -> list[str]:
+    text = str(_clean_value(value) or "")
+    return [part.strip() for part in text.split(",") if part.strip()]
 
+
+def _normalize_lookup_text(text: Any) -> str:
+    decomposed = unicodedata.normalize("NFKD", str(_clean_value(text) or ""))
+    without_marks = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    return " ".join(without_marks.casefold().split())
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        if pd.isna(value):
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default

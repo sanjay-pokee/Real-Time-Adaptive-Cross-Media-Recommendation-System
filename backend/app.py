@@ -6,9 +6,9 @@ Run locally:
 
 from __future__ import annotations
 
-from functools import lru_cache
+from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.ema_recommender import EMAEmbeddingStore
@@ -21,14 +21,44 @@ from backend.schemas import (
     ItemRecommendResponse,
     RecommendRequest,
     RecommendResponse,
+    SuggestItem,
+    SuggestResponse,
     UserInteractionState,
 )
+
+
+# ---------------------------------------------------------------------------
+# Lifespan: initialize heavy singletons ONCE per worker process and clean up.
+# This avoids the "qdrant_storage already locked" error that occurs when
+# --reload spawns multiple processes and each tries to open the local DB.
+# ---------------------------------------------------------------------------
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ---- startup ----
+    app.state.recommender = QdrantRecommender()
+
+    app.state.mysql_store = MySQLStore()
+
+    try:
+        app.state.ema_store = EMAEmbeddingStore()
+    except (FileNotFoundError, ValueError):
+        app.state.ema_store = None
+
+    yield  # server is running
+
+    # ---- shutdown: release Qdrant file lock cleanly ----
+    try:
+        app.state.recommender.client.close()
+    except Exception:
+        pass
 
 
 app = FastAPI(
     title="Cross-Media Recommendation API",
     version="0.2.0",
     description="Semantic recommendation API backed by Sentence-BERT and Qdrant.",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -50,25 +80,20 @@ app.add_middleware(
 )
 
 
-@lru_cache(maxsize=1)
-def get_recommender() -> QdrantRecommender:
-    """Load heavy recommender artifacts once per API process."""
-    return QdrantRecommender()
+# ---------------------------------------------------------------------------
+# Dependency helpers â€” read singletons from app.state (set in lifespan)
+# ---------------------------------------------------------------------------
+
+def get_recommender(request: Request) -> QdrantRecommender:
+    return request.app.state.recommender
 
 
-@lru_cache(maxsize=1)
-def get_mysql_store() -> MySQLStore:
-    return MySQLStore()
+def get_mysql_store(request: Request) -> MySQLStore:
+    return request.app.state.mysql_store
 
 
-@lru_cache(maxsize=1)
-def get_ema_store() -> EMAEmbeddingStore | None:
-    try:
-        return EMAEmbeddingStore()
-    except FileNotFoundError:
-        return None
-    except ValueError:
-        return None
+def get_ema_store(request: Request) -> EMAEmbeddingStore | None:
+    return request.app.state.ema_store
 
 
 @app.get("/")
@@ -79,6 +104,99 @@ def root() -> dict[str, str]:
         "health": "http://127.0.0.1:8000/health",
     }
 
+
+@app.get("/search/suggest", response_model=SuggestResponse)
+def search_suggest(
+    q: str,
+    limit: int = 8,
+    recommender: QdrantRecommender = Depends(get_recommender),
+) -> SuggestResponse:
+    """Fast prefix-based autocomplete over titles and creator names.
+
+    Returns up to `limit` suggestions mixing:
+    - content titles that contain the query substring
+    - creator / cast / director names that contain the query substring
+    """
+    import unicodedata
+
+    def _norm(text: str) -> str:
+        decomposed = unicodedata.normalize("NFKD", text)
+        without_marks = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+        return without_marks.casefold()
+
+    q_stripped = q.strip()
+    if not q_stripped or len(q_stripped) < 2:
+        return SuggestResponse(q=q, suggestions=[])
+
+    q_norm = _norm(q_stripped)
+    catalog = recommender.catalog
+
+    suggestions: list[SuggestItem] = []
+    seen_labels: set[str] = set()
+
+    max_title = min(3, limit)
+
+    # Title matches are intentionally capped so creator/person matches always
+    # have room in the dropdown.
+    title_mask = catalog["title"].fillna("").apply(lambda t: q_norm in _norm(str(t)))
+    for _, row in catalog[title_mask].head(max_title).iterrows():
+        label = str(row.get("title", "")).strip()
+        if not label or label in seen_labels:
+            continue
+        seen_labels.add(label)
+        content_type = str(row.get("content_type", "")).capitalize()
+        cats = str(row.get("categories", "")).split(",")
+        hint_cat = cats[0].strip() if cats else content_type
+        suggestions.append(
+            SuggestItem(
+                label=label,
+                hint=f"{content_type} - {hint_cat}" if hint_cat else content_type,
+                kind="title",
+                query=label,
+            )
+        )
+
+    # Person / creator matches. Exploding the comma-separated creator column
+    # lets pandas do most of the filtering and counting work.
+    slots_left = limit - len(suggestions)
+    if slots_left <= 0:
+        return SuggestResponse(q=q, suggestions=suggestions[:limit])
+
+    person_series = catalog["creators"].fillna("").str.split(",").explode().str.strip()
+    person_series = person_series[person_series.ne("")]
+    normalized_people = person_series.apply(_norm)
+    matches = person_series[normalized_people.str.contains(q_norm, regex=False, na=False)]
+    person_counts = matches.value_counts()
+
+    def _person_rank(item: tuple[str, int]) -> tuple[int, int, str]:
+        name, count = item
+        name_norm = _norm(str(name).strip())
+        if name_norm == q_norm:
+            match_rank = 0
+        elif name_norm.startswith(q_norm):
+            match_rank = 1
+        else:
+            match_rank = 2
+        return (match_rank, -int(count), name_norm)
+
+    ranked_people = sorted(person_counts.items(), key=_person_rank)
+    for name, count in ranked_people[: slots_left * 3]:
+        name = str(name).strip()
+        if not name or name in seen_labels:
+            continue
+        seen_labels.add(name)
+        suggestions.append(
+            SuggestItem(
+                label=name,
+                hint=f"Actor / Director - {count} title{'s' if count != 1 else ''}",
+                kind="person",
+                query=name,
+            )
+        )
+        if len(suggestions) >= limit:
+            break
+
+    return SuggestResponse(q=q, suggestions=suggestions[:limit])
 
 @app.get("/health")
 def health() -> dict[str, str]:

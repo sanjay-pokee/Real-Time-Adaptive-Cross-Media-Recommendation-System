@@ -1,0 +1,353 @@
+% ICMLDE / Elsevier Procedia style paper
+% Compile in Overleaf with pdfLaTeX.
+\documentclass[3p,times,procedia]{elsarticle}
+\flushbottom
+
+\usepackage{ecrc}
+\usepackage[bookmarks=false]{hyperref}
+\hypersetup{colorlinks,linkcolor=blue,citecolor=blue,urlcolor=blue}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{microtype}
+
+\volume{00}
+\firstpage{1}
+\journalname{Procedia Computer Science}
+\runauth{Sanjay et al.}
+\jid{procs}
+
+\begin{document}
+\begin{frontmatter}
+
+\dochead{International Conference on Machine Learning and Data Engineering}
+
+\title{Real-Time Adaptive Cross-Media Recommendation Using Semantic Embeddings and Graph-Based Collaborative Learning}
+
+\author[a]{Sanjay A. K.}
+\author[a]{Eswara Raj M.}
+\author[a]{Aditya Vijay}
+\author[a]{Himaneesh Reddy Jangalapalli}
+
+\address[a]{Department of Computer Science and Engineering, Amrita School of Computing, Amrita Vishwa Vidyapeetham, Coimbatore, India}
+
+\begin{abstract}
+Digital platforms usually recommend movies, books, songs, courses, and other media within separate domain-specific silos, even though user interests often move naturally across domains. This paper presents a survey-informed implementation of a real-time adaptive cross-media recommendation system that combines semantic content retrieval, graph-based collaborative learning, and profile-aware reranking in a unified backend pipeline. A compact survey of representative recommender-system literature is first used to identify the gap between semantic retrieval, graph collaborative filtering, cross-domain transfer, and real-time personalization. The implemented system then addresses this gap through a normalized catalog for movies, books, and music; Sentence-BERT based metadata embeddings; Qdrant vector search; MySQL-backed interaction logging; exponential moving average profile adaptation; LightGCN-based collaborative reranking; and a FastAPI service consumed by a React frontend. The current implementation also supports person-aware search over available actor, director, author, and singer metadata through the unified creator field. The paper emphasizes implementation design, module interaction, data flow, and reproducibility rather than claiming production-scale evaluation. Future extensions include a knowledge graph layer, richer API-based metadata enrichment, age/profession-aware profiling, additional domains, and privacy-preserving social/profile input handling.
+\end{abstract}
+
+\begin{keyword}
+Recommender systems \sep Cross-media recommendation \sep Sentence-BERT \sep Qdrant \sep LightGCN \sep Semantic search \sep Graph collaborative filtering \sep Real-time personalization \sep Knowledge graph
+\end{keyword}
+
+\end{frontmatter}
+\vspace*{-6pt}
+
+\section{Introduction}
+\label{sec:introduction}
+
+Recommender systems are now the main interface through which users discover movies, songs, books, learning resources, and other digital content. Most production systems, however, remain domain-specific. A movie application recommends films, a music application recommends tracks, and a book platform recommends books. This separation is practical for platform owners, but it does not reflect how human preference works. A user interested in science fiction may enjoy a film such as \emph{Interstellar}, a novel about space exploration, a soundtrack with similar emotional tone, and a course on astronomy or machine learning. A useful recommendation product should be able to connect these signals across media types.
+
+The project described in this paper builds a unified recommendation pipeline for three current domains: movies, books, and music. Each item is mapped into a common schema with fields such as title, description, creator information, category, release date, popularity, rating, metadata text, and embedding text. This representation allows different datasets to be searched using one semantic retrieval layer. On top of this, the system logs user interactions and uses both immediate and periodically trained personalization methods. The goal is not only to retrieve semantically similar content, but also to adapt recommendations to user behavior over time.
+
+Three technical directions motivate the implementation. First, semantic embedding models such as Sentence-BERT make it possible to compare item descriptions even when the items belong to different domains \cite{reimers2019sbert}. Second, graph collaborative filtering methods such as LightGCN provide a lightweight way to learn from user-item interaction graphs \cite{he2020lightgcn}. Third, vector databases such as Qdrant allow low-latency nearest-neighbor retrieval over dense vectors. The implemented system combines these directions inside a FastAPI backend, with Qdrant for vector retrieval, MySQL for structured storage and interaction logging, PyTorch LightGCN for graph-based collaborative filtering, and an exponential moving average (EMA) profile vector for immediate session-level adaptation.
+
+\subsection{Research gap}
+The literature contains strong work on collaborative filtering, semantic retrieval, graph neural recommendation, sequential modeling, and cross-domain recommendation. The gap is that these capabilities are rarely implemented together in a single, reproducible, multi-domain product pipeline. Many graph-based methods are benchmarked on single-domain interaction datasets; many semantic systems retrieve content without learning collaborative user preference; many cross-domain approaches transfer between two domains rather than normalizing multiple domains into one catalog; and real-time personalization is often treated separately from graph learning. This paper therefore positions the implementation as a practical integration of existing ideas: semantic retrieval for item understanding, graph learning for collaborative preference, and real-time interaction logging for adaptation.
+
+\subsection{Open challenges}
+The main challenges addressed by the design are: (i) heterogeneous metadata across movies, books, and music; (ii) cold start for new items with no interaction history; (iii) user preference drift during a session; (iv) combining semantic and graph signals without making the backend too slow; (v) supporting people-based search such as actors, directors, authors, and singers; and (vi) preparing the architecture for future knowledge graph and profile-aware recommendation. Additional challenges that remain future work include production-scale ranking evaluation, fairness, diversity-aware reranking, social/profile data privacy, and explainable recommendations.
+
+\subsection{Contributions}
+The contributions of this work are as follows:
+\begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
+    \item A compact survey of representative recommender-system methods, organized around the needs of a cross-media implementation.
+    \item A unified catalog design that normalizes movie, book, and music metadata into a shared schema for semantic embedding and retrieval.
+    \item A working backend architecture combining Sentence-BERT embeddings, Qdrant vector search, MySQL interaction storage, EMA profile adaptation, and LightGCN graph collaborative filtering.
+    \item A person-aware search layer that prioritizes available actor, director, author, and singer matches before filling results with general semantic recommendations.
+    \item A clear implementation roadmap for knowledge graph reasoning, age/profession-based user screening, additional domains, and responsible social/profile input handling.
+\end{enumerate}
+
+\section{Background and Compact Literature Review}
+\label{sec:review}
+
+Recommendation methods can be grouped into several broad families. Collaborative filtering predicts user preference from behavior patterns such as ratings, clicks, likes, and purchases. Content-based recommendation uses item metadata such as genres, descriptions, tags, and creator names. Hybrid systems combine both signals to reduce cold start and improve personalization \cite{zhang2019deep}. Graph neural recommenders represent users and items as nodes in a graph and propagate embeddings through user-item neighborhoods. Semantic embedding methods encode text into vectors so that semantically related items are close in vector space.
+
+Figure~\ref{fig:taxonomy} shows the taxonomy used in this paper. The taxonomy is intentionally implementation-oriented: each branch corresponds to a capability needed by the proposed system.
+
+\begin{figure}[t]
+\centering
+\fbox{%
+\begin{minipage}{0.92\linewidth}
+\centering
+\textbf{Recommendation Systems}\par\vspace{3pt}
+\begin{tabular}{p{0.42\linewidth}p{0.42\linewidth}}
+Collaborative filtering & Sequential recommendation \\
+Graph neural recommendation & Knowledge graph recommendation \\
+Semantic embedding retrieval & Cross-domain recommendation \\
+Real-time/online adaptation & LLM-assisted recommendation \\
+\end{tabular}
+\end{minipage}}
+\caption{Taxonomy of recommendation-system literature considered for the implementation.}
+\label{fig:taxonomy}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{Representative literature used to guide the implementation.}
+\label{tab:lit}
+\begin{tabularx}{\linewidth}{p{0.29\linewidth}X}
+\toprule
+Direction & Representative works and implementation relevance \\
+\midrule
+Graph collaborative filtering & NGCF introduced graph convolution for collaborative filtering \cite{wang2019ngcf}; LightGCN simplified graph propagation and motivates the implemented graph module \cite{he2020lightgcn}. \\
+Sequential recommendation & SASRec and BERT4Rec model short-term ordered behavior, motivating future session modeling \cite{kang2018sasrec,sun2019bert4rec}. \\
+Semantic retrieval & Sentence-BERT enables efficient independent encoding of item metadata, which is used for cross-domain vector search \cite{reimers2019sbert}. \\
+Cross-domain recommendation & Cross-domain surveys and PCRec show how knowledge can transfer across domains, but most methods remain two-domain or benchmark-focused \cite{zang2022cross,wang2021pcrec}. \\
+Knowledge graph recommendation & KGAT and RippleNet show how entity relations can improve explainability and cold-start handling, motivating the future knowledge graph layer \cite{wang2019kgat,wang2018ripplenet}. \\
+LLM-assisted recommendation & Recent LLM recommender work suggests language models can support reasoning and explanation, but latency and cost remain concerns for real-time product pipelines \cite{wu2024llmrec}. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Graph-based recommendation is one of the most influential directions for collaborative filtering. NGCF uses graph convolution to aggregate neighbor information, while LightGCN removes feature transformations and nonlinear activations to focus on simple normalized neighborhood propagation \cite{wang2019ngcf,he2020lightgcn}. This simplicity is useful in a student-scale implementation because it keeps the model understandable and efficient while preserving the core idea of user-item graph learning.
+
+Semantic embedding methods address a different problem. They allow item similarity to be computed even before enough user interactions exist. Sentence-BERT is especially practical because it produces sentence embeddings that can be compared directly using cosine similarity \cite{reimers2019sbert}. In this project, each content item is converted into natural-language embedding text by joining title, categories, description, and creator information. This allows movies, books, and songs to be embedded in a shared vector space.
+
+Knowledge graph recommendation systems such as KGAT and RippleNet connect users, items, and external entities through relations such as acted-in, directed-by, written-by, belongs-to-genre, and similar-to \cite{wang2019kgat,wang2018ripplenet}. The current implementation does not yet use a full graph database, but the unified schema and creator extraction prepare the system for a future knowledge graph. Cross-domain recommendation research further supports the need to transfer preference across multiple domains, although many existing works focus on only two domains \cite{zang2022cross,wang2021pcrec}.
+
+The representative datasets normally used in this literature include MovieLens, Amazon-Book, Gowalla, Yelp2018, Last.fm, Goodreads, TMDb, Open Library, and MusicBrainz. For this implementation, the current processed catalog uses movie metadata and credits, Google Books-style book metadata, and a Kaggle music dataset. Future API enrichment can use TMDb for richer cast and crew, Open Library or Google Books for author details, and MusicBrainz/Wikidata for artist metadata. Spotify API data is not treated as a training-data source because platform policies can restrict long-term storage and ML training use.
+
+\section{System Overview}
+\label{sec:overview}
+
+The implemented system is a modular web recommendation product. The frontend provides search, filters, user profile selection, recommendation cards, details, similar-item search, and interaction buttons. The backend exposes recommendation and interaction APIs. The data pipeline preprocesses heterogeneous datasets into a common catalog, generates embeddings, uploads vectors to Qdrant, stores content and user interactions in MySQL, and trains LightGCN artifacts from positive interaction logs.
+
+Figure~\ref{fig:architecture} summarizes the architecture. The diagram is written directly in LaTeX so that the Overleaf project does not depend on external drawing tools.
+
+\begin{figure}[t]
+\centering
+\fbox{%
+\begin{minipage}{0.95\linewidth}
+\centering
+\begin{tabular}{c}
+Raw datasets/APIs: movies, credits, books, music, future domains \\
+$\downarrow$ \\
+Preprocessing and unified schema: global id, content type, title, creators, categories, metadata text, embedding text \\
+$\downarrow$ \\
+Sentence-BERT embedding generation and embedding index \\
+$\downarrow$ \\
+Qdrant vector database + MySQL content and interaction storage \\
+$\downarrow$ \\
+Recommendation service: semantic retrieval + person match + EMA reranking + LightGCN graph score \\
+$\downarrow$ \\
+FastAPI endpoints consumed by React frontend \\
+\end{tabular}
+\end{minipage}}
+\caption{Layered architecture of the implemented cross-media recommendation system.}
+\label{fig:architecture}
+\end{figure}
+
+The search flow begins with a natural-language query. If the query matches a person name available in the catalog, the backend first returns direct creator matches. This means actor, director, author, and singer searches can surface their related content when the metadata exists. The system then performs semantic vector retrieval and appends general recommendations after removing duplicates. If a user identifier is supplied, the results are reranked using logged profile preferences, EMA personalization, and LightGCN graph scores when available.
+
+\section{Data Sources and Unified Catalog}
+\label{sec:data}
+
+The most important implementation decision is to convert every domain into one common schema. Without this step, each domain would require a separate model, separate search code, and separate frontend logic. The current configuration maps the datasets as follows. Movies use TMDb movie metadata and a credits file; books use a Google Books-style dataset; music uses a Kaggle Spotify songs dataset. The common fields include \texttt{global\_id}, \texttt{content\_type}, \texttt{source}, \texttt{source\_id}, \texttt{title}, \texttt{description}, \texttt{creators}, \texttt{categories}, \texttt{release\_date}, \texttt{popularity}, \texttt{rating}, \texttt{metadata\_text}, \texttt{embedding\_text}, and \texttt{text\_hash}.
+
+For movies, the preprocessing stage combines movie titles, genres, keywords, descriptions, directors, and top cast. The current credits configuration keeps the top available cast names from the credits dataset, which is why actor search is limited by what exists in the processed catalog. For books, the author field is mapped into the shared \texttt{creators} column. For music, track artist is mapped into \texttt{creators}. This design lets the same search logic handle actors, directors, authors, and singers.
+
+\begin{table}[t]
+\centering
+\caption{Unified catalog mapping used by the implementation.}
+\label{tab:schema}
+\begin{tabularx}{\linewidth}{p{0.22\linewidth}p{0.22\linewidth}X}
+\toprule
+Domain & Main source & Fields normalized into shared schema \\
+\midrule
+Movies & TMDb movie and credits files & Title, overview, genres, keywords, director, top cast, popularity, rating, release date. \\
+Books & Google Books-style dataset & Title, subtitle, authors, categories, description, published date, rating count, average rating. \\
+Music & Kaggle songs dataset & Track name, artist, album name, genre, subgenre, release date, popularity. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The \texttt{metadata\_text} field is the richer text used for inspection and database storage, while \texttt{embedding\_text} is a clean natural-language string used for model encoding. A SHA-256 text hash is stored to support incremental rebuilds: if a row's embedding text has not changed, its previous embedding can be reused. This is important when API enrichment later adds more actors, authors, or artist details, because only changed rows need to be regenerated.
+
+\section{Semantic Embedding and Vector Search}
+\label{sec:semantic}
+
+The semantic retrieval layer uses Sentence-BERT, specifically the compact \texttt{all-MiniLM-L6-v2} model, to convert item metadata into dense vectors. Each item is represented by its embedding text, for example a movie title joined with genre, description, director, and cast. The generated vectors are stored with an embedding index that maps each vector row back to the corresponding \texttt{global\_id}. The vector collection is then uploaded to Qdrant along with item payload metadata.
+
+At query time, the user query is encoded using the same Sentence-BERT model. Qdrant performs approximate nearest-neighbor search and returns the closest items. The backend supports optional content-type filtering so the user can search across all domains or restrict results to movies, books, or music. Because the system stores payload metadata in Qdrant, search results can be returned directly with title, description, creator names, categories, popularity, rating, and score.
+
+The semantic layer solves two important problems. First, it provides item cold-start support: a new book or movie can be recommended from its text metadata even before users interact with it. Second, it enables cross-domain retrieval: the same query can return a movie, a book, and a song if their descriptions and metadata are semantically close. This is the foundation of the cross-media behavior of the product.
+
+\section{Person-Aware Search Over Actors, Authors, and Singers}
+\label{sec:personsearch}
+
+A practical issue in recommendation interfaces is that users often search for people, not only concepts. A user may search for \texttt{Johnny Depp}, \texttt{James Cameron}, \texttt{Taylor Swift}, or an author name. Pure vector search may treat such a name as general text and can miss exact catalog matches. The implementation therefore adds a deterministic person-aware search layer before semantic retrieval.
+
+The backend checks the normalized \texttt{creators} field for exact, prefix, or substring matches. If matches exist, up to five direct person-related items are placed at the top of the result list. The normal semantic recommender then fills the remaining slots, with duplicate \texttt{global\_id} values removed. This gives the user the expected behavior: content by the searched person appears first, followed by general recommendations.
+
+The current capability depends on the metadata already present in the catalog. For movies, the system can only match the director and top cast currently extracted from the credits dataset. For books, it can match available authors. For music, it can match available track artists. Future API enrichment can expand these fields using TMDb credits, Open Library author records, MusicBrainz artist credits, and Wikidata person metadata.
+
+\section{Interaction Logging and Real-Time Adaptation}
+\label{sec:realtime}
+
+The backend records user interactions through a dedicated API. Supported event types include \texttt{view}, \texttt{click}, \texttt{like}, \texttt{bookmark}, \texttt{rating}, \texttt{skip}, and \texttt{complete}. These events are stored in MySQL and used for personalization. The relational database also stores content entities and user profiles so that recommendation history can be connected to real catalog items.
+
+Immediate personalization is implemented using two mechanisms. The first is an interaction-profile reranker that increases or decreases candidate scores based on categories, content types, and previous positive or negative interactions. The second is an EMA profile vector. Positive events such as likes, bookmarks, completions, and high ratings pull the user's vector toward the item's content embedding. Negative events such as skips push the vector away. This enables a lightweight form of real-time adaptation without retraining the graph model after every click.
+
+Let $u_t$ be the current user profile vector, $v_i$ be the embedding of the interacted item, and $\alpha$ be the update rate. For a positive interaction, the profile update can be written as:
+\begin{equation}
+    u_{t+1} = \alpha v_i + (1 - \alpha)u_t.
+\end{equation}
+For a negative interaction, the direction can be reversed or penalized before normalization. During recommendation, candidate items receive an additional EMA score based on their similarity to the current user vector.
+
+\section{Graph Collaborative Filtering with LightGCN}
+\label{sec:lightgcn}
+
+Semantic retrieval explains item similarity, but it does not fully capture collaborative behavior. Two users may enjoy the same set of movies and books even if the item descriptions are very different. To model this behavioral signal, the system includes a LightGCN module implemented in PyTorch. The model trains on positive user-item interactions from MySQL and exports user and item embeddings for backend reranking.
+
+LightGCN represents users and items as a bipartite graph. Edges correspond to positive interactions such as likes, bookmarks, completions, and high ratings. Instead of using heavy feature transformations, LightGCN repeatedly propagates embeddings through the normalized user-item graph and averages the representations across layers \cite{he2020lightgcn}. This makes it suitable for the project because the method is easier to implement and explain than more complex graph neural networks.
+
+The graph score is used as a reranking signal. When a request includes a known user and the candidate item exists in the trained LightGCN artifact, the backend computes a graph-based compatibility score and blends it with the semantic score and profile score. This creates a hybrid ranking pipeline: semantic retrieval produces candidates, then personalization layers reorder them.
+
+\section{Backend API and Frontend Integration}
+\label{sec:api}
+
+The backend is implemented using FastAPI. Pydantic schemas validate request and response payloads. The main API endpoints include health checking, query-based recommendation, item-based similar recommendation, interaction logging, interaction-state retrieval, and search suggestion. Table~\ref{tab:api} summarizes the endpoints.
+
+\begin{table}[t]
+\centering
+\caption{Implemented backend API surface.}
+\label{tab:api}
+\begin{tabularx}{\linewidth}{p{0.27\linewidth}X}
+\toprule
+Endpoint & Purpose \\
+\midrule
+\texttt{GET /health} & Confirms that the backend is reachable. \\
+\texttt{GET /search/suggest} & Returns title and person suggestions from the catalog. \\
+\texttt{POST /recommend} & Returns query-based recommendations with optional user and content-type filters. \\
+\texttt{POST /recommend/item} & Returns similar items based on an existing catalog item. \\
+\texttt{POST /interactions} & Logs user events such as view, like, bookmark, rating, skip, and complete. \\
+\texttt{GET /interactions/\{user\}/\{item\}} & Returns the current stored interaction state for a user-item pair. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The frontend is a React application. It provides login through demo user profiles, natural-language search, content-type filters, result cards, score-signal display, similar-item search, detail modal, and feedback controls. This frontend is important because the system is not only a script or notebook; it behaves as an interactive product prototype. The user can search across movies, books, and music from one interface, inspect recommendations, and send feedback events that immediately affect later recommendations.
+
+\section{Recommendation Pipeline}
+\label{sec:pipeline}
+
+The end-to-end recommendation flow is as follows:
+\begin{enumerate}[leftmargin=*,itemsep=1pt,topsep=2pt]
+    \item The user enters a natural-language query and optionally chooses a content-type filter.
+    \item The backend checks whether the query matches available people in the \texttt{creators} field.
+    \item Direct person matches are reserved for the top positions when available.
+    \item The query is encoded using Sentence-BERT.
+    \item Qdrant retrieves semantic nearest neighbors using the query vector.
+    \item Duplicate person-match results are removed from semantic results.
+    \item Profile-based reranking is applied if a user identifier is present.
+    \item EMA personalization is applied if the user has a profile vector.
+    \item LightGCN graph reranking is applied if exported graph embeddings are available.
+    \item The backend returns a ranked list with content metadata and score signals.
+\end{enumerate}
+
+The final ranking can be described conceptually as:
+\begin{equation}
+    S(i,u,q) = S_{sem}(i,q) + \lambda_g S_{graph}(i,u) + \lambda_e S_{ema}(i,u) + \lambda_p S_{profile}(i,u),
+\end{equation}
+where $S_{sem}$ is the semantic score from vector search, $S_{graph}$ is the LightGCN compatibility score, $S_{ema}$ is the profile-vector similarity, and $S_{profile}$ is a rule-based preference bonus or penalty. The current implementation uses these signals pragmatically rather than claiming a fully optimized ranking objective.
+
+\section{Knowledge Graph and Profile-Aware Extension Plan}
+\label{sec:kg}
+
+A major planned improvement is a knowledge graph layer. The current system already stores creators, categories, content types, and interactions in structured form, which can be converted into graph nodes and edges. A future knowledge graph can include nodes such as user, movie, book, song, actor, director, author, singer, genre, profession, age group, and skill. Example relations include \texttt{acted\_in}, \texttt{directed}, \texttt{wrote}, \texttt{performed}, \texttt{belongs\_to\_genre}, \texttt{liked}, \texttt{bookmarked}, \texttt{suitable\_for}, and \texttt{related\_to\_profession}.
+
+Such a graph would support recommendations from a single search input. For example, a query for an actor can retrieve that actor's films, related genres, books with similar themes, and music connected by mood or audience preference. A query for a profession such as data analyst can retrieve technical books, courses, documentaries, and podcasts. This would make the recommender more explainable because each recommendation can be justified through graph paths.
+
+Age/profession-based recommendation can be implemented through an explicit user profile form rather than private social-media scraping. The profile can include age group, profession or student stream, skills, interests, preferred language, learning goals, and content restrictions. If social or LinkedIn-like inputs are used in the future, they should be consent-based and preferably entered by the user or obtained through official APIs with clear permission. The system should not scrape private social-media data.
+
+\section{Implementation Discussion}
+\label{sec:discussion}
+
+The main strength of the implementation is that it connects several recommender-system ideas inside one reproducible architecture. The unified schema makes multiple domains searchable through a common interface. Sentence-BERT and Qdrant provide semantic retrieval. MySQL interaction logging gives the system memory. EMA profile updates provide immediate adaptation. LightGCN adds collaborative graph information. The frontend turns these modules into a usable product instead of a disconnected set of scripts.
+
+The design also has limitations. The current system supports three domains, and metadata quality depends on the available datasets. Movie actor search is limited by the number of cast names extracted from the credits file. Music metadata comes from a Kaggle dataset, and future API enrichment should use open metadata sources such as MusicBrainz and Wikidata. The LightGCN module is implemented and can be trained from interaction logs, but full production-scale benchmarking against large public datasets is outside the current scope. The system also does not yet include a deployed knowledge graph, multimodal image/audio embeddings, fairness-aware reranking, or social/profile API integration.
+
+These limitations do not invalidate the implementation. Rather, they define the boundary between the completed product prototype and future research work. The current system demonstrates that cross-media semantic retrieval, person-aware lookup, real-time interaction logging, and graph-based reranking can be combined in a single backend. The next stage is to enlarge the data, add richer person/entity metadata, introduce a formal knowledge graph, and evaluate ranking quality on larger interaction datasets.
+
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+
+This paper presented a survey-informed implementation of a real-time adaptive cross-media recommendation system. A compact review of representative literature showed that semantic embeddings, graph collaborative filtering, cross-domain recommendation, knowledge graphs, and real-time personalization are often studied separately. The implemented system integrates these directions through a unified catalog, Sentence-BERT embeddings, Qdrant vector search, MySQL interaction logging, EMA personalization, LightGCN collaborative filtering, FastAPI services, and a React frontend.
+
+The implementation currently supports movies, books, and music. It also supports person-aware search over available actor, director, author, and singer metadata by using the shared creators field. This allows direct creator matches to appear before general semantic recommendations. The system is therefore not only a survey artifact but a working software prototype with a clear path to expansion.
+
+Future work will focus on five directions. First, the catalog should be enriched through official APIs: TMDb for full movie cast and crew, Open Library or Google Books for author and edition metadata, and MusicBrainz or Wikidata for music artist information. Second, a knowledge graph should be added to connect users, content, people, genres, professions, and age groups. Third, user profile screening should be introduced through consent-based age, profession, skill, and interest fields. Fourth, new domains such as courses, podcasts, games, anime, academic papers, and short videos can be added by mapping them into the same schema. Fifth, formal ranking evaluation should be performed using offline metrics and user studies after a larger interaction dataset is collected.
+
+Overall, the project demonstrates a practical path from recommender-system literature to a multi-domain recommendation product. It keeps the survey portion focused, places the main emphasis on implementation, and identifies the remaining work needed to move from prototype to finished product.
+
+\section*{Acknowledgement}
+The authors thank Dr. Bagavathi Sivakumar P. and Krishna Priya G. for their guidance and review suggestions during the development of this project.
+
+\begin{thebibliography}{00}
+
+\bibitem{wang2019ngcf}
+X. Wang, X. He, M. Wang, F. Feng, and T.-S. Chua, ``Neural graph collaborative filtering,'' in \emph{Proc. 42nd International ACM SIGIR Conference on Research and Development in Information Retrieval}, 2019, pp. 165--174.
+
+\bibitem{he2020lightgcn}
+X. He, K. Deng, X. Wang, Y. Li, Y. Zhang, and M. Wang, ``LightGCN: Simplifying and powering graph convolution network for recommendation,'' in \emph{Proc. 43rd International ACM SIGIR Conference on Research and Development in Information Retrieval}, 2020, pp. 639--648.
+
+\bibitem{reimers2019sbert}
+N. Reimers and I. Gurevych, ``Sentence-BERT: Sentence embeddings using Siamese BERT-networks,'' in \emph{Proc. EMNLP-IJCNLP}, 2019, pp. 3982--3992.
+
+\bibitem{kang2018sasrec}
+W.-C. Kang and J. McAuley, ``Self-attentive sequential recommendation,'' in \emph{Proc. IEEE International Conference on Data Mining}, 2018, pp. 197--206.
+
+\bibitem{sun2019bert4rec}
+F. Sun et al., ``BERT4Rec: Sequential recommendation with bidirectional encoder representations from transformer,'' in \emph{Proc. 28th ACM International Conference on Information and Knowledge Management}, 2019, pp. 1441--1450.
+
+\bibitem{zang2022cross}
+T. Zang, Y. Zhu, H. Liu, R. Zhang, and J. Yu, ``A survey on cross-domain recommendation: Taxonomies, methods, and future directions,'' \emph{ACM Transactions on Information Systems}, vol. 41, no. 2, 2022.
+
+\bibitem{wang2021pcrec}
+C. Wang, Z. Liu, T. Zhang, and P. S. Yu, ``Pre-training graph neural network for cross domain recommendation,'' arXiv:2111.08268, 2021.
+
+\bibitem{wang2019kgat}
+X. Wang, X. He, Y. Cao, M. Liu, and T.-S. Chua, ``KGAT: Knowledge graph attention network for recommendation,'' in \emph{Proc. 25th ACM SIGKDD Conference on Knowledge Discovery and Data Mining}, 2019, pp. 950--958.
+
+\bibitem{wang2018ripplenet}
+H. Wang et al., ``RippleNet: Propagating user preferences on the knowledge graph for recommender systems,'' in \emph{Proc. 27th ACM International Conference on Information and Knowledge Management}, 2018, pp. 417--426.
+
+\bibitem{wu2024llmrec}
+L. Wu et al., ``LLMRec: Large language models with graph augmentation for recommendation,'' in \emph{Proc. 17th ACM International Conference on Web Search and Data Mining}, 2024, pp. 806--815.
+
+\bibitem{zhang2019deep}
+S. Zhang, L. Yao, A. Sun, and Y. Tay, ``Deep learning based recommender system: A survey and new perspectives,'' \emph{ACM Computing Surveys}, vol. 52, no. 1, pp. 1--38, 2019.
+
+\bibitem{qdrant}
+Qdrant, ``Qdrant vector database documentation,'' 2026. [Online]. Available: \url{https://qdrant.tech/documentation/}
+
+\bibitem{fastapi}
+S. Ramirez, ``FastAPI documentation,'' 2026. [Online]. Available: \url{https://fastapi.tiangolo.com/}
+
+\bibitem{tmdb}
+TMDb, ``The Movie Database API documentation,'' 2026. [Online]. Available: \url{https://developer.themoviedb.org/}
+
+\bibitem{musicbrainz}
+MetaBrainz Foundation, ``MusicBrainz API documentation,'' 2026. [Online]. Available: \url{https://musicbrainz.org/doc/MusicBrainz_API}
+
+\bibitem{openlibrary}
+Internet Archive, ``Open Library APIs,'' 2026. [Online]. Available: \url{https://openlibrary.org/developers/api}
+
+\end{thebibliography}
+
+\end{document}

@@ -92,21 +92,30 @@ def normalize_movies(raw_df: pd.DataFrame, dataset_config: dict) -> pd.DataFrame
     keywords = raw_df["keywords"].apply(lambda v: ", ".join(parse_name_list(v)))
 
     df["categories"] = genres
-    df["creators"] = ""
     df["release_date"] = raw_df[dataset_config["release_date_column"]]
     df["popularity"] = raw_df[dataset_config["popularity_column"]]
     df["rating"] = raw_df[dataset_config["rating_column"]]
 
-    # metadata_text — richest text (includes keywords for internal search)
-    df["metadata_text"] = [
-        join_non_empty(vals)
-        for vals in zip(df["title"], genres, keywords, df["description"])
+    # --- Load and merge credits (cast + director) ---
+    top_n = int(dataset_config.get("credits_top_cast", 5))
+    cast_series, director_series = _load_credits(
+        dataset_config, raw_df[dataset_config["id_column"]], top_n
+    )
+    df["creators"] = [
+        join_non_empty(vals, separator=", ")
+        for vals in zip(director_series, cast_series)
     ]
 
-    # embedding_text — clean semantic text for the model (no raw keyword dumps)
+    # metadata_text — richest text (includes keywords, cast, director)
+    df["metadata_text"] = [
+        join_non_empty(vals)
+        for vals in zip(df["title"], genres, keywords, df["description"], df["creators"])
+    ]
+
+    # embedding_text — semantic text for the model (title + genres + description + director + top cast)
     df["embedding_text"] = [
         join_non_empty(vals)
-        for vals in zip(df["title"], genres, df["description"])
+        for vals in zip(df["title"], genres, df["description"], df["creators"])
     ]
 
     df["text_hash"] = df["embedding_text"].apply(make_text_hash)
@@ -220,6 +229,68 @@ def normalize_music(raw_df: pd.DataFrame, dataset_config: dict) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _load_credits(
+    dataset_config: dict,
+    id_series: pd.Series,
+    top_n: int,
+) -> tuple[pd.Series, pd.Series]:
+    """Load the credits CSV and return (cast_series, director_series) aligned to id_series.
+
+    Each element is a comma-joined string of names (empty string when unavailable).
+    """
+    credits_path_str = dataset_config.get("credits_path", "")
+    if not credits_path_str:
+        empty = pd.Series([""] * len(id_series), dtype=str)
+        return empty.reset_index(drop=True), empty.reset_index(drop=True)
+
+    credits_path = resolve_project_path(credits_path_str)
+    if not credits_path.exists():
+        print(f"  [WARNING] Credits file not found: {credits_path}. Skipping.")
+        empty = pd.Series([""] * len(id_series), dtype=str)
+        return empty.reset_index(drop=True), empty.reset_index(drop=True)
+
+    print(f"  Loading credits: {credits_path}")
+    credits_df = pd.read_csv(credits_path)
+    # Build lookup: movie_id → (cast_str, director_str)
+    cast_map: dict[str, str] = {}
+    director_map: dict[str, str] = {}
+    for _, row in credits_df.iterrows():
+        mid = str(row["movie_id"])
+        cast_map[mid] = _parse_credits_cast(row.get("cast", ""), top_n)
+        director_map[mid] = _parse_credits_director(row.get("crew", ""))
+
+    id_strs = id_series.fillna("").astype(str)
+    cast_series = id_strs.map(lambda mid: cast_map.get(mid, ""))
+    director_series = id_strs.map(lambda mid: director_map.get(mid, ""))
+    return cast_series.reset_index(drop=True), director_series.reset_index(drop=True)
+
+
+def _parse_credits_cast(value: object, top_n: int) -> str:
+    """Return a comma-joined string of the top-N cast names from the JSON blob."""
+    names = parse_name_list(value)  # reuse existing AST parser
+    return ", ".join(names[:top_n])
+
+
+def _parse_credits_director(value: object) -> str:
+    """Extract the first Director name from the crew JSON blob."""
+    text = clean_text(value)
+    if not text:
+        return ""
+    try:
+        import ast as _ast
+        crew = _ast.literal_eval(text)
+    except (ValueError, SyntaxError):
+        return ""
+    if not isinstance(crew, list):
+        return ""
+    for member in crew:
+        if isinstance(member, dict) and member.get("job") == "Director":
+            name = clean_text(member.get("name", ""))
+            if name:
+                return name
+    return ""
+
 
 def _filter_rows(df: pd.DataFrame, content_type: str, source: str) -> pd.DataFrame:
     """Drop rows with empty or malformed global_id, title, or embedding_text."""
