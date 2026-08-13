@@ -90,7 +90,14 @@ export default function RecommendationCard({ result, index, userId, query, onSim
       )}
 
       <div className="mt-auto">
-        <ScoreBars score={result.score} semantic_score={result.semantic_score} graph_score={result.graph_score} ema_score={result.ema_score} />
+        <ScoreBars
+          score={result.score}
+          semantic_score={result.semantic_score}
+          graph_score={result.graph_score}
+          ema_score={result.ema_score}
+          kg_score={result.kg_score}
+          profile_score={result.profile_score}
+        />
         <InteractionButtons globalId={result.global_id} userId={userId} query={query} onToast={onToast} onView={() => onView?.(result)} />
         <button
           type="button"

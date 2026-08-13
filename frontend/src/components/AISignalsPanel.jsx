@@ -1,11 +1,13 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
-import { Activity, Brain, ChevronDown, Combine, HelpCircle, Network, Server, User } from 'lucide-react';
+import { Activity, Brain, ChevronDown, Combine, HelpCircle, Network, Server, Share2, User, UserRoundCog } from 'lucide-react';
 
 const SIGNALS = [
   { icon: Brain, color: '#7C3AED', label: 'Semantic Score', key: 'semantic_score', desc: 'Query-to-content match from vector search.' },
   { icon: Network, color: '#059669', label: 'Graph Signal', key: 'graph_score', desc: 'Collaborative signal from user-item interaction embeddings.' },
   { icon: Activity, color: '#D97706', label: 'EMA Signal', key: 'ema_score', desc: 'Real-time preference signal from recent interactions.' },
+  { icon: Share2, color: '#0891B2', label: 'KG Signal', key: 'kg_score', desc: 'Knowledge-graph proximity from query terms to content entities.' },
+  { icon: UserRoundCog, color: '#DB2777', label: 'Profile Signal', key: 'profile_score', desc: 'Age, profession, skills, and interest match from the user profile.' },
   { icon: Combine, color: '#2563EB', label: 'Final Score', key: 'score', desc: 'Hybrid ranking score used to order results.' },
 ];
 
@@ -56,7 +58,7 @@ export default function AISignalsPanel({ userId, backendStatus, topResult }) {
                     <div className="mb-0.5 flex flex-wrap items-center gap-2">
                       <span className="text-xs font-black" style={{ color }}>{label}</span>
                       {topResult?.[key] != null && <span className="rounded-lg bg-slate-100 px-1.5 py-0.5 text-xs font-black text-slate-700">{Number(topResult[key]).toFixed(3)}</span>}
-                      {topResult && topResult[key] == null && (key === 'graph_score' || key === 'ema_score') && <span className="text-[11px] font-semibold italic text-slate-400">not computed</span>}
+                      {topResult && topResult[key] == null && key !== 'score' && <span className="text-[11px] font-semibold italic text-slate-400">not computed</span>}
                     </div>
                     <p className="text-xs leading-5 text-slate-500">{desc}</p>
                   </div>

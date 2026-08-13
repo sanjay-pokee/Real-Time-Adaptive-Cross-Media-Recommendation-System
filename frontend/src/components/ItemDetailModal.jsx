@@ -69,7 +69,14 @@ export default function ItemDetailModal({ item, onClose, userId, query, onSimila
 
             <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
               <h4 className="mb-1 text-xs font-black uppercase tracking-[0.12em] text-slate-500">Recommendation signals</h4>
-              <ScoreBars score={item.score} semantic_score={item.semantic_score} graph_score={item.graph_score} ema_score={item.ema_score} />
+              <ScoreBars
+                score={item.score}
+                semantic_score={item.semantic_score}
+                graph_score={item.graph_score}
+                ema_score={item.ema_score}
+                kg_score={item.kg_score}
+                profile_score={item.profile_score}
+              />
             </section>
 
             <section className="mt-6">
