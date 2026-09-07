@@ -236,12 +236,29 @@ def prepare_interactions(
         )
 
     positives = positives.drop_duplicates(subset=["user_id", "entity_id"], keep="last")
-    positives = subsample_users(positives, max_users, seed=seed)
+
+    # 1. Establish a dense core on the FULL user base first.
     positives = k_core_filter(positives, user_core=user_core, item_core=item_core)
     if positives.empty:
         raise ValueError(
-            "k-core filter removed every interaction. Lower --user-core / --item-core "
-            "or raise --max-users."
+            "k-core filter removed everything on the full dataset. Lower --user-core / --item-core."
+        )
+
+    # 2. Optionally shrink to a random sample of users (each keeps its full history).
+    positives = subsample_users(positives, max_users, seed=seed)
+
+    # 3. A user sample thins each item, so drop items that are now too sparse to
+    #    learn from. Single pass on items only -- this cannot cascade to empty.
+    if max_users:
+        min_item = max(3, item_core // 2)
+        item_counts = positives["entity_id"].value_counts()
+        keep_items = item_counts[item_counts >= min_item].index
+        positives = positives[positives["entity_id"].isin(keep_items)]
+
+    if positives.empty:
+        raise ValueError(
+            "No interactions left after filtering. Raise --max-users (0 = all users) "
+            "or lower --user-core / --item-core."
         )
 
     positives["event_type"] = "like"
