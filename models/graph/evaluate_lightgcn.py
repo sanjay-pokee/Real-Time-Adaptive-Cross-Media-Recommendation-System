@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 import torch
 
-from backend.mysql_store import MySQLStore
 from models.graph.lightgcn import (
     LightGCN,
     LightGCNConfig,
@@ -144,54 +143,35 @@ def train_for_evaluation(
     )
 
 
-def evaluate_rankings(
-    user_embeddings: np.ndarray,
-    item_embeddings: np.ndarray,
-    user_ids: list[str],
-    item_ids: list[str],
-    train_rows: pd.DataFrame,
-    test_rows: pd.DataFrame,
-    k: int = 10,
+def _seen_index_sets(rows: pd.DataFrame, item_to_idx: dict[str, int]) -> dict[str, set[int]]:
+    return (
+        rows.groupby("user_id")["entity_id"]
+        .apply(lambda values: {item_to_idx[str(v)] for v in values if str(v) in item_to_idx})
+        .to_dict()
+    )
+
+
+def _metrics_from_rankings(
+    ranked: dict[str, list[int]],
+    test_relevant: dict[str, set[int]],
+    k: int,
 ) -> RankingMetrics:
-    user_to_idx = {user_id: idx for idx, user_id in enumerate(user_ids)}
-    item_to_idx = {item_id: idx for idx, item_id in enumerate(item_ids)}
-    train_seen = (
-        train_rows.groupby("user_id")["entity_id"]
-        .apply(lambda values: set(str(value) for value in values))
-        .to_dict()
-    )
-    test_relevant = (
-        test_rows.groupby("user_id")["entity_id"]
-        .apply(lambda values: set(str(value) for value in values if str(value) in item_to_idx))
-        .to_dict()
-    )
+    hit_rates: list[float] = []
+    recalls: list[float] = []
+    precisions: list[float] = []
+    ndcgs: list[float] = []
+    mrrs: list[float] = []
 
-    hit_rates = []
-    recalls = []
-    precisions = []
-    ndcgs = []
-    mrrs = []
-
-    for user_id, relevant_items in test_relevant.items():
-        if user_id not in user_to_idx or not relevant_items:
+    for user_id, ranked_idx in ranked.items():
+        relevant = test_relevant.get(user_id) or set()
+        if not relevant:
             continue
-
-        user_idx = user_to_idx[user_id]
-        scores = item_embeddings @ user_embeddings[user_idx]
-        for seen_item in train_seen.get(user_id, set()):
-            seen_idx = item_to_idx.get(seen_item)
-            if seen_idx is not None:
-                scores[seen_idx] = -np.inf
-
-        top_indices = np.argsort(scores)[::-1][:k]
-        ranked_items = [item_ids[idx] for idx in top_indices]
-        hits = [1 if item_id in relevant_items else 0 for item_id in ranked_items]
+        hits = [1 if idx in relevant else 0 for idx in ranked_idx[:k]]
         hit_count = sum(hits)
-
         hit_rates.append(1.0 if hit_count else 0.0)
-        recalls.append(hit_count / len(relevant_items))
+        recalls.append(hit_count / len(relevant))
         precisions.append(hit_count / k)
-        ndcgs.append(_ndcg_at_k(hits, min(k, len(relevant_items))))
+        ndcgs.append(_ndcg_at_k(hits, min(k, len(relevant))))
         mrrs.append(_reciprocal_rank(hits))
 
     if not hit_rates:
@@ -207,9 +187,118 @@ def evaluate_rankings(
     )
 
 
-def run_evaluation(k: int, holdout_per_user: int, config: LightGCNConfig) -> RankingMetrics:
-    interactions = MySQLStore().get_lightgcn_interactions()
+def evaluate_rankings(
+    user_embeddings: np.ndarray,
+    item_embeddings: np.ndarray,
+    user_ids: list[str],
+    item_ids: list[str],
+    train_rows: pd.DataFrame,
+    test_rows: pd.DataFrame,
+    k: int = 10,
+    eval_batch_size: int = 2048,
+) -> RankingMetrics:
+    """Batched full-catalog ranking evaluation (GPU when available)."""
+    user_to_idx = {user_id: idx for idx, user_id in enumerate(user_ids)}
+    item_to_idx = {item_id: idx for idx, item_id in enumerate(item_ids)}
+    train_seen = _seen_index_sets(train_rows, item_to_idx)
+    test_relevant = _seen_index_sets(test_rows, item_to_idx)
+
+    eval_users = [u for u, rel in test_relevant.items() if rel and u in user_to_idx]
+    if not eval_users:
+        raise ValueError("No users could be evaluated. Check train/test overlap and item coverage.")
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    user_tensor = torch.as_tensor(np.asarray(user_embeddings), dtype=torch.float32, device=device)
+    item_tensor_t = torch.as_tensor(
+        np.asarray(item_embeddings), dtype=torch.float32, device=device
+    ).t().contiguous()
+    num_items = item_tensor_t.shape[1]
+    top_n = min(k, num_items)
+
+    ranked: dict[str, list[int]] = {}
+    for start in range(0, len(eval_users), eval_batch_size):
+        batch = eval_users[start : start + eval_batch_size]
+        rows = [user_to_idx[u] for u in batch]
+        try:
+            scores = (user_tensor[rows] @ item_tensor_t).clone()
+        except RuntimeError:  # e.g. CUDA OOM -> retry on CPU
+            torch.cuda.empty_cache()
+            device = torch.device("cpu")
+            user_tensor = user_tensor.cpu()
+            item_tensor_t = item_tensor_t.cpu()
+            scores = (user_tensor[rows] @ item_tensor_t).clone()
+
+        for row_pos, user_id in enumerate(batch):
+            seen = train_seen.get(user_id)
+            if seen:
+                scores[row_pos, list(seen)] = float("-inf")
+
+        top_indices = torch.topk(scores, top_n, dim=1).indices.cpu().numpy()
+        for row_pos, user_id in enumerate(batch):
+            ranked[user_id] = top_indices[row_pos].tolist()
+
+    return _metrics_from_rankings(ranked, test_relevant, k)
+
+
+def popularity_baseline(
+    item_ids: list[str],
+    train_rows: pd.DataFrame,
+    test_rows: pd.DataFrame,
+    k: int = 10,
+) -> RankingMetrics:
+    """Most-popular recommender: rank every user by global train popularity."""
+    item_to_idx = {item_id: idx for idx, item_id in enumerate(item_ids)}
+    counts = train_rows["entity_id"].astype(str).map(item_to_idx).dropna().astype(int)
+    popularity = np.zeros(len(item_ids), dtype=np.float64)
+    for idx, count in counts.value_counts().items():
+        popularity[int(idx)] = float(count)
+    global_order = np.argsort(-popularity)
+
+    train_seen = _seen_index_sets(train_rows, item_to_idx)
+    test_relevant = _seen_index_sets(test_rows, item_to_idx)
+    max_seen = max((len(s) for s in train_seen.values()), default=0)
+    shortlist = global_order[: k + max_seen + 1]
+
+    ranked: dict[str, list[int]] = {}
+    for user_id, relevant in test_relevant.items():
+        if not relevant:
+            continue
+        seen = train_seen.get(user_id, set())
+        picks = [int(idx) for idx in shortlist if idx not in seen][:k]
+        ranked[user_id] = picks
+    return _metrics_from_rankings(ranked, test_relevant, k)
+
+
+def _print_metrics(title: str, k: int, metrics: RankingMetrics) -> None:
+    print(f"\n{title}")
+    print(f"users_evaluated: {metrics.users_evaluated}")
+    print(f"HitRate@{k}:   {metrics.hit_rate:.4f}")
+    print(f"Recall@{k}:    {metrics.recall:.4f}")
+    print(f"Precision@{k}: {metrics.precision:.4f}")
+    print(f"NDCG@{k}:      {metrics.ndcg:.4f}")
+    print(f"MRR@{k}:       {metrics.mrr:.4f}")
+
+
+def run_evaluation(
+    k: int,
+    holdout_per_user: int,
+    config: LightGCNConfig,
+    interactions: pd.DataFrame | None = None,
+    baseline: str = "none",
+    eval_batch_size: int = 2048,
+) -> RankingMetrics:
+    if interactions is None:
+        from backend.mysql_store import MySQLStore
+
+        interactions = MySQLStore().get_lightgcn_interactions()
     train_rows, test_rows = split_holdout_by_user(interactions, holdout_per_user=holdout_per_user)
+
+    if baseline == "popularity":
+        item_ids = sorted(train_rows["entity_id"].astype(str).unique())
+        metrics = popularity_baseline(item_ids, train_rows, test_rows, k=k)
+        _print_metrics("Most-popular baseline", k, metrics)
+        return metrics
+
     user_embeddings, item_embeddings, user_ids, item_ids, mapped_train = train_for_evaluation(train_rows, config)
     metrics = evaluate_rankings(
         user_embeddings,
@@ -219,14 +308,9 @@ def run_evaluation(k: int, holdout_per_user: int, config: LightGCNConfig) -> Ran
         mapped_train,
         test_rows,
         k=k,
+        eval_batch_size=eval_batch_size,
     )
-    print("\nLightGCN holdout evaluation")
-    print(f"users_evaluated: {metrics.users_evaluated}")
-    print(f"HitRate@{k}:   {metrics.hit_rate:.4f}")
-    print(f"Recall@{k}:    {metrics.recall:.4f}")
-    print(f"Precision@{k}: {metrics.precision:.4f}")
-    print(f"NDCG@{k}:      {metrics.ndcg:.4f}")
-    print(f"MRR@{k}:       {metrics.mrr:.4f}")
+    _print_metrics("LightGCN holdout evaluation", k, metrics)
     return metrics
 
 
@@ -263,8 +347,8 @@ def _normalize_rows(values: np.ndarray) -> np.ndarray:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate LightGCN with holdout ranking metrics.")
-    parser.add_argument("--k", type=int, default=10)
-    parser.add_argument("--holdout-per-user", type=int, default=2)
+    parser.add_argument("--k", type=int, default=20)
+    parser.add_argument("--holdout-per-user", type=int, default=1)
     parser.add_argument("--embedding-dim", type=int, default=64)
     parser.add_argument("--layers", type=int, default=3)
     parser.add_argument("--epochs", type=int, default=50)
@@ -272,6 +356,19 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--weight-decay", type=float, default=0.0001)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--eval-batch-size", type=int, default=2048)
+    parser.add_argument(
+        "--baseline",
+        choices=["none", "popularity"],
+        default="none",
+        help="Run a non-learned baseline instead of training LightGCN.",
+    )
+    # Benchmark-dataset source (omit to evaluate from MySQL logs).
+    parser.add_argument("--dataset", type=Path, default=None)
+    parser.add_argument("--min-rating", type=float, default=4.0)
+    parser.add_argument("--user-core", type=int, default=10)
+    parser.add_argument("--item-core", type=int, default=10)
+    parser.add_argument("--max-users", type=int, default=0, help="0 = keep all users")
     args = parser.parse_args()
 
     config = LightGCNConfig(
@@ -283,7 +380,30 @@ def main() -> None:
         batch_size=args.batch_size,
         seed=args.seed,
     )
-    run_evaluation(args.k, args.holdout_per_user, config)
+
+    interactions = None
+    if args.dataset:
+        from models.graph.datasets import describe, prepare_interactions
+
+        interactions = prepare_interactions(
+            args.dataset,
+            min_rating=args.min_rating,
+            user_core=args.user_core,
+            item_core=args.item_core,
+            max_users=args.max_users,
+            seed=args.seed,
+        )
+        print(f"dataset: {args.dataset}")
+        print("  " + describe(interactions))
+
+    run_evaluation(
+        args.k,
+        args.holdout_per_user,
+        config,
+        interactions=interactions,
+        baseline=args.baseline,
+        eval_batch_size=args.eval_batch_size,
+    )
 
 
 if __name__ == "__main__":

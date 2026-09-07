@@ -8,9 +8,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import torch
 
-from backend.mysql_store import MySQLStore
 from models.graph.lightgcn import (
     LightGCN,
     LightGCNConfig,
@@ -24,12 +24,38 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_OUTPUT = PROJECT_ROOT / "models" / "graph" / "artifacts" / "lightgcn_embeddings.npz"
 
 
-def train(output_path: Path, config: LightGCNConfig) -> Path:
+def _load_interactions(args: argparse.Namespace) -> pd.DataFrame:
+    """Pick the interaction source: a benchmark dataset file or MySQL logs."""
+    if getattr(args, "dataset", None):
+        from models.graph.datasets import describe, prepare_interactions
+
+        frame = prepare_interactions(
+            args.dataset,
+            min_rating=args.min_rating,
+            user_core=args.user_core,
+            item_core=args.item_core,
+            max_users=args.max_users,
+            seed=args.seed,
+        )
+        print(f"dataset: {args.dataset}")
+        print("  " + describe(frame))
+        return frame
+
+    from backend.mysql_store import MySQLStore
+
+    return MySQLStore().get_lightgcn_interactions()
+
+
+def train(output_path: Path, config: LightGCNConfig, interactions: pd.DataFrame | None = None) -> Path:
     torch.manual_seed(config.seed)
     rng = np.random.default_rng(config.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"training device: {device}")
 
-    interactions = MySQLStore().get_lightgcn_interactions()
+    if interactions is None:
+        from backend.mysql_store import MySQLStore
+
+        interactions = MySQLStore().get_lightgcn_interactions()
     training, user_to_idx, item_to_idx = build_training_interactions(interactions)
     if len(item_to_idx) < 2:
         raise ValueError("LightGCN needs at least two positively interacted items.")
@@ -140,6 +166,18 @@ def main() -> None:
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--weight-decay", type=float, default=0.0001)
     parser.add_argument("--seed", type=int, default=42)
+    # Benchmark-dataset source (omit all of these to train from MySQL logs).
+    parser.add_argument(
+        "--dataset",
+        type=Path,
+        default=None,
+        help="Path to a benchmark file (Amazon Reviews 2023 csv/jsonl). "
+        "If given, train from this file instead of MySQL.",
+    )
+    parser.add_argument("--min-rating", type=float, default=4.0)
+    parser.add_argument("--user-core", type=int, default=10)
+    parser.add_argument("--item-core", type=int, default=10)
+    parser.add_argument("--max-users", type=int, default=0, help="0 = keep all users")
     args = parser.parse_args()
 
     config = LightGCNConfig(
@@ -151,7 +189,7 @@ def main() -> None:
         batch_size=args.batch_size,
         seed=args.seed,
     )
-    train(args.output, config)
+    train(args.output, config, interactions=_load_interactions(args))
 
 
 if __name__ == "__main__":
