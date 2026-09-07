@@ -177,24 +177,53 @@ def bpr_loss(
     return ranking_loss + weight_decay * regularization
 
 
+def build_positive_keys(positive_pairs: np.ndarray, num_items: int) -> np.ndarray:
+    """Encode each (user, item) positive as one sorted int64 key for fast lookup.
+
+    Pass the result to ``sample_bpr_batch`` as ``positive_lookup`` to take the
+    vectorised negative-sampling path (orders of magnitude faster than the
+    per-row Python loop on large graphs).
+    """
+    keys = (
+        positive_pairs[:, 0].astype(np.int64) * np.int64(num_items)
+        + positive_pairs[:, 1].astype(np.int64)
+    )
+    keys.sort()
+    return keys
+
+
 def sample_bpr_batch(
     positive_pairs: np.ndarray,
-    user_positive_items: dict[int, set[int]],
+    positive_lookup: "np.ndarray | dict[int, set[int]]",
     num_items: int,
     batch_size: int,
     rng: np.random.Generator,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     batch_rows = rng.integers(0, len(positive_pairs), size=batch_size)
-    users = positive_pairs[batch_rows, 0]
-    positive_items = positive_pairs[batch_rows, 1]
-    negative_items = np.empty(batch_size, dtype=np.int64)
+    users = positive_pairs[batch_rows, 0].astype(np.int64)
+    positive_items = positive_pairs[batch_rows, 1].astype(np.int64)
+    negative_items = rng.integers(0, num_items, size=batch_size).astype(np.int64)
 
+    if isinstance(positive_lookup, np.ndarray):
+        # Fast path: positive_lookup is the sorted key array from build_positive_keys.
+        # Redraw only the (rare, on sparse data) slots that hit a real interaction.
+        for _ in range(32):
+            keys = users * np.int64(num_items) + negative_items
+            pos = np.searchsorted(positive_lookup, keys)
+            np.clip(pos, 0, len(positive_lookup) - 1, out=pos)
+            collision = positive_lookup[pos] == keys
+            hits = int(collision.sum())
+            if hits == 0:
+                break
+            negative_items[collision] = rng.integers(0, num_items, size=hits)
+        return users, positive_items, negative_items
+
+    # Slow path: dict of user_idx -> set(item_idx). Kept for tiny graphs and tests.
     for idx, user_idx in enumerate(users):
-        positives = user_positive_items[int(user_idx)]
-        negative = int(rng.integers(0, num_items))
+        positives = positive_lookup[int(user_idx)]
+        negative = int(negative_items[idx])
         while negative in positives:
             negative = int(rng.integers(0, num_items))
         negative_items[idx] = negative
-
-    return users.astype(np.int64), positive_items.astype(np.int64), negative_items
+    return users, positive_items, negative_items
 

@@ -15,6 +15,7 @@ from models.graph.lightgcn import (
     LightGCNConfig,
     bpr_loss,
     build_normalized_adjacency,
+    build_positive_keys,
     build_training_interactions,
     interaction_weight,
     sample_bpr_batch,
@@ -86,11 +87,7 @@ def train_for_evaluation(
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate, weight_decay=0.0)
 
     positive_pairs = training[["user_idx", "item_idx"]].drop_duplicates().to_numpy(dtype=np.int64)
-    user_positive_items = (
-        training.groupby("user_idx")["item_idx"]
-        .apply(lambda values: set(int(value) for value in values))
-        .to_dict()
-    )
+    positive_keys = build_positive_keys(positive_pairs, len(item_to_idx))
     steps_per_epoch = max(1, int(np.ceil(len(positive_pairs) / config.batch_size)))
 
     model.train()
@@ -99,7 +96,7 @@ def train_for_evaluation(
         for _ in range(steps_per_epoch):
             users, positive_items, negative_items = sample_bpr_batch(
                 positive_pairs,
-                user_positive_items,
+                positive_keys,
                 len(item_to_idx),
                 min(config.batch_size, len(positive_pairs)),
                 rng,

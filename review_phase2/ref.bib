@@ -1,0 +1,240 @@
+% =====================================================================
+%  ref.bib -- 23CSE498 Project Phase 2, Panel Review 1
+%  Real-Time Adaptive Cross-Media Recommendation System
+%  Compile with:  pdflatex -> bibtex -> pdflatex -> pdflatex
+%  Style: IEEEtran
+% =====================================================================
+
+% ---------------------------------------------------------------------
+% Graph collaborative filtering (the LightGCN line of work)
+% ---------------------------------------------------------------------
+
+@inproceedings{he2020lightgcn,
+  author    = {He, Xiangnan and Deng, Kuan and Wang, Xiang and Li, Yan and
+               Zhang, Yongdong and Wang, Meng},
+  title     = {{LightGCN}: Simplifying and Powering Graph Convolution Network
+               for Recommendation},
+  booktitle = {Proceedings of the 43rd International ACM SIGIR Conference on
+               Research and Development in Information Retrieval},
+  pages     = {639--648},
+  year      = {2020},
+  doi       = {10.1145/3397271.3401063}
+}
+
+@inproceedings{wang2019ngcf,
+  author    = {Wang, Xiang and He, Xiangnan and Wang, Meng and Feng, Fuli and
+               Chua, Tat-Seng},
+  title     = {Neural Graph Collaborative Filtering},
+  booktitle = {Proceedings of the 42nd International ACM SIGIR Conference on
+               Research and Development in Information Retrieval},
+  pages     = {165--174},
+  year      = {2019},
+  doi       = {10.1145/3331184.3331267}
+}
+
+@inproceedings{rendle2009bpr,
+  author    = {Rendle, Steffen and Freudenthaler, Christoph and
+               Gantner, Zeno and Schmidt-Thieme, Lars},
+  title     = {{BPR}: Bayesian Personalized Ranking from Implicit Feedback},
+  booktitle = {Proceedings of the 25th Conference on Uncertainty in
+               Artificial Intelligence (UAI)},
+  pages     = {452--461},
+  year      = {2009}
+}
+
+@inproceedings{kang2018sasrec,
+  author    = {Kang, Wang-Cheng and McAuley, Julian},
+  title     = {Self-Attentive Sequential Recommendation},
+  booktitle = {Proceedings of the IEEE International Conference on Data
+               Mining (ICDM)},
+  pages     = {197--206},
+  year      = {2018},
+  doi       = {10.1109/ICDM.2018.00035}
+}
+
+% ---------------------------------------------------------------------
+% Semantic representation and approximate nearest-neighbour search
+% ---------------------------------------------------------------------
+
+@inproceedings{reimers2019sbert,
+  author    = {Reimers, Nils and Gurevych, Iryna},
+  title     = {Sentence-{BERT}: Sentence Embeddings using Siamese
+               {BERT}-Networks},
+  booktitle = {Proceedings of the 2019 Conference on Empirical Methods in
+               Natural Language Processing and the 9th International Joint
+               Conference on Natural Language Processing (EMNLP-IJCNLP)},
+  pages     = {3982--3992},
+  year      = {2019},
+  doi       = {10.18653/v1/D19-1410}
+}
+
+@article{malkov2020hnsw,
+  author  = {Malkov, Yu A. and Yashunin, D. A.},
+  title   = {Efficient and Robust Approximate Nearest Neighbor Search Using
+             Hierarchical Navigable Small World Graphs},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  volume  = {42},
+  number  = {4},
+  pages   = {824--836},
+  year    = {2020},
+  doi     = {10.1109/TPAMI.2018.2889473}
+}
+
+% ---------------------------------------------------------------------
+% Knowledge-graph-aware recommendation
+% ---------------------------------------------------------------------
+
+@inproceedings{wang2019kgat,
+  author    = {Wang, Xiang and He, Xiangnan and Cao, Yixin and Liu, Meng and
+               Chua, Tat-Seng},
+  title     = {{KGAT}: Knowledge Graph Attention Network for Recommendation},
+  booktitle = {Proceedings of the 25th ACM SIGKDD International Conference on
+               Knowledge Discovery and Data Mining},
+  pages     = {950--958},
+  year      = {2019},
+  doi       = {10.1145/3292500.3330989}
+}
+
+@inproceedings{wang2018ripplenet,
+  author    = {Wang, Hongwei and Zhang, Fuzheng and Wang, Jialin and
+               Zhao, Miao and Li, Wenjie and Xie, Xing and Guo, Minyi},
+  title     = {{RippleNet}: Propagating User Preferences on the Knowledge
+               Graph for Recommender Systems},
+  booktitle = {Proceedings of the 27th ACM International Conference on
+               Information and Knowledge Management (CIKM)},
+  pages     = {417--426},
+  year      = {2018},
+  doi       = {10.1145/3269206.3271739}
+}
+
+% ---------------------------------------------------------------------
+% Cross-domain recommendation and surveys
+% ---------------------------------------------------------------------
+
+@article{zang2022cross,
+  author  = {Zang, Tianzi and Zhu, Yanmin and Liu, Haobing and Zhang, Ruohan
+             and Yu, Jiadi},
+  title   = {A Survey on Cross-Domain Recommendation: Taxonomies, Methods,
+             and Future Directions},
+  journal = {ACM Transactions on Information Systems},
+  volume  = {41},
+  number  = {2},
+  pages   = {1--39},
+  year    = {2022},
+  doi     = {10.1145/3548455}
+}
+
+@article{zhang2019deep,
+  author  = {Zhang, Shuai and Yao, Lina and Sun, Aixin and Tay, Yi},
+  title   = {Deep Learning Based Recommender System: A Survey and New
+             Perspectives},
+  journal = {ACM Computing Surveys},
+  volume  = {52},
+  number  = {1},
+  pages   = {1--38},
+  year    = {2019},
+  doi     = {10.1145/3285029}
+}
+
+@article{zhang2025survey,
+  author  = {Zhang, Hao and Cheng, Mingyue and Liu, Qi and Jiang, Junzhe and
+             Wang, Xianquan and Zhang, Rujiao and Lei, Chenyi and
+             Chen, Enhong},
+  title   = {A Comprehensive Survey on Cross-Domain Recommendation:
+             Taxonomy, Progress, and Prospects},
+  journal = {arXiv preprint arXiv:2503.14110},
+  year    = {2025}
+}
+
+@inproceedings{wu2024llmrec,
+  author    = {Wei, Wei and Ren, Xubin and Tang, Jiabin and Wang, Qinyong and
+               Su, Lixin and Cheng, Suqi and Wang, Junfeng and Yin, Dawei and
+               Huang, Chao},
+  title     = {{LLMRec}: Large Language Models with Graph Augmentation for
+               Recommendation},
+  booktitle = {Proceedings of the 17th ACM International Conference on Web
+               Search and Data Mining (WSDM)},
+  pages     = {806--815},
+  year      = {2024},
+  doi       = {10.1145/3616855.3635853}
+}
+
+% ---------------------------------------------------------------------
+% Benchmark dataset used for LightGCN evaluation
+% ---------------------------------------------------------------------
+
+@article{hou2024amazon,
+  author  = {Hou, Yupeng and Li, Jiacheng and He, Zhankui and Yan, An and
+             Chen, Xiusi and McAuley, Julian},
+  title   = {Bridging Language and Items for Retrieval and Recommendation},
+  journal = {arXiv preprint arXiv:2403.03952},
+  year    = {2024},
+  note    = {Amazon Reviews 2023 dataset}
+}
+
+% ---------------------------------------------------------------------
+% Data sources used to build the unified catalog
+% ---------------------------------------------------------------------
+
+@misc{tmdb,
+  author       = {{The Movie Database}},
+  title        = {{TMDb} {API} Documentation},
+  year         = {2026},
+  howpublished = {\url{https://developer.themoviedb.org/}},
+  note         = {Accessed: 2026-09-07}
+}
+
+@misc{openlibrary,
+  author       = {{Internet Archive}},
+  title        = {Open Library {APIs}},
+  year         = {2026},
+  howpublished = {\url{https://openlibrary.org/developers/api}},
+  note         = {Accessed: 2026-09-07}
+}
+
+@misc{musicbrainz,
+  author       = {{MetaBrainz Foundation}},
+  title        = {{MusicBrainz} {API} Documentation},
+  year         = {2026},
+  howpublished = {\url{https://musicbrainz.org/doc/MusicBrainz_API}},
+  note         = {Accessed: 2026-09-07}
+}
+
+% ---------------------------------------------------------------------
+% Implementation stack
+% ---------------------------------------------------------------------
+
+@misc{qdrant,
+  author       = {{Qdrant}},
+  title        = {Qdrant Vector Database Documentation},
+  year         = {2026},
+  howpublished = {\url{https://qdrant.tech/documentation/}},
+  note         = {Accessed: 2026-09-07}
+}
+
+@misc{fastapi,
+  author       = {Ram{\'i}rez, Sebasti{\'a}n},
+  title        = {{FastAPI} Documentation},
+  year         = {2026},
+  howpublished = {\url{https://fastapi.tiangolo.com/}},
+  note         = {Accessed: 2026-09-07}
+}
+
+@misc{pytorch,
+  author       = {Paszke, Adam and Gross, Sam and Massa, Francisco and
+                  Lerer, Adam and Bradbury, James and Chanan, Gregory and
+                  Killeen, Trevor and others},
+  title        = {{PyTorch}: An Imperative Style, High-Performance Deep
+                  Learning Library},
+  year         = {2019},
+  howpublished = {Advances in Neural Information Processing Systems 32,
+                  pp.~8024--8035}
+}
+
+@misc{sbertminilm,
+  author       = {{Hugging Face}},
+  title        = {{sentence-transformers/all-MiniLM-L6-v2} Model Card},
+  year         = {2026},
+  howpublished = {\url{https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2}},
+  note         = {Accessed: 2026-09-07}
+}
