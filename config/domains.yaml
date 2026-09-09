@@ -53,6 +53,18 @@ domains:
     content_types:
       - health
 
+  finance:
+    label: Personal & Business Finance
+    description: >-
+      Personal-finance, accounting and tax software discovery. Information and
+      product discovery only.
+    risk_tier: 1
+    advisory: >-
+      Product discovery only. This is not financial, investment or tax advice.
+      Consult a qualified financial professional.
+    content_types:
+      - finance
+
 content_types:
   movie:
     domain: entertainment
@@ -91,5 +103,15 @@ content_types:
     domain: health
     label: Health & Household
     aliases: [health, healthcare, medical, wellness, household]
+    default_maturity: adult
+    maturity_source: category
+
+  finance:
+    domain: finance
+    label: Finance Software
+    aliases: [finance, financial, banking, accounting, tax, money, budgeting]
+    # Financial products are contracted by adults; most accounts require 18+.
+    # risk_tier 1 also means the audience tagger may restrict this further but
+    # never relax it below adult.
     default_maturity: adult
     maturity_source: category

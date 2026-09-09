@@ -112,3 +112,30 @@ datasets:
       - main_category
       - categories
       - description
+
+  finance:
+    content_type: finance
+    normalizer: amazon_meta
+    source: amazon_reviews_2023
+    # Finance is not one of Amazon's 28 top-level categories, but Software
+    # carries a real "Accounting & Finance" subtree. Carved out with:
+    #   python -m scripts.fetch_amazon_metadata --category Software \
+    #     --category-filter "Accounting & Finance|Tax Preparation|Personal Finance|Payroll|Investment Tools" \
+    #     --out-name Finance
+    path: datasets/amazon/meta/Finance.csv
+    id_column: parent_asin
+    title_column: title
+    description_column: description
+    category_columns:
+      - categories
+    creator_columns:
+      - store
+    release_date_column: null
+    popularity_column: rating_number
+    rating_column: average_rating
+    metadata_columns:
+      - title
+      - store
+      - main_category
+      - categories
+      - description

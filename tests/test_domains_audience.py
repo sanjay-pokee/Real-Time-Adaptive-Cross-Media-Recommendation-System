@@ -19,7 +19,7 @@ from backend.domains import get_registry, load_registry
 # Registry
 # ---------------------------------------------------------------------------
 
-def test_registry_declares_the_five_shipped_content_types():
+def test_registry_declares_the_shipped_content_types():
     registry = get_registry()
 
     assert set(registry.content_type_names()) == {
@@ -28,8 +28,26 @@ def test_registry_declares_the_five_shipped_content_types():
         "music",
         "industrial",
         "health",
+        "finance",
     }
-    assert set(registry.domain_names()) == {"entertainment", "health", "industry"}
+    assert set(registry.domain_names()) == {
+        "entertainment",
+        "health",
+        "industry",
+        "finance",
+    }
+
+
+def test_regulated_domains_are_exactly_health_and_finance():
+    """Both carry a legal advisory and gate below their content type default."""
+    registry = get_registry()
+
+    regulated = {
+        name for name, spec in registry.domains.items() if spec.is_regulated
+    }
+    assert regulated == {"health", "finance"}
+    for name in regulated:
+        assert registry.domains[name].advisory, f"{name} must carry an advisory"
 
 
 def test_aliases_resolve_to_canonical_names():

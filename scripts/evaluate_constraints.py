@@ -40,17 +40,32 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CATALOG = PROJECT_ROOT / "data" / "processed" / "content_catalog.csv"
 DEFAULT_OUT_DIR = PROJECT_ROOT / "reports"
 
-# The viewer profiles the report is built around. Named so the slide can quote
-# them directly.
-PROFILES: list[tuple[str, dict[str, Any]]] = [
+# The age-based viewer profiles the report is built around. Named so the slide
+# can quote them directly. The per-domain profiles are appended from the
+# registry by build_profiles.
+BASE_PROFILES: list[tuple[str, dict[str, Any]]] = [
     ("Child (8)", {"age": 8}),
     ("Teen (15)", {"age": 15}),
     ("Adult (25)", {"age": 25}),
     ("Adult, safe mode", {"age": 35, "safe_mode": True}),
     ("Age not supplied", {"age": None}),
-    ("Adult, health domain", {"age": 30, "domain": "health"}),
-    ("Adult, entertainment", {"age": 30, "domain": "entertainment"}),
 ]
+
+
+def build_profiles(registry) -> list[tuple[str, dict[str, Any]]]:
+    """The age profiles, plus one adult viewer scoped to each declared domain.
+
+    Derived from the registry rather than hardcoded, so a newly declared domain
+    pack is covered by this report the moment it exists. Hardcoding them meant
+    adding a vertical silently went unevaluated, which undercuts the claim that
+    adding one is a config change.
+    """
+    profiles = list(BASE_PROFILES)
+    for name in registry.domain_names():
+        profiles.append(
+            (f"Adult, {registry.domains[name].label}", {"age": 30, "domain": name})
+        )
+    return profiles
 
 
 def load_catalog(path: Path) -> pd.DataFrame:
@@ -183,7 +198,8 @@ def main() -> None:
     print()
 
     results = [
-        evaluate_profile(catalog, name, kwargs, args.k) for name, kwargs in PROFILES
+        evaluate_profile(catalog, name, kwargs, args.k)
+        for name, kwargs in build_profiles(registry)
     ]
     markdown = to_markdown(results, args.k)
     print(markdown)

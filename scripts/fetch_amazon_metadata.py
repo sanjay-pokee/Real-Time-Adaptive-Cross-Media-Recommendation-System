@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 from pathlib import Path
 
 import requests
@@ -51,6 +52,21 @@ def _flatten(value: object) -> str:
     return str(value).strip()
 
 
+def _matches_categories(record: dict, pattern: "re.Pattern[str] | None") -> bool:
+    """Keep only rows whose Amazon category path matches.
+
+    Some verticals have no category file of their own but do exist as a branch
+    inside another one: finance is not one of the 28 top-level categories, yet
+    Software carries a real "Accounting & Finance" subtree (Personal Finance,
+    Tax Preparation, Payroll, Investment Tools). Filtering on the category path
+    rather than the description keeps that precise - matching prose pulls in
+    an idle-clicker game called Oil Tycoon.
+    """
+    if pattern is None:
+        return True
+    return any(pattern.search(str(c)) for c in (record.get("categories") or []))
+
+
 def _is_usable(record: dict) -> bool:
     """Keep rows that can actually be embedded and shown."""
     title = _flatten(record.get("title"))
@@ -61,13 +77,20 @@ def _is_usable(record: dict) -> bool:
     return len(body) >= 20
 
 
-def fetch_metadata(category: str, limit: int, out_dir: Path) -> Path:
+def fetch_metadata(
+    category: str,
+    limit: int,
+    out_dir: Path,
+    category_filter: str | None = None,
+    out_name: str | None = None,
+) -> Path:
     remote = "raw/meta_categories/meta_" + category + ".jsonl"
     url = hf_hub_url(REPO_ID, remote, repo_type="dataset")
     print("streaming " + remote)
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / (category + ".csv")
+    pattern = re.compile(category_filter, re.I) if category_filter else None
+    out_path = out_dir / ((out_name or category) + ".csv")
 
     kept = 0
     seen = 0
@@ -84,6 +107,8 @@ def fetch_metadata(category: str, limit: int, out_dir: Path) -> Path:
                 try:
                     record = json.loads(line)
                 except json.JSONDecodeError:
+                    continue
+                if not _matches_categories(record, pattern):
                     continue
                 if not _is_usable(record):
                     continue
@@ -133,9 +158,21 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=20000,
                         help="stop after this many usable records (default 20000)")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT_DIR)
+    parser.add_argument(
+        "--category-filter",
+        default=None,
+        help="Regex on the Amazon category path, to carve a vertical out of "
+             "a broader category (e.g. \"Accounting & Finance|Tax Preparation\").",
+    )
+    parser.add_argument(
+        "--out-name",
+        default=None,
+        help="Output stem, when the carved vertical is not the category name.",
+    )
     args = parser.parse_args()
 
-    fetch_metadata(args.category, args.limit, args.out)
+    fetch_metadata(args.category, args.limit, args.out,
+                   args.category_filter, args.out_name)
 
 
 if __name__ == "__main__":
