@@ -1,0 +1,19 @@
+{
+  "model": "popularity",
+  "dataset": "prepared_industrial_and_scientific_50000.parquet",
+  "k": 20,
+  "metrics": {
+    "users_evaluated": 33929,
+    "hit_rate": 0.026378614164873707,
+    "recall": 0.026378614164873707,
+    "precision": 0.0013189307082436855,
+    "ndcg": 0.011140926733590064,
+    "mrr": 0.0069756685256481
+  },
+  "config": null,
+  "graph": {
+    "users": 33959,
+    "items": 19024,
+    "interactions": 238752
+  }
+}

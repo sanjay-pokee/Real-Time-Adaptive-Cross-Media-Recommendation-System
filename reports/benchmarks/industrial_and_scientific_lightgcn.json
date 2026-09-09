@@ -1,0 +1,27 @@
+{
+  "model": "lightgcn",
+  "dataset": "prepared_industrial_and_scientific_50000.parquet",
+  "k": 20,
+  "metrics": {
+    "users_evaluated": 33929,
+    "hit_rate": 0.032597482979162366,
+    "recall": 0.032597482979162366,
+    "precision": 0.0016298741489581183,
+    "ndcg": 0.013807171011217041,
+    "mrr": 0.008656946141415623
+  },
+  "config": {
+    "embedding_dim": 64,
+    "num_layers": 3,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "epochs": 60,
+    "batch_size": 4096,
+    "seed": 42
+  },
+  "graph": {
+    "users": 33959,
+    "items": 19024,
+    "interactions": 238752
+  }
+}

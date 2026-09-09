@@ -1,0 +1,19 @@
+{
+  "model": "popularity",
+  "dataset": "prepared_movies_and_tv_50000.parquet",
+  "k": 20,
+  "metrics": {
+    "users_evaluated": 49958,
+    "hit_rate": 0.018175267224468553,
+    "recall": 0.018175267224468553,
+    "precision": 0.0009087633612234276,
+    "ndcg": 0.008044229308998134,
+    "mrr": 0.005165872072074831
+  },
+  "config": null,
+  "graph": {
+    "users": 50000,
+    "items": 52263,
+    "interactions": 914346
+  }
+}

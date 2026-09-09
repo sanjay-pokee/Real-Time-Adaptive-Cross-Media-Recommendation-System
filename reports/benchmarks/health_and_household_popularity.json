@@ -1,0 +1,19 @@
+{
+  "model": "popularity",
+  "dataset": "prepared_health_and_household_50000.parquet",
+  "k": 20,
+  "metrics": {
+    "users_evaluated": 50000,
+    "hit_rate": 0.02206,
+    "recall": 0.02206,
+    "precision": 0.001103,
+    "ndcg": 0.009305629379869644,
+    "mrr": 0.005855473705688875
+  },
+  "config": null,
+  "graph": {
+    "users": 50000,
+    "items": 42640,
+    "interactions": 809212
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "model": "lightgcn",
+  "dataset": "prepared_movies_and_tv_50000.parquet",
+  "k": 20,
+  "metrics": {
+    "users_evaluated": 49958,
+    "hit_rate": 0.02884422915248809,
+    "recall": 0.02884422915248809,
+    "precision": 0.0014422114576244044,
+    "ndcg": 0.012478533653800371,
+    "mrr": 0.0080264431538085
+  },
+  "config": {
+    "embedding_dim": 64,
+    "num_layers": 3,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "epochs": 60,
+    "batch_size": 4096,
+    "seed": 42
+  },
+  "graph": {
+    "users": 50000,
+    "items": 52263,
+    "interactions": 914346
+  }
+}
