@@ -1,0 +1,91 @@
+# Domain registry for the recommendation engine.
+#
+# A "domain pack" describes one vertical the engine can serve. The retrieval
+# stack (embedding -> vector search -> rerank) is domain-agnostic; everything
+# domain-specific lives here, so adding a vertical is a config change rather
+# than a code change.
+#
+# risk_tier:
+#   0  informational  - ordinary discovery, no advisory needed
+#   1  caution        - regulated or consequential; surface an advisory
+#   2  professional   - requires a licensed professional; the engine must not
+#                       recommend these as advice, only as directory entries
+#
+# maturity levels (ordered, domain-neutral): all_ages child teen young_adult
+# adult restricted. Each maps to a minimum age in backend/audience.py.
+
+maturity_levels:
+  all_ages: 0
+  child: 7
+  teen: 13
+  young_adult: 16
+  adult: 18
+  restricted: 21
+
+domains:
+  entertainment:
+    label: Entertainment
+    description: Films, books and music discovery across media.
+    risk_tier: 0
+    advisory: null
+    content_types:
+      - movie
+      - book
+      - music
+
+  industry:
+    label: Industrial & Scientific
+    description: B2B industrial, scientific and laboratory equipment discovery.
+    risk_tier: 0
+    advisory: null
+    content_types:
+      - industrial
+
+  health:
+    label: Health & Household
+    description: >-
+      Health, personal-care and household product discovery. Information and
+      product discovery only.
+    risk_tier: 1
+    advisory: >-
+      Product discovery only. This is not medical advice, diagnosis or
+      treatment. Consult a qualified healthcare professional.
+    content_types:
+      - health
+
+content_types:
+  movie:
+    domain: entertainment
+    label: Movie
+    aliases: [movie, movies, film, films]
+    default_maturity: teen
+    maturity_source: certification
+
+  book:
+    domain: entertainment
+    label: Book
+    aliases: [book, books]
+    default_maturity: teen
+    maturity_source: category
+
+  music:
+    domain: entertainment
+    label: Music
+    aliases: [music, song, songs, track, tracks]
+    default_maturity: all_ages
+    maturity_source: explicit_flag
+
+  industrial:
+    domain: industry
+    label: Industrial & Scientific
+    aliases: [industrial, industry, scientific, equipment, b2b]
+    # Industrial and laboratory goods are sold to professionals, not minors.
+    default_maturity: adult
+    maturity_source: fixed
+
+  health:
+    domain: health
+    label: Health & Household
+    aliases: [health, healthcare, medical, wellness, household]
+    default_maturity: adult
+    maturity_source: category

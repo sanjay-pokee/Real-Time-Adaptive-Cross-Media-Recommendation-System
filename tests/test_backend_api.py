@@ -101,7 +101,7 @@ def test_person_query_prioritizes_creator_matches_then_general_recommendations()
     recommender.model = FakeModel()
     recommender.graph_store = None
     recommender.ema_store = None
-    recommender._search_vector = lambda vector, top_k, content_type: [
+    recommender._search_vector = lambda vector, top_k, content_type, audience=None: [
         _catalog_row("movie:test:2", "Actor Hit 2", "Actor One, Co Star", 40, 8),
         _catalog_row("movie:test:4", "General Result 1", "Other Person", 20, 6),
         _catalog_row("movie:test:5", "General Result 2", "Other Person", 10, 6),

@@ -9,12 +9,14 @@ from pathlib import Path
 import pandas as pd
 
 try:
+    from .audience_tagging import annotate_audience
     from .cleaners import clean_text, join_non_empty, make_text_hash, parse_name_list
-    from .content_schema import CONTENT_COLUMNS, make_global_id
+    from .content_schema import CATALOG_COLUMNS, CONTENT_COLUMNS, make_global_id
     from .loaders import DEFAULT_CONFIG_PATH, load_dataset_config, resolve_project_path
 except ImportError:
+    from audience_tagging import annotate_audience
     from cleaners import clean_text, join_non_empty, make_text_hash, parse_name_list
-    from content_schema import CONTENT_COLUMNS, make_global_id
+    from content_schema import CATALOG_COLUMNS, CONTENT_COLUMNS, make_global_id
     from loaders import DEFAULT_CONFIG_PATH, load_dataset_config, resolve_project_path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -44,7 +46,10 @@ def build_content_catalog(config_path: Path = DEFAULT_CONFIG_PATH) -> pd.DataFra
     catalog = catalog[catalog["title"].str.strip() != ""]
     catalog = catalog[catalog["embedding_text"].str.strip() != ""]
 
-    return catalog[CONTENT_COLUMNS].reset_index(drop=True)
+    # Derive the audience metadata the constraint layer filters on. Runs once
+    # on the combined catalog so every dataset is tagged by the same rules.
+    catalog = annotate_audience(catalog[CONTENT_COLUMNS])
+    return catalog[CATALOG_COLUMNS].reset_index(drop=True)
 
 
 # ---------------------------------------------------------------------------

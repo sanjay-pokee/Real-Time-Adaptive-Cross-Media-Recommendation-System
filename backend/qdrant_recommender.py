@@ -15,6 +15,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from backend.audience import AudienceContext, build_eligibility_filter, is_eligible
+from backend.domains import normalize_content_type
 from backend.ema_recommender import EMAEmbeddingStore
 from backend.graph_recommender import GraphEmbeddingStore
 from backend.knowledge_graph import CatalogKnowledgeGraph
@@ -38,6 +40,12 @@ RESULT_COLUMNS = [
     "release_date",
     "popularity",
     "rating",
+    # Audience metadata: carried through so a client can show why an item
+    # qualified, and so the constraint evaluation can re-check the filter.
+    "domain",
+    "maturity",
+    "audience_min_age",
+    "risk_tier",
 ]
 
 
@@ -65,6 +73,7 @@ class QdrantRecommender:
         top_k: int = 10,
         content_type: str | None = None,
         user_id: str | None = None,
+        audience: AudienceContext | None = None,
     ) -> list[dict[str, Any]]:
         if not query.strip():
             raise ValueError("Query cannot be empty.")
@@ -75,6 +84,7 @@ class QdrantRecommender:
             query,
             top_k=min(5, top_k),
             content_type=content_type,
+            audience=audience,
         )
         person_ids = {item["global_id"] for item in person_results}
 
@@ -84,7 +94,7 @@ class QdrantRecommender:
             normalize_embeddings=True,
         ).astype(np.float32)[0]
         search_k = max(top_k * 5 if user_id else top_k, top_k + len(person_results))
-        results = self._search_vector(query_vector, search_k, content_type)
+        results = self._search_vector(query_vector, search_k, content_type, audience)
         if person_ids:
             results = [item for item in results if item["global_id"] not in person_ids]
             results = person_results + results
@@ -100,6 +110,7 @@ class QdrantRecommender:
         top_k: int = 10,
         content_type: str | None = None,
         user_id: str | None = None,
+        audience: AudienceContext | None = None,
     ) -> list[dict[str, Any]]:
         if not global_id.strip():
             raise ValueError("global_id cannot be empty.")
@@ -117,7 +128,7 @@ class QdrantRecommender:
             normalize_embeddings=True,
         ).astype(np.float32)[0]
         search_k = (top_k * 5 if user_id else top_k) + 1
-        results = self._search_vector(vector, search_k, content_type)
+        results = self._search_vector(vector, search_k, content_type, audience)
         results = [item for item in results if item["global_id"] != global_id]
         results = self._personalize_results(results, search_k, user_id)
         results = self._graph_rerank(results, user_id)
@@ -130,9 +141,10 @@ class QdrantRecommender:
         vector: np.ndarray,
         top_k: int,
         content_type: str | None,
+        audience: AudienceContext | None = None,
     ) -> list[dict[str, Any]]:
         normalized_content_type = normalize_content_type(content_type)
-        query_filter = self._build_qdrant_filter(normalized_content_type)
+        query_filter = self._build_qdrant_filter(normalized_content_type, audience)
 
         try:
             points = self.client.search(
@@ -170,6 +182,7 @@ class QdrantRecommender:
         query: str,
         top_k: int,
         content_type: str | None,
+        audience: AudienceContext | None = None,
     ) -> list[dict[str, Any]]:
         """Return catalog rows whose creator/cast/director list matches query."""
         normalized_content_type = normalize_content_type(content_type)
@@ -196,6 +209,10 @@ class QdrantRecommender:
                 continue
 
             item = {column: _clean_value(row.get(column, "")) for column in RESULT_COLUMNS}
+            # This path reads the catalog directly instead of going through
+            # Qdrant, so the eligibility gate has to be applied here too.
+            if audience is not None and not is_eligible(item, audience):
+                continue
             popularity = _safe_float(row.get("popularity"), 0.0)
             rating = _safe_float(row.get("rating"), 0.0)
             item["score"] = 1.2 - (match_rank * 0.1) + min(popularity, 250.0) / 10000.0
@@ -293,7 +310,21 @@ class QdrantRecommender:
                 user_profile = {}
         return self.knowledge_graph.rerank(query, results, user_profile=user_profile)
 
-    def _build_qdrant_filter(self, content_type: str | None):
+    def _build_qdrant_filter(
+        self,
+        content_type: str | None,
+        audience: AudienceContext | None = None,
+    ):
+        """Compile the request's constraints into one pre-search filter.
+
+        With an audience, the age and risk gates go into the vector query itself,
+        so an ineligible item is never retrieved and no downstream reranker can
+        promote it back. Without one, behaviour is unchanged: a plain
+        content_type match, or no filter at all.
+        """
+        if audience is not None:
+            return build_eligibility_filter(audience, content_type)
+
         if content_type is None:
             return None
         try:
@@ -405,30 +436,6 @@ class QdrantRecommender:
                 f"Catalog rows ({len(self.catalog)}) do not match "
                 f"embedding index rows ({len(self.embedding_index)})."
             )
-
-
-def normalize_content_type(content_type: str | None) -> str | None:
-    if content_type is None:
-        return None
-
-    aliases = {
-        "movie": "movie",
-        "movies": "movie",
-        "film": "movie",
-        "films": "movie",
-        "book": "book",
-        "books": "book",
-        "music": "music",
-        "song": "music",
-        "songs": "music",
-        "track": "music",
-        "tracks": "music",
-    }
-    normalized = aliases.get(content_type.strip().lower())
-    if normalized is None:
-        allowed = ", ".join(sorted(aliases))
-        raise ValueError(f"Unknown content type '{content_type}'. Use one of: {allowed}.")
-    return normalized
 
 
 def _clean_value(value: Any) -> Any:

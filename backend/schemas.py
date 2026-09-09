@@ -3,24 +3,18 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 
+from backend.domains import get_registry
 
-ContentType = Literal[
-    "movie",
-    "movies",
-    "film",
-    "films",
-    "book",
-    "books",
-    "music",
-    "song",
-    "songs",
-    "track",
-    "tracks",
-]
+# Content types are declared in config/domains.yaml, not here: a Literal would
+# have to be edited every time a vertical is added, which is the coupling the
+# domain registry exists to remove. Validation happens in the recommender via
+# ``normalize_content_type``, which raises with the list of valid aliases.
+ContentType = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+DomainName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 InteractionType = Literal[
     "view",
@@ -39,7 +33,21 @@ class RecommendRequest(BaseModel):
     top_k: int = Field(10, ge=1, le=50, description="Number of results to return.")
     content_type: ContentType | None = Field(
         None,
-        description="Optional filter for movie, book, or music results.",
+        description="Optional filter for a single content type (movie, book, health, ...).",
+    )
+    domain: DomainName | None = Field(
+        None,
+        description="Optional filter for a whole vertical (entertainment, health, industry).",
+    )
+    age: int | None = Field(
+        None,
+        ge=0,
+        le=120,
+        description="Viewer age. Drives the audience eligibility pre-filter.",
+    )
+    safe_mode: bool = Field(
+        False,
+        description="Cap results at family-appropriate content regardless of age.",
     )
 
 
@@ -49,7 +57,21 @@ class ItemRecommendRequest(BaseModel):
     top_k: int = Field(10, ge=1, le=50, description="Number of results to return.")
     content_type: ContentType | None = Field(
         None,
-        description="Optional filter for movie, book, or music results.",
+        description="Optional filter for a single content type (movie, book, health, ...).",
+    )
+    domain: DomainName | None = Field(
+        None,
+        description="Optional filter for a whole vertical (entertainment, health, industry).",
+    )
+    age: int | None = Field(
+        None,
+        ge=0,
+        le=120,
+        description="Viewer age. Drives the audience eligibility pre-filter.",
+    )
+    safe_mode: bool = Field(
+        False,
+        description="Cap results at family-appropriate content regardless of age.",
     )
 
 
@@ -65,6 +87,10 @@ class RecommendationItem(BaseModel):
     release_date: str = ""
     popularity: float | str = ""
     rating: float | str = ""
+    domain: str = ""
+    maturity: str = ""
+    audience_min_age: int | str = ""
+    risk_tier: int | str = ""
     score: float
     semantic_score: float | None = None
     graph_score: float | None = None
@@ -77,6 +103,9 @@ class RecommendResponse(BaseModel):
     query: str
     top_k: int
     content_type: str | None
+    domain: str | None = None
+    # Set when the request targets a regulated domain, so the UI can show it.
+    advisory: str | None = None
     results: list[RecommendationItem]
 
 
@@ -84,6 +113,8 @@ class ItemRecommendResponse(BaseModel):
     global_id: str
     top_k: int
     content_type: str | None
+    domain: str | None = None
+    advisory: str | None = None
     results: list[RecommendationItem]
 
 
@@ -128,3 +159,19 @@ class SuggestItem(BaseModel):
 class SuggestResponse(BaseModel):
     q: str
     suggestions: list[SuggestItem]
+
+
+class DomainSummary(BaseModel):
+    """One vertical the engine can serve, as advertised by GET /domains."""
+
+    name: str
+    label: str
+    description: str
+    content_types: list[str]
+    risk_tier: int
+    advisory: str | None = None
+
+
+class DomainsResponse(BaseModel):
+    domains: list[DomainSummary]
+    content_types: list[str]

@@ -11,10 +11,14 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.audience import AudienceContext
+from backend.domains import get_registry
 from backend.ema_recommender import EMAEmbeddingStore
 from backend.mysql_store import MySQLStore
 from backend.qdrant_recommender import QdrantRecommender
 from backend.schemas import (
+    DomainSummary,
+    DomainsResponse,
     InteractionRequest,
     InteractionResponse,
     ItemRecommendRequest,
@@ -25,6 +29,21 @@ from backend.schemas import (
     SuggestResponse,
     UserInteractionState,
 )
+
+
+def _audience_for(payload: RecommendRequest | ItemRecommendRequest) -> AudienceContext | None:
+    """Build the eligibility context, or None when the caller declared no audience.
+
+    A request that says nothing about its viewer is left unconstrained so existing
+    clients keep working; constraints apply exactly when the caller asks for them.
+    """
+    if payload.age is None and not payload.safe_mode and payload.domain is None:
+        return None
+    return AudienceContext(
+        age=payload.age,
+        domain=payload.domain,
+        safe_mode=payload.safe_mode,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +217,30 @@ def search_suggest(
 
     return SuggestResponse(q=q, suggestions=suggestions[:limit])
 
+@app.get("/domains", response_model=DomainsResponse)
+def domains() -> DomainsResponse:
+    """Advertise the verticals this deployment serves.
+
+    Read straight from config/domains.yaml, so a client discovers new domains
+    without a code change on either side.
+    """
+    registry = get_registry()
+    return DomainsResponse(
+        domains=[
+            DomainSummary(
+                name=spec.name,
+                label=spec.label,
+                description=spec.description,
+                content_types=list(spec.content_types),
+                risk_tier=spec.risk_tier,
+                advisory=spec.advisory,
+            )
+            for spec in sorted(registry.domains.values(), key=lambda d: d.name)
+        ],
+        content_types=list(registry.content_type_names()),
+    )
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -209,12 +252,14 @@ def recommend(
     recommender: QdrantRecommender = Depends(get_recommender),
 ) -> RecommendResponse:
     try:
+        audience = _audience_for(payload)
         try:
             results = recommender.recommend(
                 payload.query,
                 top_k=payload.top_k,
                 content_type=payload.content_type,
                 user_id=payload.user_id,
+                audience=audience,
             )
         except TypeError:
             results = recommender.recommend(
@@ -235,6 +280,8 @@ def recommend(
         query=payload.query,
         top_k=payload.top_k,
         content_type=payload.content_type,
+        domain=payload.domain,
+        advisory=audience.advisory() if audience else None,
         results=results,
     )
 
@@ -245,12 +292,14 @@ def recommend_from_item(
     recommender: QdrantRecommender = Depends(get_recommender),
 ) -> ItemRecommendResponse:
     try:
+        audience = _audience_for(payload)
         try:
             results = recommender.recommend_from_item(
                 payload.global_id,
                 top_k=payload.top_k,
                 content_type=payload.content_type,
                 user_id=payload.user_id,
+                audience=audience,
             )
         except TypeError:
             results = recommender.recommend_from_item(
@@ -271,6 +320,8 @@ def recommend_from_item(
         global_id=payload.global_id,
         top_k=payload.top_k,
         content_type=payload.content_type,
+        domain=payload.domain,
+        advisory=audience.advisory() if audience else None,
         results=results,
     )
 

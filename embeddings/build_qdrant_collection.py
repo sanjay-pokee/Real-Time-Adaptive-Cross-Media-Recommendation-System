@@ -70,6 +70,13 @@ def build_qdrant_collection(
             "popularity": _clean(row.get("popularity", "")),
             "rating": _clean(row.get("rating", "")),
         }
+        # Audience metadata is queried as a Qdrant filter, not just displayed, so
+        # these must be real numbers: a Range condition skips any point where the
+        # field is missing or a string, which would silently hide the catalog.
+        payload["domain"] = _clean(row.get("domain", ""))
+        payload["maturity"] = _clean(row.get("maturity", ""))
+        payload["audience_min_age"] = _as_int(row.get("audience_min_age"), default=0)
+        payload["risk_tier"] = _as_int(row.get("risk_tier"), default=0)
         points.append(
             PointStruct(
                 id=str(uuid.uuid5(uuid.NAMESPACE_URL, str(row["global_id"]))),
@@ -115,6 +122,16 @@ def _validate_inputs(
         errors.append(f"Embedding matrix must be 2D, got shape={vectors.shape}.")
     if vectors.shape[0] != len(catalog):
         errors.append("Embedding matrix row count does not match catalog.")
+    missing_audience = [
+        column
+        for column in ("domain", "maturity", "audience_min_age", "risk_tier")
+        if column not in catalog.columns
+    ]
+    if missing_audience:
+        errors.append(
+            "Catalog is missing audience columns "
+            f"({', '.join(missing_audience)}); rerun preprocessing.build_content_catalog."
+        )
     if "embedding_row" not in embedding_index.columns:
         errors.append("Embedding index is missing embedding_row.")
     elif list(embedding_index["embedding_row"]) != list(range(len(embedding_index))):
@@ -122,6 +139,15 @@ def _validate_inputs(
     if errors:
         message = "\n".join(f"  - {error}" for error in errors)
         raise ValueError(f"Cannot build Qdrant collection:\n{message}")
+
+
+def _as_int(value: Any, default: int = 0) -> int:
+    try:
+        if pd.isna(value):
+            return default
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
 
 
 def _clean(value: Any) -> Any:

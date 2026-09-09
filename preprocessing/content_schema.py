@@ -22,6 +22,14 @@ CONTENT_COLUMNS = [
     "text_hash",
 ]
 
+# Audience metadata derived after normalization by preprocessing.audience_tagging.
+# Kept separate from CONTENT_COLUMNS so the per-dataset normalizers stay unaware
+# of it: they emit the base schema, the audience pass appends these.
+AUDIENCE_COLUMNS = ["domain", "maturity", "audience_min_age", "risk_tier"]
+
+# The full on-disk catalog schema.
+CATALOG_COLUMNS = CONTENT_COLUMNS + AUDIENCE_COLUMNS
+
 # Columns that must always be present and non-empty for a valid row.
 REQUIRED_NON_EMPTY = ["global_id", "title", "embedding_text", "text_hash"]
 
