@@ -87,6 +87,34 @@ class LightGCN(nn.Module):
         return (user_embeddings[users] * item_embeddings[items]).sum(dim=1)
 
 
+def compute_interaction_weights(frame: pd.DataFrame) -> pd.Series:
+    """Vectorised equivalent of ``interaction_weight`` over a whole DataFrame.
+
+    The per-row ``itertuples`` version costs minutes on multi-million-row
+    benchmark files (and is re-run in every pipeline stage), so keep this on the
+    hot path and reserve ``interaction_weight`` for single lookups and tests.
+    """
+    events = frame["event_type"].astype(str).str.lower()
+    weights = (
+        events.map(POSITIVE_EVENT_WEIGHTS)
+        .fillna(events.map(NEGATIVE_EVENT_WEIGHTS))
+        .fillna(0.0)
+        .astype(float)
+    )
+
+    is_rating = events == "rating"
+    if is_rating.any():
+        if "event_value" in frame.columns:
+            values = pd.to_numeric(frame["event_value"], errors="coerce")
+        else:
+            values = pd.Series(np.nan, index=frame.index, dtype=float)
+        # interaction_weight("rating", None) == 1.0; otherwise (value - 3) / 2, floored at -1.
+        rating_weights = ((values - 3.0) / 2.0).clip(lower=-1.0).fillna(1.0)
+        weights = weights.mask(is_rating, rating_weights)
+
+    return weights
+
+
 def interaction_weight(event_type: str, event_value: float | None = None) -> float:
     event = str(event_type or "").lower()
     if event == "rating":
@@ -112,24 +140,31 @@ def build_training_interactions(
     if interactions.empty:
         raise ValueError("No interactions available for LightGCN training.")
 
-    frame = interactions.copy()
-    if "event_value" not in frame.columns:
-        frame["event_value"] = None
-    frame["weight"] = [
-        interaction_weight(row.event_type, row.event_value)
-        for row in frame.itertuples(index=False)
-    ]
-    frame = frame[frame["weight"] > 0].copy()
-    if frame.empty:
+    weights = compute_interaction_weights(interactions).to_numpy()
+    positive = weights > 0
+    if not positive.any():
         raise ValueError("No positive interactions available for LightGCN training.")
 
-    user_ids = sorted(frame["user_id"].astype(str).unique())
-    item_ids = sorted(frame["entity_id"].astype(str).unique())
+    users = interactions["user_id"].to_numpy()[positive].astype(str)
+    items = interactions["entity_id"].to_numpy()[positive].astype(str)
+    # factorize(sort=True) gives the sorted unique labels *and* their codes in a
+    # single hashed C pass -- the sorted(unique()) + .map() pair it replaces was
+    # the second-slowest step on multi-million-row graphs.
+    user_idx, user_ids = pd.factorize(users, sort=True)
+    item_idx, item_ids = pd.factorize(items, sort=True)
     user_to_idx = {user_id: idx for idx, user_id in enumerate(user_ids)}
     item_to_idx = {item_id: idx for idx, item_id in enumerate(item_ids)}
-    frame["user_idx"] = frame["user_id"].astype(str).map(user_to_idx)
-    frame["item_idx"] = frame["entity_id"].astype(str).map(item_to_idx)
-    return frame[["user_id", "entity_id", "user_idx", "item_idx", "weight"]], user_to_idx, item_to_idx
+
+    frame = pd.DataFrame(
+        {
+            "user_id": users,
+            "entity_id": items,
+            "user_idx": user_idx,
+            "item_idx": item_idx,
+            "weight": weights[positive],
+        }
+    )
+    return frame, user_to_idx, item_to_idx
 
 
 def build_normalized_adjacency(

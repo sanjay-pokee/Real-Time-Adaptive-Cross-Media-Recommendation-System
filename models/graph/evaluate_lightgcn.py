@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,7 +18,7 @@ from models.graph.lightgcn import (
     build_normalized_adjacency,
     build_positive_keys,
     build_training_interactions,
-    interaction_weight,
+    compute_interaction_weights,
     sample_bpr_batch,
 )
 
@@ -39,24 +40,24 @@ def split_holdout_by_user(
     holdout_per_user: int = 2,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     positives = _positive_interactions(interactions)
-    if "timestamp" in positives.columns:
-        positives = positives.sort_values(["user_id", "timestamp"])
-    else:
-        positives = positives.sort_values(["user_id", "entity_id"])
+    sort_columns = ["user_id", "timestamp"] if "timestamp" in positives.columns else ["user_id", "entity_id"]
+    positives = positives.sort_values(sort_columns, kind="stable")
+    positives = positives.drop_duplicates(subset=["user_id", "entity_id"], keep="last")
 
-    train_parts = []
-    test_parts = []
-    for _, group in positives.groupby("user_id", sort=True):
-        group = group.drop_duplicates(subset=["entity_id"], keep="last")
-        if len(group) <= holdout_per_user:
-            train_parts.append(group)
-            continue
-        test_parts.append(group.tail(holdout_per_user))
-        train_parts.append(group.iloc[:-holdout_per_user])
+    # Vectorised leave-last-n-out. The per-user Python loop this replaces built one
+    # small DataFrame per user and then pd.concat'd tens of thousands of them, which
+    # is what made the benchmark runs look hung before the first epoch ever printed.
+    grouped = positives.groupby("user_id", sort=False)
+    rank_from_end = grouped.cumcount(ascending=False)  # 0 == the user's last positive
+    group_sizes = grouped["entity_id"].transform("size")
+    is_test = (group_sizes > holdout_per_user) & (rank_from_end < holdout_per_user)
 
-    if not train_parts or not test_parts:
+    if not is_test.any() or is_test.all():
         raise ValueError("Not enough positive interactions per user for holdout evaluation.")
-    return pd.concat(train_parts, ignore_index=True), pd.concat(test_parts, ignore_index=True)
+    return (
+        positives[~is_test].reset_index(drop=True),
+        positives[is_test].reset_index(drop=True),
+    )
 
 
 def train_for_evaluation(
@@ -90,6 +91,12 @@ def train_for_evaluation(
     positive_keys = build_positive_keys(positive_pairs, len(item_to_idx))
     steps_per_epoch = max(1, int(np.ceil(len(positive_pairs) / config.batch_size)))
 
+    print(
+        f"training graph: users={len(user_to_idx):,} items={len(item_to_idx):,} "
+        f"pairs={len(positive_pairs):,} steps/epoch={steps_per_epoch}",
+        flush=True,
+    )
+    epoch_clock = time.perf_counter()
     model.train()
     for epoch in range(1, config.epochs + 1):
         epoch_loss = 0.0
@@ -122,8 +129,14 @@ def train_for_evaluation(
             optimizer.step()
             epoch_loss += float(loss.detach().cpu())
 
-        if epoch == 1 or epoch == config.epochs or epoch % 10 == 0:
-            print(f"epoch={epoch:03d} eval_train_loss={epoch_loss / steps_per_epoch:.4f}")
+        if epoch == 1 or epoch == config.epochs or epoch % 5 == 0:
+            elapsed = time.perf_counter() - epoch_clock
+            remaining = elapsed / epoch * (config.epochs - epoch)
+            print(
+                f"epoch={epoch:03d}/{config.epochs} eval_train_loss={epoch_loss / steps_per_epoch:.4f} "
+                f"elapsed={elapsed / 60:.1f}m eta={remaining / 60:.1f}m",
+                flush=True,
+            )
 
     model.eval()
     with torch.no_grad():
@@ -141,11 +154,24 @@ def train_for_evaluation(
 
 
 def _seen_index_sets(rows: pd.DataFrame, item_to_idx: dict[str, int]) -> dict[str, set[int]]:
-    return (
-        rows.groupby("user_id")["entity_id"]
-        .apply(lambda values: {item_to_idx[str(v)] for v in values if str(v) in item_to_idx})
-        .to_dict()
-    )
+    """Map each user to the set of item *indices* they appear with in ``rows``.
+
+    A flat zip over two numpy arrays instead of ``groupby.apply``, which built a
+    throwaway Series per user and dominated evaluation time on large holdouts.
+    """
+    mapped = rows["entity_id"].astype(str).map(item_to_idx)
+    keep = mapped.notna().to_numpy()
+    users = rows["user_id"].to_numpy()[keep]
+    items = mapped.to_numpy()[keep].astype(np.int64)
+
+    seen: dict[str, set[int]] = {}
+    for user_id, item_idx in zip(users, items):
+        bucket = seen.get(user_id)
+        if bucket is None:
+            seen[user_id] = {int(item_idx)}
+        else:
+            bucket.add(int(item_idx))
+    return seen
 
 
 def _metrics_from_rankings(
@@ -225,10 +251,19 @@ def evaluate_rankings(
             item_tensor_t = item_tensor_t.cpu()
             scores = (user_tensor[rows] @ item_tensor_t).clone()
 
+        mask_rows: list[int] = []
+        mask_cols: list[int] = []
         for row_pos, user_id in enumerate(batch):
             seen = train_seen.get(user_id)
             if seen:
-                scores[row_pos, list(seen)] = float("-inf")
+                mask_cols.extend(seen)
+                mask_rows.extend([row_pos] * len(seen))
+        if mask_rows:
+            # One scatter for the whole batch instead of one GPU launch per user.
+            scores[
+                torch.as_tensor(mask_rows, dtype=torch.long, device=scores.device),
+                torch.as_tensor(mask_cols, dtype=torch.long, device=scores.device),
+            ] = float("-inf")
 
         top_indices = torch.topk(scores, top_n, dim=1).indices.cpu().numpy()
         for row_pos, user_id in enumerate(batch):
@@ -312,14 +347,10 @@ def run_evaluation(
 
 
 def _positive_interactions(interactions: pd.DataFrame) -> pd.DataFrame:
-    frame = interactions.copy()
-    if "event_value" not in frame.columns:
-        frame["event_value"] = None
-    frame["weight"] = [
-        interaction_weight(row.event_type, row.event_value)
-        for row in frame.itertuples(index=False)
-    ]
-    return frame[frame["weight"] > 0].copy()
+    weights = compute_interaction_weights(interactions)
+    frame = interactions.loc[weights.to_numpy() > 0].copy()
+    frame["weight"] = weights.to_numpy()[weights.to_numpy() > 0]
+    return frame
 
 
 def _ndcg_at_k(hits: list[int], ideal_hits: int) -> float:

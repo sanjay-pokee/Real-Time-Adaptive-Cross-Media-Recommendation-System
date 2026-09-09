@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -84,6 +85,12 @@ def train(output_path: Path, config: LightGCNConfig, interactions: pd.DataFrame 
     positive_keys = build_positive_keys(positive_pairs, len(item_to_idx))
     steps_per_epoch = max(1, int(np.ceil(len(positive_pairs) / config.batch_size)))
 
+    print(
+        f"training graph: users={len(user_to_idx):,} items={len(item_to_idx):,} "
+        f"pairs={len(positive_pairs):,} steps/epoch={steps_per_epoch}",
+        flush=True,
+    )
+    epoch_clock = time.perf_counter()
     model.train()
     for epoch in range(1, config.epochs + 1):
         epoch_loss = 0.0
@@ -116,8 +123,14 @@ def train(output_path: Path, config: LightGCNConfig, interactions: pd.DataFrame 
             optimizer.step()
             epoch_loss += float(loss.detach().cpu())
 
-        if epoch == 1 or epoch == config.epochs or epoch % 10 == 0:
-            print(f"epoch={epoch:03d} loss={epoch_loss / steps_per_epoch:.4f}")
+        if epoch == 1 or epoch == config.epochs or epoch % 5 == 0:
+            elapsed = time.perf_counter() - epoch_clock
+            remaining = elapsed / epoch * (config.epochs - epoch)
+            print(
+                f"epoch={epoch:03d}/{config.epochs} loss={epoch_loss / steps_per_epoch:.4f} "
+                f"elapsed={elapsed / 60:.1f}m eta={remaining / 60:.1f}m",
+                flush=True,
+            )
 
     model.eval()
     with torch.no_grad():
