@@ -53,6 +53,28 @@ INDEX_COLUMNS = [
 # Main pipeline
 # ---------------------------------------------------------------------------
 
+def _reuse_key(
+    global_id: object,
+    embedding_model: object,
+    embedding_version: object,
+    text_hash: object,
+) -> tuple[str, str, str, str]:
+    """Build the cache key with every part coerced to str.
+
+    The index round-trips through CSV, and pandas infers embedding_version
+    ("1") back as int64 1. The lookup key held the string, the stored key held
+    the int, so no key ever matched and the cache missed 100% of the time -
+    every rebuild re-encoded the whole catalogue on the GPU even when nothing
+    had changed. Coercing both sides keeps the comparison type-independent.
+    """
+    return (
+        str(global_id),
+        str(embedding_model),
+        str(embedding_version),
+        str(text_hash),
+    )
+
+
 def build_embeddings(
     catalog_path: Path = CATALOG_PATH,
     npy_path: Path = NPY_PATH,
@@ -81,7 +103,7 @@ def build_embeddings(
     reuse_map: dict[tuple[str, str, str, str], int] = {}
     if existing_index is not None:
         for _, row in existing_index.iterrows():
-            key = (
+            key = _reuse_key(
                 row["global_id"],
                 row["embedding_model"],
                 row["embedding_version"],
@@ -92,7 +114,7 @@ def build_embeddings(
     # --- Decide which rows need new embeddings ---
     needs_embedding_mask = []
     for _, row in catalog.iterrows():
-        key = (row["global_id"], embedding_model, embedding_version, row["text_hash"])
+        key = _reuse_key(row["global_id"], embedding_model, embedding_version, row["text_hash"])
         needs_embedding_mask.append(key not in reuse_map)
 
     needs_new = sum(needs_embedding_mask)
@@ -123,7 +145,7 @@ def build_embeddings(
     for i, (needs, (_, row)) in enumerate(
         zip(needs_embedding_mask, catalog.iterrows())
     ):
-        key = (row["global_id"], embedding_model, embedding_version, row["text_hash"])
+        key = _reuse_key(row["global_id"], embedding_model, embedding_version, row["text_hash"])
         if not needs and existing_vectors is not None:
             old_row = reuse_map[key]
             full_matrix[i] = existing_vectors[old_row]

@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from embeddings.build_embeddings import (
     INDEX_COLUMNS,
+    _reuse_key,
     EMBEDDING_MODEL,
     EMBEDDING_VERSION,
     _validate_embedding_output,
@@ -196,3 +197,85 @@ class TestReuseMapKey:
             make_text_hash("completely different text"),
         )
         assert new_key not in reuse_map
+
+
+# ---------------------------------------------------------------------------
+# The cache key must survive a CSV round-trip
+# ---------------------------------------------------------------------------
+
+class TestReuseKeySurvivesCsvRoundTrip:
+    """The index is persisted as CSV, so keys are rebuilt from parsed values.
+
+    The tests above build the key inline, which is a reimplementation rather
+    than a use of the real function, so they could not catch the bug that
+    actually occurred: EMBEDDING_VERSION is the string "1", pandas reads it back
+    from CSV as int64 1, and "1" != 1 made every lookup miss. The cache reported
+    "Reusing: 0" on every run and re-encoded the whole catalogue each time.
+    """
+
+    def test_version_read_back_as_int_still_matches(self, tmp_path):
+        index = _make_index(3)
+        path = tmp_path / "index.csv"
+        index.to_csv(path, index=False)
+        reloaded = pd.read_csv(path)
+
+        # This is the coercion that matters: pandas infers the column as int64.
+        assert reloaded["embedding_version"].dtype.kind == "i"
+
+        stored = {
+            _reuse_key(
+                row["global_id"],
+                row["embedding_model"],
+                row["embedding_version"],
+                row["text_hash"],
+            )
+            for _, row in reloaded.iterrows()
+        }
+        for _, row in index.iterrows():
+            lookup = _reuse_key(
+                row["global_id"], EMBEDDING_MODEL, EMBEDDING_VERSION, row["text_hash"]
+            )
+            assert lookup in stored
+
+    def test_a_changed_text_hash_still_misses(self, tmp_path):
+        """Coercion must not make the key so loose that edits go unnoticed."""
+        index = _make_index(1)
+        path = tmp_path / "index.csv"
+        index.to_csv(path, index=False)
+        reloaded = pd.read_csv(path)
+        row = reloaded.iloc[0]
+
+        stored = {
+            _reuse_key(
+                row["global_id"],
+                row["embedding_model"],
+                row["embedding_version"],
+                row["text_hash"],
+            )
+        }
+        edited = _reuse_key(
+            row["global_id"],
+            EMBEDDING_MODEL,
+            EMBEDDING_VERSION,
+            make_text_hash("the description was edited"),
+        )
+        assert edited not in stored
+
+    def test_a_new_item_misses(self, tmp_path):
+        index = _make_index(1)
+        row = index.iloc[0]
+        stored = {
+            _reuse_key(
+                row["global_id"],
+                row["embedding_model"],
+                row["embedding_version"],
+                row["text_hash"],
+            )
+        }
+        new_item = _reuse_key(
+            make_global_id("movie", "tmdb", "does-not-exist-yet"),
+            EMBEDDING_MODEL,
+            EMBEDDING_VERSION,
+            make_text_hash("brand new row"),
+        )
+        assert new_item not in stored
