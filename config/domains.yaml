@@ -72,7 +72,11 @@ content_types:
     domain: entertainment
     label: Music
     aliases: [music, song, songs, track, tracks]
-    default_maturity: all_ages
+    # The Spotify source ships no explicit-lyrics column, so `explicit_flag`
+    # never actually fires. Defaulting to all_ages therefore failed *open* and
+    # rated 96% of the catalogue safe for children, gangster rap included.
+    # Cap unknown music at teen; genre keywords can still pull it either way.
+    default_maturity: teen
     maturity_source: explicit_flag
 
   industrial:

@@ -41,11 +41,28 @@ MATURITY_CATEGORY_RULES: list[tuple[str, tuple[str, ...]]] = [
             "mature content",
             "true crime",
             "gore",
+            "gangster",
+            "murder",
+            "slasher",
         ),
     ),
     (
         "teen",
-        ("young adult", "teen", "juvenile nonfiction"),
+        (
+            "young adult",
+            "teen",
+            "juvenile nonfiction",
+            # Violence/crime signals. Without these a row reading
+            # "Animation, Science Fiction, Thriller" fell through every
+            # restrictive rule and matched "animation" as all_ages.
+            "thriller",
+            "crime",
+            "violence",
+            "violent",
+            "suspense",
+            "noir",
+            "mystery",
+        ),
     ),
     (
         "all_ages",
@@ -64,9 +81,20 @@ MATURITY_CATEGORY_RULES: list[tuple[str, tuple[str, ...]]] = [
 ]
 
 
+LEFT_BOUNDARY = "(?<![a-z])"
+
+
 def _compile(rules: list[tuple[str, tuple[str, ...]]]) -> list[tuple[str, re.Pattern[str]]]:
+    # Match only at a left word boundary, so "teen" no longer fires on
+    # "canteen"/"sixteen" and "war" would not fire on "award". A symmetric
+    # word-boundary assertion would break stem keywords such as "pornograph"
+    # (it has to still match "pornography"), so this is a negative lookbehind
+    # on the left only. The haystack is lowercased before matching.
     return [
-        (maturity, re.compile("|".join(re.escape(keyword) for keyword in keywords)))
+        (
+            maturity,
+            re.compile("|".join(LEFT_BOUNDARY + re.escape(k) for k in keywords)),
+        )
         for maturity, keywords in rules
     ]
 

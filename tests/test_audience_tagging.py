@@ -138,3 +138,41 @@ def test_summary_counts_by_domain_and_maturity():
 def test_summary_rejects_an_untagged_catalog():
     with pytest.raises(ValueError, match="missing audience columns"):
         audience_summary(pd.DataFrame([{"content_type": "movie"}]))
+
+
+@pytest.mark.parametrize(
+    "content_type, category_text, expected",
+    [
+        # A violence signal must outrank a child-friendly one. "Animation,
+        # Science Fiction, Thriller" previously matched only "animation" and
+        # was served to an 8-year-old.
+        ("movie", "Animation, Science Fiction, Thriller", "teen"),
+        ("book", "Child care, mystery thriller", "teen"),
+        ("music", "rap, gangster rap", "adult"),
+        ("music", "rap, southern hip hop Murder After Midnight", "adult"),
+        # Genuinely child-oriented rows must still come back all_ages.
+        ("movie", "Animation, Family", "all_ages"),
+        ("book", "Juvenile Fiction, picture book", "all_ages"),
+    ],
+)
+def test_violence_signals_outrank_child_friendly_ones(content_type, category_text, expected):
+    assert maturity_for_row(content_type, category_text) == expected
+
+
+@pytest.mark.parametrize(
+    "category_text",
+    ["Award-winning history", "Notes from the canteen", "Sixteen candles"],
+)
+def test_keywords_only_match_at_a_left_word_boundary(category_text):
+    """"teen" must not fire inside "canteen"/"sixteen", nor "war" inside "award"."""
+    assert maturity_for_row("book", category_text) == "teen"  # the book default
+
+
+def test_music_without_an_explicit_flag_is_capped_at_teen():
+    """The Spotify source ships no explicit-lyrics column.
+
+    Defaulting music to all_ages failed *open* and rated 96% of the catalogue
+    safe for children. Unknown music is capped at teen instead.
+    """
+    assert maturity_for_row("music", "pop, dance pop") == "teen"
+    assert maturity_for_row("music", "") == "teen"
