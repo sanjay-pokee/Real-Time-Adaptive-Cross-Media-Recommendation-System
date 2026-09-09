@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import time
 from pathlib import Path
 from typing import Iterator
 
@@ -41,6 +42,10 @@ _USER_COLS = ("user_id", "reviewerid", "user", "userid")
 _ITEM_COLS = ("parent_asin", "item_id", "asin", "item", "itemid", "product_id")
 _RATING_COLS = ("rating", "overall", "stars")
 _TIME_COLS = ("timestamp", "unixreviewtime", "time", "unix_time")
+
+# The column contract every downstream stage expects; also the cache marker.
+PREPARED_COLUMNS = ["user_id", "entity_id", "event_type", "event_value", "timestamp"]
+PREPARED_KEY_COLUMNS = {"user_id", "entity_id", "event_type"}
 
 
 # ---------------------------------------------------------------------------
@@ -188,21 +193,31 @@ def k_core_filter(
     item_core: int = 5,
     max_iterations: int = 20,
 ) -> pd.DataFrame:
-    """Iteratively drop users/items below the interaction thresholds."""
-    current = frame
+    """Iteratively drop users/items below the interaction thresholds.
+
+    Works on integer codes and a boolean keep-mask rather than slicing string
+    columns each round: ``value_counts`` + ``isin`` on object dtype re-hashed
+    millions of Python strings on every one of the up-to-20 iterations.
+    """
+    if frame.empty:
+        return frame.reset_index(drop=True)
+
+    user_codes = pd.factorize(frame["user_id"].to_numpy())[0]
+    item_codes = pd.factorize(frame["entity_id"].to_numpy())[0]
+    num_users = int(user_codes.max()) + 1
+    num_items = int(item_codes.max()) + 1
+
+    keep = np.ones(len(frame), dtype=bool)
     for _ in range(max_iterations):
-        before = len(current)
-        user_counts = current["user_id"].value_counts()
-        keep_users = user_counts[user_counts >= user_core].index
-        current = current[current["user_id"].isin(keep_users)]
-
-        item_counts = current["entity_id"].value_counts()
-        keep_items = item_counts[item_counts >= item_core].index
-        current = current[current["entity_id"].isin(keep_items)]
-
-        if len(current) == before:
+        before = int(keep.sum())
+        user_counts = np.bincount(user_codes[keep], minlength=num_users)
+        keep &= user_counts[user_codes] >= user_core
+        item_counts = np.bincount(item_codes[keep], minlength=num_items)
+        keep &= item_counts[item_codes] >= item_core
+        remaining = int(keep.sum())
+        if remaining == before or remaining == 0:
             break
-    return current.reset_index(drop=True)
+    return frame[keep].reset_index(drop=True)
 
 
 def subsample_users(frame: pd.DataFrame, max_users: int, seed: int = 42) -> pd.DataFrame:
@@ -228,17 +243,34 @@ def prepare_interactions(
     Returns a DataFrame with columns:
         user_id, entity_id, event_type, event_value, timestamp
     """
+    if is_prepared_cache(path):
+        cached = read_prepared_cache(path)
+        print(f"[datasets] reusing prepared cache {Path(path).name} ({len(cached):,} rows)", flush=True)
+        return cached
+
+    started = time.perf_counter()
     raw = load_raw(path)
-    positives = raw[raw["rating"] >= float(min_rating)].copy()
+    print(f"[datasets] read {len(raw):,} raw rows in {time.perf_counter() - started:.1f}s", flush=True)
+
+    positives = raw[raw["rating"] >= float(min_rating)]
     if positives.empty:
         raise ValueError(
             f"No interactions with rating >= {min_rating} in {Path(path).name}."
         )
+    # Drop the rating column here: it is not used again and it is pure memory.
+    positives = positives[["user_id", "entity_id", "timestamp"]].copy()
+    del raw
 
     positives = positives.drop_duplicates(subset=["user_id", "entity_id"], keep="last")
 
     # 1. Establish a dense core on the FULL user base first.
+    stage = time.perf_counter()
     positives = k_core_filter(positives, user_core=user_core, item_core=item_core)
+    print(
+        f"[datasets] {user_core}/{item_core}-core kept {len(positives):,} rows "
+        f"in {time.perf_counter() - stage:.1f}s",
+        flush=True,
+    )
     if positives.empty:
         raise ValueError(
             "k-core filter removed everything on the full dataset. Lower --user-core / --item-core."
@@ -263,7 +295,76 @@ def prepare_interactions(
 
     positives["event_type"] = "like"
     positives["event_value"] = 1.0
-    return positives[["user_id", "entity_id", "event_type", "event_value", "timestamp"]]
+    prepared = positives[PREPARED_COLUMNS]
+    print(f"[datasets] prepared in {time.perf_counter() - started:.1f}s total", flush=True)
+    return prepared
+
+
+def _cache_columns(path: Path) -> set[str]:
+    """Column names of a candidate cache file, without reading the whole thing."""
+    if path.suffix.lower() == ".parquet":
+        try:
+            import pyarrow.parquet as pq
+
+            return set(pq.read_schema(path).names)
+        except Exception:
+            return set(pd.read_parquet(path).columns)
+    with _open_text(path) as handle:
+        header = handle.readline()
+    return {column.strip().strip('"').lower() for column in header.split(",")}
+
+
+def is_prepared_cache(path: str | Path) -> bool:
+    """True when ``path`` already holds a frame in the prepared column contract.
+
+    Lets the notebook pay for the read + k-core once and hand every later stage
+    (baseline, holdout eval, final artifact) the finished frame instead of
+    redoing the whole filter in each subprocess. A raw Amazon rating file has no
+    ``event_type`` column, so it can never be mistaken for a cache.
+    """
+    path = Path(path)
+    name = path.name.lower()
+    if not path.exists() or not name.endswith((".parquet", ".csv", ".csv.gz")):
+        return False
+    try:
+        columns = _cache_columns(path)
+    except Exception:
+        return False
+    return PREPARED_KEY_COLUMNS.issubset(columns)
+
+
+def read_prepared_cache(path: str | Path) -> pd.DataFrame:
+    path = Path(path)
+    if path.suffix.lower() == ".parquet":
+        return pd.read_parquet(path)
+    return pd.read_csv(
+        path,
+        compression="infer",
+        dtype={"user_id": str, "entity_id": str, "event_type": str},
+    )
+
+
+def write_prepared_cache(frame: pd.DataFrame, path: str | Path) -> Path:
+    """Write the prepared frame, falling back to gzipped CSV without pyarrow.
+
+    Parquet is preferred (smaller, keeps dtypes), but the cache is an optimisation
+    and must never be the reason a run fails, so a missing engine degrades instead.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.suffix.lower() == ".parquet":
+        try:
+            frame.to_parquet(path, index=False)
+            return path
+        except ImportError:
+            path = path.with_suffix(".csv.gz")
+            print(
+                "[datasets] no parquet engine (pip install pyarrow); "
+                f"writing {path.name} instead",
+                flush=True,
+            )
+    frame.to_csv(path, index=False, compression="infer")
+    return path
 
 
 def describe(frame: pd.DataFrame) -> str:
@@ -288,10 +389,14 @@ def main() -> None:
     parser.add_argument("--item-core", type=int, default=10)
     parser.add_argument("--max-users", type=int, default=0, help="0 = keep all users")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Write the prepared frame to this .parquet so later stages skip preprocessing.",
+    )
     args = parser.parse_args()
 
-    raw = load_raw(args.dataset)
-    print(f"raw rows read: {len(raw):,}")
     prepared = prepare_interactions(
         args.dataset,
         min_rating=args.min_rating,
@@ -302,6 +407,10 @@ def main() -> None:
     )
     print("after filtering:")
     print("  " + describe(prepared))
+
+    if args.out:
+        written = write_prepared_cache(prepared, args.out)
+        print(f"prepared cache -> {written} ({written.stat().st_size / 1e6:.1f} MB)")
 
 
 if __name__ == "__main__":
