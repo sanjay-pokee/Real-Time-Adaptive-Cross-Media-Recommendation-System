@@ -60,14 +60,23 @@ def normalize_dataset(dataset_name: str, dataset_config: dict) -> pd.DataFrame:
     dataset_path = resolve_project_path(dataset_config["path"])
     raw_df = pd.read_csv(dataset_path)
 
-    if dataset_name == "movies":
+    # A dataset may name its normalizer explicitly, which lets several verticals
+    # share one. Every Amazon category ships the same metadata schema, so health
+    # and industrial both use "amazon_meta" and adding a further vertical stays a
+    # config change. Falls back to the dataset name for the original three.
+    normalizer = dataset_config.get("normalizer", dataset_name)
+
+    if normalizer == "movies":
         return normalize_movies(raw_df, dataset_config)
 
-    if dataset_name == "books":
+    if normalizer == "books":
         return normalize_books(raw_df, dataset_config)
 
-    if dataset_name == "music":
+    if normalizer == "music":
         return normalize_music(raw_df, dataset_config)
+
+    if normalizer == "amazon_meta":
+        return normalize_amazon_meta(raw_df, dataset_config)
 
     raise ValueError(f"No normalizer found for dataset: {dataset_name}")
 
@@ -234,6 +243,58 @@ def normalize_music(raw_df: pd.DataFrame, dataset_config: dict) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def normalize_amazon_meta(raw_df: pd.DataFrame, dataset_config: dict) -> pd.DataFrame:
+    """Normalize an Amazon Reviews 2023 metadata export.
+
+    Shared by every Amazon vertical, because the metadata schema is identical
+    across categories: which vertical a file becomes is decided purely by
+    ``content_type`` in config/datasets.yaml.
+    """
+    df = pd.DataFrame()
+
+    source = dataset_config["source"]
+    content_type = dataset_config["content_type"]
+
+    source_id = raw_df[dataset_config["id_column"]].fillna("").astype(str)
+    df["source_id"] = source_id
+    df["source"] = source
+    df["content_type"] = content_type
+    df["global_id"] = source_id.apply(
+        lambda sid: make_global_id(content_type, source, sid)
+    )
+
+    df["title"] = raw_df[dataset_config["title_column"]].apply(clean_text)
+    df["description"] = raw_df[dataset_config["description_column"]].apply(clean_text)
+    df["categories"] = raw_df["categories"].apply(clean_text)
+    # "store" is the brand or manufacturer, the closest analogue a physical
+    # product has to an author or an artist.
+    df["creators"] = raw_df["store"].apply(clean_text)
+    # Amazon item metadata carries no release date.
+    df["release_date"] = None
+    df["popularity"] = raw_df[dataset_config["popularity_column"]]
+    df["rating"] = raw_df[dataset_config["rating_column"]]
+
+    main_category = raw_df["main_category"].apply(clean_text)
+
+    df["metadata_text"] = [
+        join_non_empty(vals)
+        for vals in zip(
+            df["title"], df["creators"], main_category, df["categories"], df["description"]
+        )
+    ]
+    df["embedding_text"] = [
+        join_non_empty(vals)
+        for vals in zip(
+            df["title"], df["creators"], df["categories"], df["description"]
+        )
+    ]
+
+    df["text_hash"] = df["embedding_text"].apply(make_text_hash)
+
+    df = _filter_rows(df, content_type, source)
+    return df[CONTENT_COLUMNS]
+
 
 def _load_credits(
     dataset_config: dict,

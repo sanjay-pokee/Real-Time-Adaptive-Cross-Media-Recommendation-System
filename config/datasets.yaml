@@ -63,3 +63,52 @@ datasets:
       - track_album_name
       - playlist_genre
       - playlist_subgenre
+
+  # --- Non-entertainment verticals -------------------------------------
+  # Amazon Reviews 2023 item metadata, streamed to CSV by
+  # scripts.fetch_amazon_metadata. Both share the amazon_meta normalizer;
+  # only content_type decides which domain pack they land in.
+
+  health:
+    content_type: health
+    normalizer: amazon_meta
+    source: amazon_reviews_2023
+    path: datasets/amazon/meta/Health_and_Household.csv
+    id_column: parent_asin
+    title_column: title
+    description_column: description
+    category_columns:
+      - categories
+    creator_columns:
+      - store
+    release_date_column: null
+    popularity_column: rating_number
+    rating_column: average_rating
+    metadata_columns:
+      - title
+      - store
+      - main_category
+      - categories
+      - description
+
+  industrial:
+    content_type: industrial
+    normalizer: amazon_meta
+    source: amazon_reviews_2023
+    path: datasets/amazon/meta/Industrial_and_Scientific.csv
+    id_column: parent_asin
+    title_column: title
+    description_column: description
+    category_columns:
+      - categories
+    creator_columns:
+      - store
+    release_date_column: null
+    popularity_column: rating_number
+    rating_column: average_rating
+    metadata_columns:
+      - title
+      - store
+      - main_category
+      - categories
+      - description

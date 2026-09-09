@@ -27,7 +27,12 @@ def test_catalog_schema_extends_rather_than_replaces_the_base():
         ("movie", "Horror, Thriller", "adult"),
         ("book", "Juvenile Fiction", "all_ages"),
         ("book", "Young Adult Fiction", "teen"),
-        ("health", "Children Vitamins", "all_ages"),
+        # Health is a regulated domain (risk_tier 1), so a keyword may restrict
+        # an item but never relax it below the content type's `adult` default.
+        # This case previously expected all_ages; children's vitamins are a
+        # leading cause of paediatric iron poisoning, so "safe for any age" was
+        # the wrong answer for a product-discovery result.
+        ("health", "Children Vitamins", "adult"),
     ],
 )
 def test_category_keywords_drive_the_maturity_label(content_type, categories, expected):
@@ -176,3 +181,31 @@ def test_music_without_an_explicit_flag_is_capped_at_teen():
     """
     assert maturity_for_row("music", "pop, dance pop") == "teen"
     assert maturity_for_row("music", "") == "teen"
+
+
+@pytest.mark.parametrize(
+    "category_text",
+    [
+        # Every one of these was tagged all_ages by the keyword rules alone,
+        # because its category text happened to contain an all-ages word.
+        "Health & Household, Vitamins, Minerals & Supplements, Iron",
+        "Health & Household, Sexual Wellness, Bondage Gear & Accessories",
+        "Health & Household, Household Supplies, Indoor Insect & Pest Control",
+        "Health & Household, Family Planning Tests, Pregnancy",
+        "Health & Household, Medical Supplies & Equipment, Kids Knee Braces",
+    ],
+)
+def test_a_regulated_domain_is_never_relaxed_below_its_default(category_text):
+    """Health is risk_tier 1, so a keyword may restrict it but not relax it."""
+    assert maturity_for_row("health", category_text) == "adult"
+
+
+def test_a_regulated_domain_can_still_be_escalated_by_a_keyword():
+    """Restrict-only means *only* relaxation is blocked, not escalation."""
+    assert maturity_for_row("health", "Health & Household, adults only") == "restricted"
+
+
+def test_an_unregulated_domain_keeps_plain_keyword_promotion():
+    """Entertainment is risk_tier 0, so a child-oriented film still relaxes."""
+    assert maturity_for_row("movie", "Animation, Family") == "all_ages"
+    assert maturity_for_row("book", "Juvenile Fiction, picture book") == "all_ages"

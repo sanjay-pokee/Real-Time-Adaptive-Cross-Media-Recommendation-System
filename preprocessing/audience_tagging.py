@@ -23,7 +23,7 @@ import re
 import pandas as pd
 
 from backend.audience import AUDIENCE_COLUMNS
-from backend.domains import DomainRegistry, get_registry
+from backend.domains import ContentTypeSpec, DomainRegistry, get_registry
 
 # Ordered most-restrictive first: the first rule that matches a row's category
 # text wins, so "young adult horror" is tagged adult rather than teen.
@@ -124,9 +124,34 @@ def maturity_for_row(
         if haystack:
             for maturity, pattern in _COMPILED_RULES:
                 if pattern.search(haystack):
-                    return maturity
+                    return _restrict_only_when_regulated(maturity, spec, registry)
 
     return spec.default_maturity
+
+
+def _restrict_only_when_regulated(
+    derived: str,
+    spec: ContentTypeSpec,
+    registry: DomainRegistry,
+) -> str:
+    """In a regulated domain a keyword may restrict an item, never relax it.
+
+    Health content types default to ``adult``. Letting a single loose category
+    word demote an item below that default is how an iron supplement, a
+    peppermint pesticide and a "Sexual Wellness, Bondage Gear" eye mask were
+    all tagged ``all_ages``: their category text merely happened to contain a
+    word from the all-ages rule.
+
+    Escalation is unaffected - a keyword can still push a regulated item up to
+    ``adult`` or ``restricted``. Unregulated domains keep the plain rule, so a
+    genuinely child-oriented film still resolves to ``all_ages``.
+    """
+    domain = registry.domains.get(spec.domain)
+    if domain is None or not domain.is_regulated:
+        return derived
+    if registry.minimum_age(derived) < registry.minimum_age(spec.default_maturity):
+        return spec.default_maturity
+    return derived
 
 
 def annotate_audience(
