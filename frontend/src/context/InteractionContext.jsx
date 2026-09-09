@@ -11,7 +11,7 @@
  * GET /interactions/{userId}/{entityId} so state survives page reloads.
  */
 
-import { createContext, useCallback, useContext, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { getUserInteractionState } from '../api/client';
 
 const InteractionContext = createContext(null);
@@ -129,9 +129,13 @@ export function useInteractionState(userId, globalId) {
 
   const { ensureLoaded, toggleActive, setRating, getState } = ctx;
 
-  // Trigger hydration on first render for this userId+globalId pair
-  // We call ensureLoaded inline — it is idempotent (only fetches once).
-  ensureLoaded(userId, globalId);
+  // Hydrate after commit, never during render — calling ensureLoaded inline
+  // sets state on the provider while this component is still rendering, which
+  // React reports as a setState-in-render warning. It is idempotent, so
+  // running it in an effect keyed on the pair is equivalent and legal.
+  useEffect(() => {
+    ensureLoaded(userId, globalId);
+  }, [ensureLoaded, userId, globalId]);
 
   const state = getState(userId, globalId);
 

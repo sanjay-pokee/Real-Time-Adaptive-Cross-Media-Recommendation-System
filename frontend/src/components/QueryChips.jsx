@@ -13,21 +13,23 @@ const CHIPS = [
 
 export default function QueryChips({ onSelect }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-1">
       {CHIPS.map((chip, index) => (
         <motion.button
           key={chip.label}
           type="button"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.035 }}
-          whileHover={{ y: -1 }}
-          whileTap={{ scale: 0.98 }}
+          initial={{ opacity: 0, x: -6 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: index * 0.03, duration: 0.3 }}
           onClick={() => onSelect(chip.label)}
-          className="rounded-full border border-slate-200 bg-white px-3 py-2 text-left text-xs font-extrabold text-slate-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+          className="group flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-surface-3"
         >
-          <span className="mr-2 text-slate-400">{chip.tag}</span>
-          {chip.label}
+          <span className="w-16 shrink-0 text-[10px] font-bold uppercase tracking-[0.06em] text-ink-faint transition-colors group-hover:text-accent">
+            {chip.tag}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-xs text-ink-muted transition-colors group-hover:text-ink">
+            {chip.label}
+          </span>
         </motion.button>
       ))}
     </div>

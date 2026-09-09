@@ -1,58 +1,63 @@
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
 import Home from './pages/Home';
 import AuthPage from './pages/AuthPage';
 import { InteractionProvider } from './context/InteractionContext';
 
 const SESSION_KEY = 'nexus_demo_session';
 
-export default function App() {
-  const [sessionUser, setSessionUser] = useState(null);
+/**
+ * Read the saved session synchronously.
+ *
+ * This must not happen in an effect: doing so renders the auth screen first and
+ * then immediately swaps it out, which reintroduces the mount/unmount race this
+ * component exists to avoid.
+ */
+function readSession() {
+  try {
+    const saved = window.localStorage.getItem(SESSION_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+}
 
-  useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(SESSION_KEY);
-      if (saved) setSessionUser(JSON.parse(saved));
-    } catch {
-      setSessionUser(null);
-    }
-  }, []);
+/**
+ * The auth <-> app swap is a plain conditional render, deliberately.
+ *
+ * Wrapping it in AnimatePresence made the page transition depend on framer
+ * motion reporting an exit animation complete, and under React StrictMode that
+ * callback does not always fire - which left either the login screen or the
+ * logged-in app stuck on screen permanently. Each page animates its own content
+ * in on mount, so the entrance still feels alive with no exit to coordinate.
+ */
+export default function App() {
+  const [sessionUser, setSessionUser] = useState(readSession);
 
   function handleAuth(user) {
     setSessionUser(user);
-    window.localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    try {
+      window.localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    } catch {
+      /* storage unavailable - the session still lives in memory */
+    }
   }
 
   function handleLogout() {
     setSessionUser(null);
-    window.localStorage.removeItem(SESSION_KEY);
+    try {
+      window.localStorage.removeItem(SESSION_KEY);
+    } catch {
+      /* nothing to clean up */
+    }
   }
 
   return (
     <InteractionProvider>
-      <AnimatePresence mode="wait">
-        {sessionUser ? (
-          <motion.div
-            key="app"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-          >
-            <Home authenticatedUser={sessionUser} onLogout={handleLogout} />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="auth"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.28 }}
-          >
-            <AuthPage onAuth={handleAuth} />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {sessionUser ? (
+        <Home authenticatedUser={sessionUser} onLogout={handleLogout} />
+      ) : (
+        <AuthPage onAuth={handleAuth} />
+      )}
     </InteractionProvider>
   );
 }

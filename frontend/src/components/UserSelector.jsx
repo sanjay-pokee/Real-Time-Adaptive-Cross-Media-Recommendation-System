@@ -69,9 +69,9 @@ export default function UserSelector({ value, onChange, users = USERS }) {
           width: Math.max(rect.width, 260),
           zIndex: 99999,
         }}
-        className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft"
+        className="panel overflow-hidden shadow-lg"
       >
-        <div className="max-h-[280px] overflow-y-auto p-1.5" style={{ touchAction: 'pan-y' }}>
+        <div className="max-h-[300px] overflow-y-auto p-1.5" style={{ touchAction: 'pan-y' }}>
           {users.map(user => (
             <button
               key={user.id}
@@ -81,16 +81,16 @@ export default function UserSelector({ value, onChange, users = USERS }) {
                 onChange(user.id);
                 setOpen(false);
               }}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${user.id === value ? 'bg-blue-50 text-blue-900' : 'text-slate-700 hover:bg-slate-50'}`}
+              className={`flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors ${user.id === value ? 'bg-accent-soft' : 'hover:bg-surface-3'}`}
             >
-              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-xs font-black text-white" style={{ background: user.accent }}>
+              <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white" style={{ background: user.accent }}>
                 {user.initials}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-extrabold">{user.label}</span>
-                <span className="block truncate text-xs font-semibold text-slate-400">{user.id}</span>
+                <span className="block truncate text-[13px] font-semibold text-ink">{user.label}</span>
+                <span className="block truncate text-[10px] text-ink-faint">{user.id}</span>
               </span>
-              {user.id === value && <span className="h-2 w-2 rounded-full bg-blue-600" />}
+              {user.id === value && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />}
             </button>
           ))}
         </div>
@@ -109,13 +109,13 @@ export default function UserSelector({ value, onChange, users = USERS }) {
           if (open) setOpen(false);
           else openDropdown();
         }}
-        className="app-input flex items-center gap-3 px-3 py-2.5 text-sm font-semibold hover:border-slate-300"
+        className="field flex items-center gap-2.5 px-2.5 py-2 hover:border-line-strong"
       >
-        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-xs font-black text-white" style={{ background: selected.accent }}>
+        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white" style={{ background: selected.accent }}>
           {selected.initials}
         </span>
-        <span className="min-w-0 flex-1 truncate text-left text-slate-900">{selected.label}</span>
-        <ChevronDown size={15} className="flex-shrink-0 text-slate-400" />
+        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-semibold text-ink">{selected.label}</span>
+        <ChevronDown size={14} className="flex-shrink-0 text-ink-faint" />
       </button>
       {dropdown}
     </>

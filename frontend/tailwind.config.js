@@ -7,55 +7,68 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
         display: ['Plus Jakarta Sans', 'Inter', 'sans-serif'],
       },
+      // Every colour resolves to a CSS variable, so the light/dark
+      // themes in globals.css switch the whole UI with one attribute.
       colors: {
-        glass: {
-          50:  'rgba(255,255,255,0.05)',
-          100: 'rgba(255,255,255,0.08)',
-          200: 'rgba(255,255,255,0.12)',
-          300: 'rgba(255,255,255,0.18)',
-          border: 'rgba(255,255,255,0.10)',
+        bg: 'var(--bg)',
+        surface: {
+          DEFAULT: 'var(--surface)',
+          2: 'var(--surface-2)',
+          3: 'var(--surface-3)',
+          hover: 'var(--surface-hover)',
         },
-        neon: {
-          blue:   '#4FC3F7',
-          purple: '#CE93D8',
-          pink:   '#F48FB1',
-          cyan:   '#80DEEA',
-          green:  '#A5D6A7',
-          amber:  '#FFE082',
-          orange: '#FFAB91',
+        line: {
+          DEFAULT: 'var(--line)',
+          strong: 'var(--line-strong)',
         },
-        dark: {
-          900: '#030712',
-          800: '#060d1f',
-          700: '#0a1628',
-          600: '#0f1f38',
+        ink: {
+          DEFAULT: 'var(--ink)',
+          muted: 'var(--ink-muted)',
+          faint: 'var(--ink-faint)',
         },
+        accent: {
+          DEFAULT: 'var(--accent)',
+          2: 'var(--accent-2)',
+          soft: 'var(--accent-soft)',
+          ink: 'var(--accent-ink)',
+        },
+        sig: {
+          semantic: 'var(--sig-semantic)',
+          graph: 'var(--sig-graph)',
+          ema: 'var(--sig-ema)',
+          kg: 'var(--sig-kg)',
+          profile: 'var(--sig-profile)',
+        },
+        type: {
+          movie: 'var(--type-movie)',
+          book: 'var(--type-book)',
+          music: 'var(--type-music)',
+        },
+        ok: 'var(--ok)',
+        warn: 'var(--warn)',
+        bad: 'var(--bad)',
       },
-      backdropBlur: {
-        xs: '2px',
+      borderRadius: {
+        DEFAULT: 'var(--radius)',
+        lg: 'var(--radius-lg)',
+      },
+      boxShadow: {
+        sm: 'var(--shadow-sm)',
+        DEFAULT: 'var(--shadow)',
+        lg: 'var(--shadow-lg)',
+        accent: 'var(--shadow-accent)',
       },
       animation: {
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4,0,0.6,1) infinite',
-        'float': 'float 6s ease-in-out infinite',
-        'shimmer': 'shimmer 2s linear infinite',
-        'glow': 'glow 2s ease-in-out infinite alternate',
-        'spin-slow': 'spin 8s linear infinite',
+        'float': 'float 7s ease-in-out infinite',
+        'shimmer': 'shimmer 1.6s linear infinite',
       },
       keyframes: {
         float: {
-          '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-12px)' },
-        },
-        shimmer: {
-          '0%': { backgroundPosition: '-200% 0' },
-          '100%': { backgroundPosition: '200% 0' },
-        },
-        glow: {
-          '0%': { boxShadow: '0 0 20px rgba(79, 195, 247, 0.3)' },
-          '100%': { boxShadow: '0 0 40px rgba(206, 147, 216, 0.5)' },
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
         },
       },
     },

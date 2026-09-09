@@ -1,18 +1,25 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Check, Film, Library, Lock, Mail, Music2, Sparkles, UserPlus } from 'lucide-react';
+import { ArrowRight, Check, Lock, Mail, Sparkles, UserPlus } from 'lucide-react';
 import { USERS } from '../components/UserSelector';
-import heroImage from '../assets/hero.png';
 
 const DEMO_PASSWORD = 'demo123';
 
+const PITCH = [
+  { value: 'Qdrant', label: 'Vector retrieval over a unified catalog' },
+  { value: 'LightGCN', label: 'Collaborative signal from the interaction graph' },
+  { value: 'EMA', label: 'Session-level preference drift, updated live' },
+];
+
 function initialsFromName(name) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(part => part[0]?.toUpperCase())
-    .join('') || 'NU';
+  return (
+    name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('') || 'NU'
+  );
 }
 
 export default function AuthPage({ onAuth }) {
@@ -22,8 +29,17 @@ export default function AuthPage({ onAuth }) {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
 
+  // The auth screen is always dark - it is the product's first impression.
+  useEffect(() => {
+    const previous = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', 'dark');
+    return () => {
+      if (previous) document.documentElement.setAttribute('data-theme', previous);
+    };
+  }, []);
+
   const selectedUser = useMemo(
-    () => USERS.find(user => user.id === selectedUserId) || USERS[0],
+    () => USERS.find((user) => user.id === selectedUserId) || USERS[0],
     [selectedUserId]
   );
 
@@ -45,170 +61,221 @@ export default function AuthPage({ onAuth }) {
     }
 
     onAuth({
-      id: `demo_${cleanEmail.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'user'}`,
+      id: `demo_${
+        cleanEmail.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'user'
+      }`,
       label: cleanName,
       email: cleanEmail,
       initials: initialsFromName(cleanName),
-      accent: '#2563EB',
+      accent: '#7c8cff',
       authType: 'signup',
     });
   }
 
   return (
-    <main className="min-h-screen bg-app text-slate-950">
+    <main className="above min-h-screen">
       <div className="grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
-        <section className="relative hidden overflow-hidden bg-slate-950 text-white lg:block">
-          <img src={heroImage} alt="Recommendation preview" className="absolute inset-0 h-full w-full object-cover opacity-35" />
-          <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(2,6,23,0.98),rgba(15,23,42,0.76)_42%,rgba(37,99,235,0.5))]" />
+        {/* ================= brand panel ================= */}
+        <section className="relative hidden overflow-hidden border-r border-line lg:block">
+          {/* layered ambient light instead of a flat image wash */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(40rem 30rem at 20% 15%, rgba(124,140,255,.22), transparent 65%),' +
+                'radial-gradient(34rem 26rem at 85% 80%, rgba(167,139,250,.16), transparent 65%)',
+            }}
+          />
+
           <div className="relative z-10 flex h-full flex-col justify-between p-12 xl:p-16">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-slate-950 shadow-soft">
-                <Sparkles size={20} />
+            <div className="flex items-center gap-2.5">
+              <div
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-white"
+                style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-2))' }}
+              >
+                <Sparkles size={17} />
               </div>
-              <div>
-                <p className="text-xl font-black tracking-tight">Nexus</p>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-100/70">Cross-media discovery</p>
+              <div className="leading-none">
+                <p className="display text-base font-bold text-ink">Nexus</p>
+                <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-ink-faint">
+                  Cross-media discovery
+                </p>
               </div>
             </div>
 
             <div className="max-w-xl">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-sm font-semibold text-blue-50 backdrop-blur">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                Movies, books, and music in one recommendation workspace
-              </div>
-              <h1 className="font-display text-5xl font-black leading-[1.02] tracking-tight xl:text-6xl">
-                Find what fits the mood, not just the keyword.
+              <h1 className="display text-5xl font-extrabold leading-[1.04] text-ink xl:text-[3.4rem]">
+                Find what fits
+                <br />
+                the mood, not just
+                <br />
+                the keyword.
               </h1>
-              <p className="mt-6 max-w-lg text-base leading-7 text-slate-200">
-                Sign in as a demo user and explore personalized results ranked with semantic, graph, EMA, and final hybrid signals.
+              <p className="mt-6 max-w-md text-[15px] leading-relaxed text-ink-muted">
+                One workspace for movies, books, and music — where every
+                recommendation shows the signals that ranked it.
               </p>
             </div>
 
-            <div className="grid max-w-xl grid-cols-3 gap-3">
-              {[
-                { icon: Film, label: 'Movies' },
-                { icon: Library, label: 'Books' },
-                { icon: Music2, label: 'Music' },
-              ].map(({ icon: Icon, label }) => (
-                <div key={label} className="rounded-2xl border border-white/12 bg-white/10 p-4 backdrop-blur">
-                  <Icon size={19} className="text-blue-200" />
-                  <p className="mt-3 text-sm font-bold">{label}</p>
+            <div className="grid max-w-xl gap-2.5">
+              {PITCH.map(({ value, label }) => (
+                <div key={value} className="panel-flat flex items-center gap-3 px-4 py-3">
+                  <span className="display w-20 shrink-0 text-[13px] font-bold text-accent">
+                    {value}
+                  </span>
+                  <span className="text-[12px] text-ink-muted">{label}</span>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
+        {/* ================= form panel ================= */}
         <section className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-8">
           <motion.div
-            initial={{ opacity: 0, y: 18 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             className="w-full max-w-md"
           >
-            <div className="mb-8 flex items-center gap-3 lg:hidden">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white">
-                <Sparkles size={18} />
+            <div className="mb-7 flex items-center gap-2.5 lg:hidden">
+              <div
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-white"
+                style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-2))' }}
+              >
+                <Sparkles size={17} />
               </div>
-              <div>
-                <p className="text-lg font-black tracking-tight">Nexus</p>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Cross-media discovery</p>
-              </div>
+              <p className="display text-base font-bold text-ink">Nexus</p>
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft sm:p-8">
-              <div className="mb-6 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
-                <button
-                  type="button"
-                  onClick={() => setMode('login')}
-                  className={`rounded-xl px-4 py-2.5 text-sm font-extrabold transition ${mode === 'login' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                  Log in
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMode('signup')}
-                  className={`rounded-xl px-4 py-2.5 text-sm font-extrabold transition ${mode === 'signup' ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                >
-                  Sign up
-                </button>
+            <div className="panel panel-lit p-6 sm:p-7">
+              {/* ---- mode switch ---- */}
+              <div className="mb-6 grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface-3 p-1">
+                {['login', 'signup'].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setMode(value)}
+                    className="rounded-lg px-4 py-2 text-[13px] font-semibold transition-colors"
+                    style={{
+                      background: mode === value ? 'var(--surface)' : 'transparent',
+                      color: mode === value ? 'var(--ink)' : 'var(--ink-faint)',
+                      boxShadow: mode === value ? 'var(--shadow-sm)' : 'none',
+                    }}
+                  >
+                    {value === 'login' ? 'Log in' : 'Sign up'}
+                  </button>
+                ))}
               </div>
 
               {mode === 'login' ? (
                 <form onSubmit={handleLogin} className="space-y-5">
                   <div>
-                    <h2 className="font-display text-3xl font-black tracking-tight text-slate-950">Welcome back</h2>
-                    <p className="mt-2 text-sm leading-6 text-slate-500">Choose a dummy user profile to enter the recommendation dashboard.</p>
+                    <h2 className="display text-2xl font-bold text-ink">Welcome back</h2>
+                    <p className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">
+                      Each demo profile carries its own interaction history, so the
+                      ranking signals differ per user.
+                    </p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-sm font-extrabold text-slate-700">Demo user</label>
-                    <div className="grid gap-2">
-                      {USERS.slice(0, 6).map(user => (
-                        <button
-                          key={user.id}
-                          type="button"
-                          onClick={() => setSelectedUserId(user.id)}
-                          className={`flex items-center gap-3 rounded-2xl border px-3 py-3 text-left transition ${selectedUserId === user.id ? 'border-blue-600 bg-blue-50' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'}`}
-                        >
-                          <span className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-black text-white" style={{ background: user.accent }}>
-                            {user.initials}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-black text-slate-950">{user.label}</span>
-                            <span className="block truncate text-xs font-semibold text-slate-500">{user.id}</span>
-                          </span>
-                          {selectedUserId === user.id && <Check size={18} className="text-blue-600" />}
-                        </button>
-                      ))}
+                    <span className="label">Demo profile</span>
+                    <div className="grid gap-1.5">
+                      {USERS.slice(0, 6).map((user) => {
+                        const active = selectedUserId === user.id;
+                        return (
+                          <button
+                            key={user.id}
+                            type="button"
+                            onClick={() => setSelectedUserId(user.id)}
+                            className="flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors"
+                            style={{
+                              borderColor: active ? 'var(--accent)' : 'var(--line)',
+                              background: active ? 'var(--accent-soft)' : 'var(--surface-3)',
+                            }}
+                          >
+                            <span
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-bold text-white"
+                              style={{ background: user.accent }}
+                            >
+                              {user.initials}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[13px] font-semibold text-ink">
+                                {user.label}
+                              </span>
+                              <span className="block truncate text-[10px] text-ink-faint">
+                                {user.id}
+                              </span>
+                            </span>
+                            {active && <Check size={15} className="shrink-0 text-accent" />}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-500">
-                    Demo password: <span className="font-black text-slate-900">{DEMO_PASSWORD}</span>
-                  </div>
+                  <p className="panel-flat px-3.5 py-2.5 text-[11.5px] text-ink-muted">
+                    Demo password:{' '}
+                    <span className="font-mono font-semibold text-ink">{DEMO_PASSWORD}</span>
+                  </p>
 
-                  <button type="submit" className="btn-primary flex w-full items-center justify-center gap-2 px-5 py-3.5 text-sm">
+                  <button type="submit" className="btn btn-primary w-full py-3">
                     Continue as {selectedUser.label}
-                    <ArrowRight size={16} />
+                    <ArrowRight size={15} />
                   </button>
                 </form>
               ) : (
-                <form onSubmit={handleSignup} className="space-y-5">
+                <form onSubmit={handleSignup} className="space-y-4">
                   <div>
-                    <h2 className="font-display text-3xl font-black tracking-tight text-slate-950">Create demo account</h2>
-                    <p className="mt-2 text-sm leading-6 text-slate-500">This creates a local dummy user for the current browser session.</p>
+                    <h2 className="display text-2xl font-bold text-ink">Create demo account</h2>
+                    <p className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">
+                      Creates a local profile for this browser session.
+                    </p>
                   </div>
 
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-extrabold text-slate-700">Name</span>
-                    <span className="relative block">
-                      <UserPlus size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input value={name} onChange={event => setName(event.target.value)} className="app-input pl-11" placeholder="Sanjay Kumar" />
-                    </span>
-                  </label>
+                  <Labelled label="Name" icon={UserPlus}>
+                    <input
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      className="field py-2.5 pl-10 pr-3"
+                      placeholder="Sanjay Kumar"
+                    />
+                  </Labelled>
 
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-extrabold text-slate-700">Email</span>
-                    <span className="relative block">
-                      <Mail size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input type="email" value={email} onChange={event => setEmail(event.target.value)} className="app-input pl-11" placeholder="you@example.com" />
-                    </span>
-                  </label>
+                  <Labelled label="Email" icon={Mail}>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      className="field py-2.5 pl-10 pr-3"
+                      placeholder="you@example.com"
+                    />
+                  </Labelled>
 
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-extrabold text-slate-700">Password</span>
-                    <span className="relative block">
-                      <Lock size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input type="password" className="app-input pl-11" placeholder="Any dummy password" />
-                    </span>
-                  </label>
+                  <Labelled label="Password" icon={Lock}>
+                    <input
+                      type="password"
+                      className="field py-2.5 pl-10 pr-3"
+                      placeholder="Any dummy password"
+                    />
+                  </Labelled>
 
-                  {error && <p className="rounded-xl bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">{error}</p>}
+                  {error && (
+                    <p
+                      className="rounded-xl px-3 py-2 text-[12px] font-medium"
+                      style={{
+                        color: 'var(--bad)',
+                        background: 'color-mix(in srgb, var(--bad) 12%, transparent)',
+                      }}
+                    >
+                      {error}
+                    </p>
+                  )}
 
-                  <button type="submit" className="btn-primary flex w-full items-center justify-center gap-2 px-5 py-3.5 text-sm">
+                  <button type="submit" className="btn btn-primary w-full py-3">
                     Create account
-                    <ArrowRight size={16} />
+                    <ArrowRight size={15} />
                   </button>
                 </form>
               )}
@@ -217,5 +284,17 @@ export default function AuthPage({ onAuth }) {
         </section>
       </div>
     </main>
+  );
+}
+
+function Labelled({ label, icon: Icon, children }) {
+  return (
+    <label className="block">
+      <span className="label mb-1.5 block">{label}</span>
+      <span className="relative block">
+        <Icon size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-faint" />
+        {children}
+      </span>
+    </label>
   );
 }

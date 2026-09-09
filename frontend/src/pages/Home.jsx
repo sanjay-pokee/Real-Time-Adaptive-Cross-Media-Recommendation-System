@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { AlertCircle, BookOpen, Film, Layers, LogOut, Music, RefreshCw, Search, Settings2, Sparkles, UserRound } from 'lucide-react';
+import {
+  AlertCircle,
+  BookOpen,
+  Film,
+  LogOut,
+  Moon,
+  Music,
+  RefreshCw,
+  Search,
+  Sparkles,
+  Sun,
+} from 'lucide-react';
 
 import { checkHealth, getRecommendations, getSimilarItems } from '../api/client';
 import AISignalsPanel from '../components/AISignalsPanel';
@@ -21,17 +32,39 @@ const DEFAULT_QUERY = 'space adventure with aliens';
 const DEFAULT_TOP_K = 10;
 
 const TYPE_META = [
-  { label: 'Movies', value: 'movie', icon: Film },
-  { label: 'Books', value: 'book', icon: BookOpen },
-  { label: 'Music', value: 'music', icon: Music },
+  { label: 'Movies', value: 'movie', icon: Film, tint: 'var(--type-movie)' },
+  { label: 'Books', value: 'book', icon: BookOpen, tint: 'var(--type-book)' },
+  { label: 'Music', value: 'music', icon: Music, tint: 'var(--type-music)' },
 ];
+
+function useTheme() {
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('nexus-theme') || 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem('nexus-theme', theme);
+    } catch {
+      /* storage can be unavailable (private mode) - the theme still applies */
+    }
+  }, [theme]);
+
+  return [theme, () => setTheme((value) => (value === 'dark' ? 'light' : 'dark'))];
+}
 
 export default function Home({ authenticatedUser, onLogout }) {
   const availableUsers = useMemo(() => {
-    if (!authenticatedUser || USERS.some(user => user.id === authenticatedUser.id)) return USERS;
+    if (!authenticatedUser || USERS.some((user) => user.id === authenticatedUser.id)) return USERS;
     return [authenticatedUser, ...USERS];
   }, [authenticatedUser]);
 
+  const [theme, toggleTheme] = useTheme();
   const [query, setQuery] = useState(DEFAULT_QUERY);
   const [userId, setUserId] = useState(authenticatedUser?.id || USERS[0].id);
   const [topK, setTopK] = useState(DEFAULT_TOP_K);
@@ -43,20 +76,28 @@ export default function Home({ authenticatedUser, onLogout }) {
   const [backendStatus, setBackendStatus] = useState('checking');
   const [toasts, setToasts] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [drawer, setDrawer] = useState({ open: false, title: '', results: [], loading: false, error: null });
+  const [elapsed, setElapsed] = useState(null);
+  const [drawer, setDrawer] = useState({
+    open: false,
+    title: '',
+    results: [],
+    loading: false,
+    error: null,
+  });
   const hasRunDefault = useRef(false);
 
-  const activeUser = availableUsers.find(user => user.id === userId) || availableUsers[0];
-  const totalScore = results.reduce((sum, item) => sum + Number(item.score || 0), 0);
-  const averageScore = results.length ? totalScore / results.length : 0;
+  const activeUser = availableUsers.find((user) => user.id === userId) || availableUsers[0];
+  const averageScore = results.length
+    ? results.reduce((sum, item) => sum + Number(item.score || 0), 0) / results.length
+    : 0;
 
   const addToast = useCallback((opts) => {
     const toast = createToast(opts.message, opts.type || 'info', opts.title || '', opts.duration);
-    setToasts(prev => [...prev.slice(-4), toast]);
+    setToasts((prev) => [...prev.slice(-4), toast]);
   }, []);
 
   const dismissToast = useCallback((id) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
   const pingBackend = useCallback(async () => {
@@ -69,7 +110,9 @@ export default function Home({ authenticatedUser, onLogout }) {
     }
   }, []);
 
-  useEffect(() => { pingBackend(); }, [pingBackend]);
+  useEffect(() => {
+    pingBackend();
+  }, [pingBackend]);
 
   useEffect(() => {
     if (authenticatedUser?.id) setUserId(authenticatedUser.id);
@@ -80,7 +123,7 @@ export default function Home({ authenticatedUser, onLogout }) {
       hasRunDefault.current = true;
       handleSearch();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backendStatus]);
 
   async function handleSearch(nextQuery = query) {
@@ -90,15 +133,29 @@ export default function Home({ authenticatedUser, onLogout }) {
     setLoading(true);
     setError(null);
     setSearched(true);
+    const startedAt = performance.now();
     try {
-      const data = await getRecommendations({ query: cleanQuery, user_id: userId, top_k: topK, content_type: contentType });
+      const data = await getRecommendations({
+        query: cleanQuery,
+        user_id: userId,
+        top_k: topK,
+        content_type: contentType,
+      });
       const nextResults = data.results || [];
       setResults(nextResults);
-      if (nextResults.length === 0) addToast({ type: 'info', message: 'No results found. Try changing the query or filter.' });
+      setElapsed(Math.round(performance.now() - startedAt));
+      if (nextResults.length === 0) {
+        addToast({ type: 'info', message: 'No results. Try a different query or filter.' });
+      }
     } catch (err) {
       setError(err?.response?.data?.detail || err.message || 'Unknown error');
       setResults([]);
-      addToast({ type: 'error', title: 'Search failed', message: 'Backend returned an error. Check the API server.' });
+      setElapsed(null);
+      addToast({
+        type: 'error',
+        title: 'Search failed',
+        message: 'Backend returned an error. Check the API server.',
+      });
     } finally {
       setLoading(false);
     }
@@ -112,198 +169,257 @@ export default function Home({ authenticatedUser, onLogout }) {
   async function handleSimilar(item) {
     setDrawer({ open: true, title: item.title, results: [], loading: true, error: null });
     try {
-      const data = await getSimilarItems({ global_id: item.global_id, user_id: userId, top_k: 10, content_type: null });
-      setDrawer(current => ({ ...current, results: data.results || [], loading: false }));
+      const data = await getSimilarItems({
+        global_id: item.global_id,
+        user_id: userId,
+        top_k: 10,
+        content_type: null,
+      });
+      setDrawer((current) => ({ ...current, results: data.results || [], loading: false }));
     } catch (err) {
-      setDrawer(current => ({ ...current, loading: false, error: err.message }));
+      setDrawer((current) => ({ ...current, loading: false, error: err.message }));
       addToast({ type: 'error', title: 'Similar search failed', message: err.message });
     }
   }
 
   return (
-    <div className="min-h-screen bg-app">
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 text-white shadow-sm">
-              <Sparkles size={18} />
+    <div className="above min-h-screen">
+      {/* ================= header ================= */}
+      <header className="sticky top-0 z-40 border-b border-line bg-bg/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1500px] items-center gap-3 px-5 py-3">
+          <div className="flex items-center gap-2.5">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-xl text-white"
+              style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-2))' }}
+            >
+              <Sparkles size={15} />
             </div>
-            <div>
-              <p className="font-display text-lg font-black leading-none tracking-tight text-slate-950">Nexus</p>
-              <p className="mt-1 hidden text-xs font-bold uppercase tracking-[0.16em] text-slate-400 sm:block">Recommendation suite</p>
+            <div className="leading-none">
+              <p className="display text-[15px] font-bold text-ink">Nexus</p>
+              <p className="mt-1 hidden text-[9px] font-semibold uppercase tracking-[0.14em] text-ink-faint sm:block">
+                Cross-media discovery
+              </p>
             </div>
           </div>
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex items-center gap-2">
             <BackendStatus status={backendStatus} onRetry={pingBackend} />
-            <div className="hidden items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm md:flex">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl text-xs font-black text-white" style={{ background: activeUser.accent }}>
+
+            <div className="hidden items-center gap-2 rounded-xl border border-line bg-surface-3 px-2 py-1.5 md:flex">
+              <span
+                className="flex h-6 w-6 items-center justify-center rounded-lg text-[9px] font-bold text-white"
+                style={{ background: activeUser.accent }}
+              >
                 {activeUser.initials}
               </span>
-              <div className="leading-tight">
-                <p className="text-sm font-extrabold text-slate-900">{activeUser.label}</p>
-                <p className="text-xs font-semibold text-slate-400">{activeUser.id}</p>
-              </div>
+              <span className="text-[12px] font-semibold text-ink">{activeUser.label}</span>
             </div>
-            <button onClick={onLogout} className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-red-200 hover:text-red-600" title="Log out">
-              <LogOut size={17} />
+
+            <button
+              onClick={toggleTheme}
+              className="btn btn-ghost h-8 w-8 p-0"
+              title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
+            >
+              {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
+
+            <button onClick={onLogout} className="btn btn-ghost h-8 w-8 p-0" title="Log out">
+              <LogOut size={14} />
             </button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-8">
-        <section className="mb-6 grid gap-4 lg:grid-cols-[1fr_320px]">
-          <GlassPanel variant="strong" className="overflow-hidden p-5 sm:p-7">
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-                <div className="max-w-2xl">
-                  <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-extrabold text-blue-700">
-                    <Layers size={13} />
-                    Hybrid discovery
+      <main className="mx-auto max-w-[1500px] px-5 py-6">
+        {/* ================= hero + search ================= */}
+        {/* No overflow-hidden here: the search bar's autocomplete dropdown is
+            absolutely positioned and would be clipped by this panel's edge. */}
+        <GlassPanel variant="strong" className="relative z-20 mb-5 p-6 sm:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <span className="chip mb-4" style={{ color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)' }}>
+                <Sparkles size={11} />
+                Hybrid retrieval + graph re-ranking
+              </span>
+              <h1 className="display text-[2rem] font-extrabold leading-[1.08] text-ink sm:text-[2.6rem]">
+                Search movies, books,
+                <br />
+                and music by meaning.
+              </h1>
+              <p className="mt-3 max-w-lg text-[13.5px] leading-relaxed text-ink-muted">
+                Every result shows exactly which signals ranked it — semantic
+                similarity, collaborative graph, session drift, and knowledge-graph
+                proximity.
+              </p>
+            </div>
+
+            {/* live counts per content type */}
+            <div className="flex gap-2">
+              {TYPE_META.map(({ label, value, icon: Icon, tint }) => {
+                const count = results.filter((item) => item.content_type === value).length;
+                return (
+                  <div key={value} className="panel-flat min-w-[86px] px-3 py-2.5 text-center">
+                    <Icon size={14} className="mx-auto" style={{ color: tint }} />
+                    <p className="num display mt-1.5 text-xl font-bold tabular-nums text-ink">
+                      {count}
+                    </p>
+                    <p className="text-[10px] font-medium text-ink-faint">{label}</p>
                   </div>
-                  <h1 className="font-display text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Search across movies, books, and music.</h1>
-                  <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">Use natural language and compare the semantic, graph, EMA, and final ranking signals behind each recommendation.</p>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <SearchBar
+              value={query}
+              onChange={setQuery}
+              onSearch={(value) => handleSearch(value)}
+              loading={loading}
+              disabled={backendStatus === 'offline'}
+            />
+          </div>
+        </GlassPanel>
+
+        {/* ================= body ================= */}
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[264px_1fr]">
+          {/* ---------- sidebar ---------- */}
+          <aside className="flex flex-col gap-3 xl:sticky xl:top-[76px] xl:self-start">
+            <GlassPanel className="p-4">
+              <p className="label mb-2.5">Profile</p>
+              <UserSelector value={userId} onChange={setUserId} users={availableUsers} />
+
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="panel-flat px-3 py-2">
+                  <p className="text-[10px] text-ink-faint">Results</p>
+                  <p className="num display mt-0.5 text-lg font-bold tabular-nums text-ink">
+                    {results.length}
+                  </p>
                 </div>
-                <div className="grid grid-cols-3 gap-2 rounded-2xl bg-slate-50 p-2">
-                  {TYPE_META.map(({ label, value, icon: Icon }) => {
-                    const count = results.filter(item => item.content_type === value).length;
-                    return (
-                      <div key={value} className="rounded-xl bg-white px-3 py-2 text-center shadow-sm">
-                        <Icon size={16} className="mx-auto text-slate-500" />
-                        <p className="mt-1 text-lg font-black text-slate-950">{count}</p>
-                        <p className="text-[11px] font-bold text-slate-400">{label}</p>
-                      </div>
-                    );
-                  })}
+                <div className="panel-flat px-3 py-2">
+                  <p className="text-[10px] text-ink-faint">Avg score</p>
+                  <p className="num display mt-0.5 text-lg font-bold tabular-nums text-ink">
+                    {averageScore.toFixed(2)}
+                  </p>
                 </div>
               </div>
+            </GlassPanel>
 
-              <SearchBar value={query} onChange={setQuery} onSearch={(q) => handleSearch(q)} loading={loading} disabled={backendStatus === 'offline'} />
-            </div>
-          </GlassPanel>
-
-          <GlassPanel className="p-5">
-            <div className="mb-4 flex items-center gap-2 text-sm font-black text-slate-900">
-              <UserRound size={17} className="text-blue-600" />
-              Active profile
-            </div>
-            <UserSelector value={userId} onChange={setUserId} users={availableUsers} />
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl bg-slate-50 p-3">
-                <p className="text-xs font-bold text-slate-400">Results</p>
-                <p className="mt-1 text-2xl font-black text-slate-950">{results.length}</p>
+            <GlassPanel className="p-4">
+              <div className="mb-2.5 flex items-baseline justify-between">
+                <p className="label">Results</p>
+                <span className="num text-[11px] font-semibold tabular-nums text-accent">{topK}</span>
               </div>
-              <div className="rounded-2xl bg-slate-50 p-3">
-                <p className="text-xs font-bold text-slate-400">Avg score</p>
-                <p className="mt-1 text-2xl font-black text-slate-950">{averageScore.toFixed(2)}</p>
-              </div>
-            </div>
-          </GlassPanel>
-        </section>
-
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_1fr]">
-          <aside className="flex flex-col gap-4 xl:sticky xl:top-[88px] xl:self-start">
-            <GlassPanel className="p-5">
-              <div className="mb-4 flex items-center gap-2 text-sm font-black text-slate-900">
-                <Settings2 size={17} className="text-blue-600" />
-                Search controls
-              </div>
-              <label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.12em] text-slate-400">Results: {topK}</label>
               <input
                 type="range"
                 min={3}
                 max={20}
                 step={1}
                 value={topK}
-                onChange={event => setTopK(Number(event.target.value))}
-                className="mb-5 w-full cursor-pointer"
+                onChange={(event) => setTopK(Number(event.target.value))}
+                className="mb-4 w-full cursor-pointer"
               />
-              <label className="mb-2 block text-xs font-extrabold uppercase tracking-[0.12em] text-slate-400">Content type</label>
+              <p className="label mb-2">Content type</p>
               <ContentFilter value={contentType} onChange={setContentType} />
             </GlassPanel>
 
-            <GlassPanel className="p-5">
-              <p className="mb-3 text-sm font-black text-slate-900">Popular searches</p>
+            <GlassPanel className="p-4">
+              <p className="label mb-2">Try a query</p>
               <QueryChips onSelect={handleChipSelect} />
             </GlassPanel>
 
-            <AISignalsPanel userId={userId} backendStatus={backendStatus} topResult={results[0] ?? null} />
+            <AISignalsPanel topResult={results[0] ?? null} />
           </aside>
 
+          {/* ---------- results ---------- */}
           <section className="min-w-0">
             {backendStatus === 'offline' && (
-              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-5 rounded-3xl border border-red-200 bg-red-50 p-5 text-red-900">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-red-600 shadow-sm">
-                    <AlertCircle size={22} />
-                  </div>
-                  <div className="flex-1">
-                    <h2 className="font-display text-lg font-black">Backend offline</h2>
-                    <p className="mt-1 text-sm font-medium text-red-700">Cannot reach http://127.0.0.1:8000. Start FastAPI to load live recommendations.</p>
-                  </div>
-                  <button onClick={pingBackend} className="flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-red-700 shadow-sm transition hover:bg-red-100">
-                    <RefreshCw size={15} />
-                    Retry
-                  </button>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="panel mb-4 flex flex-col gap-3 p-5 sm:flex-row sm:items-center"
+                style={{ borderColor: 'color-mix(in srgb, var(--bad) 35%, transparent)' }}
+              >
+                <AlertCircle size={20} style={{ color: 'var(--bad)' }} className="shrink-0" />
+                <div className="flex-1">
+                  <h2 className="display text-[15px] font-bold text-ink">Backend offline</h2>
+                  <p className="mt-1 text-xs text-ink-muted">
+                    Cannot reach http://127.0.0.1:8000 — start the FastAPI server to load results.
+                  </p>
                 </div>
+                <button onClick={pingBackend} className="btn btn-ghost px-3 py-2">
+                  <RefreshCw size={13} />
+                  Retry
+                </button>
               </motion.div>
             )}
 
-            {!loading && !searched && backendStatus !== 'offline' && (
-              <div className="rounded-3xl border border-dashed border-slate-300 bg-white/70 px-6 py-16 text-center">
-                <Search size={34} className="mx-auto text-slate-300" />
-                <h2 className="mt-4 font-display text-2xl font-black text-slate-950">Start with a search</h2>
-                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">Try a mood, genre, scene, learning goal, or artist style.</p>
+            {!loading && results.length > 0 && (
+              <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="label">
+                    {results.length} results
+                    {elapsed !== null && <span className="ml-2 normal-case">· {elapsed} ms</span>}
+                  </p>
+                  <h2 className="display mt-1 truncate text-xl font-bold text-ink">{query}</h2>
+                </div>
               </div>
             )}
 
             {loading && (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {Array.from({ length: Math.min(topK, 6) }).map((_, index) => <SkeletonCard key={index} />)}
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+                {Array.from({ length: Math.min(topK, 6) }).map((_, index) => (
+                  <SkeletonCard key={index} />
+                ))}
               </div>
             )}
 
             {error && !loading && (
-              <div className="rounded-3xl border border-red-200 bg-white p-6 text-center shadow-sm">
-                <p className="font-black text-red-600">Search error</p>
-                <p className="mt-2 text-sm font-mono text-slate-500">{error}</p>
-                <button onClick={() => handleSearch()} className="btn-primary mx-auto mt-4 flex items-center gap-2 px-4 py-2.5 text-sm">
-                  <RefreshCw size={15} />
-                  Retry search
+              <div className="panel p-8 text-center">
+                <p className="display font-bold" style={{ color: 'var(--bad)' }}>
+                  Search error
+                </p>
+                <p className="mt-2 font-mono text-xs text-ink-muted">{error}</p>
+                <button onClick={() => handleSearch()} className="btn btn-primary mx-auto mt-4 px-4 py-2">
+                  <RefreshCw size={13} />
+                  Retry
                 </button>
               </div>
             )}
 
+            {!loading && !searched && backendStatus !== 'offline' && (
+              <div className="panel px-6 py-20 text-center">
+                <Search size={28} className="mx-auto text-ink-faint" />
+                <h2 className="display mt-4 text-xl font-bold text-ink">Start with a search</h2>
+                <p className="mx-auto mt-2 max-w-sm text-[13px] text-ink-muted">
+                  Describe a mood, genre, scene, or artist style — not just a keyword.
+                </p>
+              </div>
+            )}
+
             {!loading && results.length > 0 && (
-              <>
-                <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-extrabold text-slate-500">{results.length} results</p>
-                    <h2 className="font-display text-2xl font-black text-slate-950">{query}</h2>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  {results.map((result, index) => (
-                    <RecommendationCard
-                      key={result.global_id}
-                      result={result}
-                      index={index}
-                      userId={userId}
-                      query={query}
-                      onSimilar={handleSimilar}
-                      onView={setSelectedItem}
-                      onToast={addToast}
-                    />
-                  ))}
-                </div>
-              </>
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+                {results.map((result, index) => (
+                  <RecommendationCard
+                    key={result.global_id}
+                    result={result}
+                    index={index}
+                    userId={userId}
+                    query={query}
+                    onSimilar={handleSimilar}
+                    onView={setSelectedItem}
+                    onToast={addToast}
+                  />
+                ))}
+              </div>
             )}
 
             {!loading && searched && results.length === 0 && !error && backendStatus !== 'offline' && (
-              <div className="rounded-3xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
-                <h3 className="font-display text-xl font-black text-slate-950">No results found</h3>
-                <p className="mt-2 text-sm text-slate-500">Try a different query or remove content type filters.</p>
+              <div className="panel px-6 py-20 text-center">
+                <h3 className="display text-lg font-bold text-ink">No results found</h3>
+                <p className="mt-2 text-[13px] text-ink-muted">
+                  Try a different query or clear the content-type filter.
+                </p>
               </div>
             )}
           </section>
@@ -312,7 +428,7 @@ export default function Home({ authenticatedUser, onLogout }) {
 
       <SimilarDrawer
         open={drawer.open}
-        onClose={() => setDrawer(current => ({ ...current, open: false }))}
+        onClose={() => setDrawer((current) => ({ ...current, open: false }))}
         title={drawer.title}
         results={drawer.results}
         loading={drawer.loading}
@@ -324,7 +440,14 @@ export default function Home({ authenticatedUser, onLogout }) {
         onToast={addToast}
       />
 
-      <ItemDetailModal item={selectedItem} onClose={() => setSelectedItem(null)} userId={userId} query={query} onSimilar={handleSimilar} onToast={addToast} />
+      <ItemDetailModal
+        item={selectedItem}
+        onClose={() => setSelectedItem(null)}
+        userId={userId}
+        query={query}
+        onSimilar={handleSimilar}
+        onToast={addToast}
+      />
       <Toast toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
