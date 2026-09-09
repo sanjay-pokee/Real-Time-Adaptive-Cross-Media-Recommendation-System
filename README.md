@@ -147,3 +147,68 @@ python -m scripts.rebuild_ema_profiles
 After an interaction is logged, later `/recommend` calls with the same `user_id` include `ema_score` and use it for instant reranking. This works immediately without retraining LightGCN.
 
 
+
+## Multi-Domain Engine & Audience Constraints
+
+The retrieval stack (SBERT -> Qdrant -> rerank) is domain-agnostic: it only ever sees text and a `content_type` payload field. Everything vertical-specific lives in `config/domains.yaml`, so adding a domain is a config change, not a code change.
+
+Shipped domains:
+
+| Domain | Content types | Risk tier |
+| --- | --- | --- |
+| `entertainment` | `movie`, `book`, `music` | 0 (informational) |
+| `industry` | `industrial` | 0 |
+| `health` | `health` | 1 (advisory shown) |
+
+Health and any future finance domain are scoped to **information and product discovery**. The engine does not give medical, diagnostic or investment advice, and `risk_tier: 2` items (those needing a licensed professional) are withheld by default.
+
+List what a deployment serves:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/domains
+```
+
+### Audience eligibility
+
+Recommendation runs in two stages: eligibility, then relevance. Age, safe mode, domain scope and risk tier are compiled into the Qdrant query itself, so an ineligible item is never retrieved, never scored, and cannot be promoted back by the graph, EMA or KG rerankers.
+
+```powershell
+Invoke-RestMethod -Method Post `
+  -Uri http://127.0.0.1:8000/recommend `
+  -ContentType "application/json" `
+  -Body '{"query":"fun adventure","top_k":5,"age":8}'
+```
+
+Policy, all of which fails closed:
+
+- A request with **no age** is not treated as an adult; it is capped at the teen ceiling.
+- `safe_mode: true` caps below a real adult age, so an adult can ask for family-appropriate results.
+- A catalog row with no audience metadata falls back to its content type's default, not to unrestricted.
+
+Requests that declare no audience (no `age`, `safe_mode` or `domain`) behave exactly as before.
+
+Audience metadata (`domain`, `maturity`, `audience_min_age`, `risk_tier`) is derived in `preprocessing/audience_tagging.py` after normalization. These are **keyword heuristics, not certified ratings**; an explicit rating already present on a row is preserved. Rebuild the catalog and collection after pulling this:
+
+```powershell
+python -m preprocessing.build_content_catalog
+python -m embeddings.build_embeddings
+python -m embeddings.build_qdrant_collection
+```
+
+### Evaluation
+
+Constraint enforcement and what it costs:
+
+```powershell
+python -m scripts.evaluate_constraints --k 20
+```
+
+Reports violation rate@K with the filter on (should be exactly 0) against the same viewer with it off, plus catalog coverage and overlap@K. Exits non-zero if any ineligible item reaches a viewer. Writes `reports/constraint_evaluation.{md,csv}`.
+
+Cross-domain benchmark table:
+
+```powershell
+python -m scripts.build_benchmark_table
+```
+
+Each Kaggle run writes a JSON via `evaluate_lightgcn --report`. Drop them in `reports/benchmarks/` and this emits `reports/domain_benchmark_table.md` and `.tex`, the latter for direct `\input` into the deck.

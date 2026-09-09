@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import numpy as np
@@ -301,6 +302,37 @@ def popularity_baseline(
     return _metrics_from_rankings(ranked, test_relevant, k)
 
 
+def write_report(
+    path: Path,
+    metrics: RankingMetrics,
+    k: int,
+    model: str,
+    dataset: str,
+    config: LightGCNConfig | None,
+    graph: dict[str, int] | None = None,
+) -> Path:
+    """Persist one evaluation as JSON so the results table is not retyped by hand.
+
+    Each Kaggle run drops a file here; scripts.build_benchmark_table collects
+    them. The JSON is also echoed to stdout, so a run whose output files are lost
+    can still be recovered from the log.
+    """
+    payload = {
+        "model": model,
+        "dataset": Path(dataset).name,
+        "k": k,
+        "metrics": asdict(metrics),
+        "config": config.__dict__ if config else None,
+        "graph": graph or {},
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print()
+    print(f"report -> {path}")
+    print(json.dumps(payload), flush=True)
+    return path
+
+
 def _print_metrics(title: str, k: int, metrics: RankingMetrics) -> None:
     print(f"\n{title}")
     print(f"users_evaluated: {metrics.users_evaluated}")
@@ -318,6 +350,8 @@ def run_evaluation(
     interactions: pd.DataFrame | None = None,
     baseline: str = "none",
     eval_batch_size: int = 2048,
+    report_path: Path | None = None,
+    dataset_name: str = "mysql",
 ) -> RankingMetrics:
     if interactions is None:
         from backend.mysql_store import MySQLStore
@@ -329,6 +363,20 @@ def run_evaluation(
         item_ids = sorted(train_rows["entity_id"].astype(str).unique())
         metrics = popularity_baseline(item_ids, train_rows, test_rows, k=k)
         _print_metrics("Most-popular baseline", k, metrics)
+        if report_path:
+            write_report(
+                report_path,
+                metrics,
+                k,
+                model="popularity",
+                dataset=dataset_name,
+                config=None,
+                graph={
+                    "users": int(train_rows["user_id"].nunique()),
+                    "items": len(item_ids),
+                    "interactions": int(len(train_rows)),
+                },
+            )
         return metrics
 
     user_embeddings, item_embeddings, user_ids, item_ids, mapped_train = train_for_evaluation(train_rows, config)
@@ -343,6 +391,20 @@ def run_evaluation(
         eval_batch_size=eval_batch_size,
     )
     _print_metrics("LightGCN holdout evaluation", k, metrics)
+    if report_path:
+        write_report(
+            report_path,
+            metrics,
+            k,
+            model="lightgcn",
+            dataset=dataset_name,
+            config=config,
+            graph={
+                "users": len(user_ids),
+                "items": len(item_ids),
+                "interactions": int(len(mapped_train)),
+            },
+        )
     return metrics
 
 
@@ -397,6 +459,12 @@ def main() -> None:
     parser.add_argument("--user-core", type=int, default=10)
     parser.add_argument("--item-core", type=int, default=10)
     parser.add_argument("--max-users", type=int, default=0, help="0 = keep all users")
+    parser.add_argument(
+        "--report",
+        type=Path,
+        default=None,
+        help="Write the metrics to this JSON file for scripts.build_benchmark_table.",
+    )
     args = parser.parse_args()
 
     config = LightGCNConfig(
@@ -431,6 +499,8 @@ def main() -> None:
         interactions=interactions,
         baseline=args.baseline,
         eval_batch_size=args.eval_batch_size,
+        report_path=args.report,
+        dataset_name=str(args.dataset) if args.dataset else "mysql",
     )
 
 
