@@ -3,8 +3,12 @@ import {
   ArrowUpRight,
   BookOpen,
   Calendar,
+  Factory,
   Film,
+  HeartPulse,
+  Landmark,
   Music,
+  Package,
   Star,
   TrendingUp,
   Users,
@@ -12,15 +16,23 @@ import {
 } from 'lucide-react';
 import { useEffect } from 'react';
 import InteractionButtons from './InteractionButtons';
+import MaturityBadge from './MaturityBadge';
 import ScoreBreakdown from './ScoreBreakdown';
-import { coverFor, monogram } from '../utils/cover';
+import { coverFor, imageFor, monogram } from '../utils/cover';
 import { explainRank } from '../utils/scoring';
 
 const TYPE_META = {
-  movie: { label: 'Movie', icon: Film, color: 'var(--type-movie)' },
-  book: { label: 'Book', icon: BookOpen, color: 'var(--type-book)' },
-  music: { label: 'Music', icon: Music, color: 'var(--type-music)' },
+  movie:      { label: 'Movie',      icon: Film,       color: 'var(--type-movie)' },
+  book:       { label: 'Book',       icon: BookOpen,   color: 'var(--type-book)' },
+  music:      { label: 'Music',      icon: Music,      color: 'var(--type-music)' },
+  health:     { label: 'Health',     icon: HeartPulse, color: 'var(--type-health)' },
+  industrial: { label: 'Industrial', icon: Factory,    color: 'var(--type-industrial)' },
+  finance:    { label: 'Finance',    icon: Landmark,   color: 'var(--type-finance)' },
 };
+
+// Falling back to Movie labelled every health and industrial item "Movie" and
+// drew a film icon on a cleaning bucket.
+const FALLBACK_META = { label: 'Item', icon: Package, color: 'var(--accent)' };
 
 export default function ItemDetailModal({ item, onClose, userId, query, onSimilar, onToast }) {
   // Close on Escape - registered unconditionally so hook order stays stable.
@@ -35,9 +47,10 @@ export default function ItemDetailModal({ item, onClose, userId, query, onSimila
 
   if (!item) return null;
 
-  const meta = TYPE_META[item.content_type] || TYPE_META.movie;
+  const meta = TYPE_META[item.content_type] || FALLBACK_META;
   const Icon = meta.icon;
   const cover = coverFor(item);
+  const imageUrl = imageFor(item);
   const categories = String(item.categories || '')
     .split(/[,|;]+/)
     .map((entry) => entry.trim())
@@ -67,23 +80,53 @@ export default function ItemDetailModal({ item, onClose, userId, query, onSimila
           className="panel relative z-[99999] my-auto flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden shadow-lg"
         >
           {/* ---- banner ---- */}
-          <div className="relative h-24 shrink-0" style={{ background: cover.background }}>
-            <div className="absolute inset-0 bg-gradient-to-t from-[var(--surface)] via-transparent to-transparent" />
+          {/* Taller than before and it uses the item's real photo when there is
+              one, blurred and over-scaled so any aspect ratio fills the strip
+              without distorting, with the sharp copy composited on top. */}
+          <div
+            className="relative h-40 shrink-0 overflow-hidden"
+            style={{ background: cover.background }}
+          >
+            {imageUrl ? (
+              <>
+                <img
+                  src={imageUrl}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full scale-125 object-cover blur-xl saturate-150"
+                  onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                />
+                <img
+                  src={imageUrl}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 h-full w-full object-contain p-4 drop-shadow-2xl"
+                  onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                />
+              </>
+            ) : null}
+            {/* Scrim, so the close button and the panel edge stay legible over
+                an arbitrary photo. */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[var(--surface)] via-transparent to-black/25" />
             <button
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg bg-black/35 text-white/90 backdrop-blur transition-colors hover:bg-black/55"
+              className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg bg-black/45 text-white/90 backdrop-blur transition-colors hover:bg-black/65"
             >
               <X size={15} />
             </button>
           </div>
 
-          <div className="-mt-9 overflow-y-auto px-6 pb-6 sm:px-7">
+          <div className="-mt-8 overflow-y-auto px-6 pb-6 sm:px-7">
             {/* ---- identity ---- */}
-            <div className="flex items-end gap-3.5">
+            {/* The avatar and the title are stacked, not on one baseline-aligned
+                row. Previously a long title wrapped to three lines and, being
+                bottom-aligned beside a fixed avatar, grew upward into the
+                banner and had its first line clipped. */}
+            <div className="flex items-start gap-3.5">
               <div
-                className="relative flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-2xl"
+                className="relative flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-2xl"
                 style={{
                   background: cover.background,
                   boxShadow: '0 0 0 4px var(--surface)',
@@ -92,11 +135,23 @@ export default function ItemDetailModal({ item, onClose, userId, query, onSimila
                 <span className="display text-xl font-extrabold text-white/95 drop-shadow">
                   {monogram(item.title)}
                 </span>
-                <Icon size={13} className="absolute bottom-1.5 right-1.5 text-white/80" strokeWidth={2.5} />
+                {imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                    onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                  />
+                ) : null}
+                <Icon
+                  size={13}
+                  className="absolute bottom-1.5 right-1.5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,.9)]"
+                  strokeWidth={2.5}
+                />
               </div>
 
-              <div className="min-w-0 flex-1 pb-1">
-                <div className="mb-1 flex items-center gap-2">
+              <div className="min-w-0 flex-1 pt-9">
+                <div className="mb-1 flex flex-wrap items-center gap-2">
                   <span
                     className="text-[10px] font-bold uppercase tracking-[0.09em]"
                     style={{ color: meta.color }}
@@ -106,6 +161,13 @@ export default function ItemDetailModal({ item, onClose, userId, query, onSimila
                   {item.source && (
                     <span className="truncate text-[10px] text-ink-faint">{item.source}</span>
                   )}
+                  {item.maturity ? (
+                    <MaturityBadge
+                      maturity={item.maturity}
+                      minAge={Number(item.audience_min_age)}
+                      compact
+                    />
+                  ) : null}
                 </div>
                 <h2 className="display text-xl font-bold leading-tight text-ink sm:text-2xl">
                   {item.title}

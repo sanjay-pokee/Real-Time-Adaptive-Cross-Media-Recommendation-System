@@ -311,6 +311,20 @@
     border-radius: var(--radius);
   }
 
+  /* Opaque surface for anything that floats ON TOP of other content:
+     autocomplete dropdowns, menus, modals.
+     Glass is for panels with the page behind them. A translucent dropdown over
+     a grid of result cards is simply unreadable — you can see the cards through
+     the suggestions — and backdrop-filter cannot save it because the content
+     behind is high-contrast text, not a soft gradient. */
+  .panel-overlay {
+    position: relative;
+    background: var(--surface-2);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+  }
+
   .panel-lit::after {
     content: '';
     position: absolute;

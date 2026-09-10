@@ -134,7 +134,7 @@ export default function SearchBar({ value, onChange, onSearch, loading, disabled
               animate={{ y: 0, scale: 1 }}
               exit={{ y: -6, scale: 0.985 }}
               transition={{ duration: 0.14, ease: 'easeOut' }}
-              className="panel absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden shadow-lg"
+              className="panel-overlay absolute left-0 right-0 top-[calc(100%+6px)] z-50 overflow-hidden"
               role="listbox"
               aria-label="Search suggestions"
             >
