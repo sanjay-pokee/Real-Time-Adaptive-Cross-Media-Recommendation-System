@@ -17,9 +17,9 @@ import {
 import { useEffect } from 'react';
 import InteractionButtons from './InteractionButtons';
 import MaturityBadge from './MaturityBadge';
-import ScoreBreakdown from './ScoreBreakdown';
+import ExplainPanel from './ExplainPanel';
 import { coverFor, imageFor, monogram } from '../utils/cover';
-import { explainRank } from '../utils/scoring';
+
 
 const TYPE_META = {
   movie:      { label: 'Movie',      icon: Film,       color: 'var(--type-movie)' },
@@ -34,7 +34,16 @@ const TYPE_META = {
 // drew a film icon on a cleaning bucket.
 const FALLBACK_META = { label: 'Item', icon: Package, color: 'var(--accent)' };
 
-export default function ItemDetailModal({ item, onClose, userId, query, onSimilar, onToast }) {
+export default function ItemDetailModal({
+  item,
+  onClose,
+  userId,
+  query,
+  onSimilar,
+  onToast,
+  results = [],
+  effectiveAge,
+}) {
   // Close on Escape - registered unconditionally so hook order stays stable.
   useEffect(() => {
     if (!item) return undefined;
@@ -175,11 +184,6 @@ export default function ItemDetailModal({ item, onClose, userId, query, onSimila
               </div>
             </div>
 
-            {/* ---- why it ranked ---- */}
-            <p className="mt-4 rounded-xl border border-line bg-accent-soft px-3.5 py-2.5 text-[12px] leading-relaxed text-ink">
-              {explainRank(item)}
-            </p>
-
             {/* ---- overview ---- */}
             <section className="mt-5">
               <h4 className="label mb-2">Overview</h4>
@@ -229,9 +233,10 @@ export default function ItemDetailModal({ item, onClose, userId, query, onSimila
               </section>
             )}
 
-            {/* ---- score ---- */}
+            {/* ---- why this ranked here ---- */}
             <section className="panel-flat mt-5 p-4">
-              <ScoreBreakdown result={item} defaultOpen />
+              <h4 className="label mb-3">Why this ranked here</h4>
+              <ExplainPanel item={item} results={results} effectiveAge={effectiveAge} />
             </section>
 
             {/* ---- interactions ---- */}

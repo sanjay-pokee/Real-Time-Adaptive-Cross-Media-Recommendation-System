@@ -682,6 +682,10 @@ export default function Home({ authenticatedUser, onLogout }) {
         query={query}
         onSimilar={handleSimilar}
         onToast={addToast}
+        // The whole result set, so the panel can re-rank with a signal removed
+        // and show where this item would actually have landed.
+        results={results}
+        effectiveAge={effectiveAge}
       />
       <Toast toasts={toasts} onDismiss={dismissToast} />
     </div>

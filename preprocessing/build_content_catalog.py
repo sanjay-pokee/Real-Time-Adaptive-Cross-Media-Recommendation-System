@@ -21,6 +21,8 @@ except ImportError:
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "data" / "processed" / "content_catalog.csv"
+# Written by scripts.backfill_cover_art for the datasets that ship no artwork.
+COVER_ART_CACHE_PATH = PROJECT_ROOT / "data" / "processed" / "cover_art_cache.csv"
 
 
 # ---------------------------------------------------------------------------
@@ -46,10 +48,50 @@ def build_content_catalog(config_path: Path = DEFAULT_CONFIG_PATH) -> pd.DataFra
     catalog = catalog[catalog["title"].str.strip() != ""]
     catalog = catalog[catalog["embedding_text"].str.strip() != ""]
 
+    # Fill cover art for the datasets that ship none of their own, from the
+    # cache scripts.backfill_cover_art builds. Applied here rather than in a
+    # normalizer because the cache is keyed by global_id, which only exists
+    # once a row has been normalized.
+    catalog = apply_cover_art_cache(catalog)
+
     # Derive the audience metadata the constraint layer filters on. Runs once
     # on the combined catalog so every dataset is tagged by the same rules.
     catalog = annotate_audience(catalog[CONTENT_COLUMNS])
     return catalog[CATALOG_COLUMNS].reset_index(drop=True)
+
+
+def apply_cover_art_cache(catalog: pd.DataFrame) -> pd.DataFrame:
+    """Fill empty image_url values from the backfill cache, if there is one.
+
+    Only fills blanks: a URL that came from the source dataset is authoritative
+    and is never overwritten by a looked-up one. Missing cache is not an error -
+    the frontend falls back to a generated gradient.
+    """
+    if not COVER_ART_CACHE_PATH.exists():
+        return catalog
+
+    cache = pd.read_csv(COVER_ART_CACHE_PATH)
+    lookup = {
+        str(row.global_id): str(row.image_url or "")
+        for row in cache.itertuples(index=False)
+    }
+    if not lookup:
+        return catalog
+
+    current = catalog["image_url"].fillna("").astype(str)
+    filled = [
+        existing if existing.strip() else lookup.get(str(global_id), "")
+        for global_id, existing in zip(catalog["global_id"], current)
+    ]
+    catalog = catalog.copy()
+    catalog["image_url"] = filled
+
+    added = sum(
+        1 for before, after in zip(current, filled)
+        if not before.strip() and after.strip()
+    )
+    print(f"  Cover art: filled {added:,} rows from {COVER_ART_CACHE_PATH.name}")
+    return catalog
 
 
 # ---------------------------------------------------------------------------
