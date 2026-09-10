@@ -66,7 +66,7 @@ export default function AISignalsPanel({ topResult }) {
                   <div
                     className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
                     style={{
-                      background: live ? `color-mix(in srgb, ${color} 16%, transparent)` : 'var(--surface-3)',
+                      background: live ? `color-mix(in oklab, ${color} 16%, transparent)` : 'var(--surface-3)',
                       color: live ? color : 'var(--ink-faint)',
                       opacity: live ? 1 : 0.6,
                     }}
@@ -104,7 +104,7 @@ export default function AISignalsPanel({ topResult }) {
                 <div
                   className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg"
                   style={{
-                    background: 'color-mix(in srgb, var(--sig-profile) 16%, transparent)',
+                    background: 'color-mix(in oklab, var(--sig-profile) 16%, transparent)',
                     color: 'var(--sig-profile)',
                   }}
                 >

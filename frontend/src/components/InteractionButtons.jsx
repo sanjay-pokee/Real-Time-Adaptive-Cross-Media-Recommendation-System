@@ -92,7 +92,7 @@ export default function InteractionButtons({ globalId, userId, query, onToast, o
               className="flex h-7 w-7 items-center justify-center rounded-lg border transition-colors"
               style={{
                 borderColor: isActive ? tint : 'var(--line)',
-                background: isActive ? `color-mix(in srgb, ${tint} 16%, transparent)` : 'transparent',
+                background: isActive ? `color-mix(in oklab, ${tint} 16%, transparent)` : 'transparent',
                 color: isActive ? tint : 'var(--ink-faint)',
               }}
             >

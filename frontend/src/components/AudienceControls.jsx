@@ -105,7 +105,10 @@ export default function AudienceControls({
         className="panel-flat flex items-center justify-between gap-2 px-3 py-2.5"
         style={{ borderColor: 'color-mix(in oklab, var(--tint) 35%, transparent)', '--tint': tier.tint }}
       >
-        <span className="label" style={{ letterSpacing: '.06em' }}>Ceiling</span>
+        {/* "Ceiling" read as a restriction — a 30-year-old showing "21+"
+            looked like they were limited to adult content, when it means the
+            opposite. Say which direction it goes. */}
+        <span className="label" style={{ letterSpacing: '.06em' }}>Sees up to</span>
         <motion.span
           key={tier.level}
           initial={{ opacity: 0, scale: 0.9 }}

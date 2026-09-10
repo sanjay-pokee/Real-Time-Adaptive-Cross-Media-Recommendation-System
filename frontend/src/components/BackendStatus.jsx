@@ -13,7 +13,7 @@ export default function BackendStatus({ status, onRetry }) {
 
   if (status === 'online') {
     return (
-      <span className="chip" style={{ color: 'var(--ok)', borderColor: 'color-mix(in srgb, var(--ok) 34%, transparent)' }}>
+      <span className="chip" style={{ color: 'var(--ok)', borderColor: 'color-mix(in oklab, var(--ok) 34%, transparent)' }}>
         <span className="relative flex h-1.5 w-1.5">
           <motion.span
             className="absolute inline-flex h-full w-full rounded-full"
@@ -30,7 +30,7 @@ export default function BackendStatus({ status, onRetry }) {
 
   return (
     <div className="flex items-center gap-1.5">
-      <span className="chip" style={{ color: 'var(--bad)', borderColor: 'color-mix(in srgb, var(--bad) 34%, transparent)' }}>
+      <span className="chip" style={{ color: 'var(--bad)', borderColor: 'color-mix(in oklab, var(--bad) 34%, transparent)' }}>
         <WifiOff size={11} />
         Offline
       </span>

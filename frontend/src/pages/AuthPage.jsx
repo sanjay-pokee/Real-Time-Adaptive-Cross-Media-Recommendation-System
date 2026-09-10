@@ -6,9 +6,19 @@ import { USERS } from '../components/UserSelector';
 const DEMO_PASSWORD = 'demo123';
 
 const PITCH = [
-  { value: 'Qdrant', label: 'Vector retrieval over a unified catalog' },
+  { value: 'Qdrant', label: 'Vector retrieval over one unified catalogue' },
   { value: 'LightGCN', label: 'Collaborative signal from the interaction graph' },
   { value: 'EMA', label: 'Session-level preference drift, updated live' },
+  { value: 'Eligibility', label: 'Age and risk checked before anything is scored' },
+];
+
+// The verticals the engine serves. Static here on purpose: the auth screen
+// renders before any authenticated call, so it cannot ask /domains yet.
+const VERTICALS = [
+  { label: 'Entertainment', tint: 'var(--dom-entertainment)' },
+  { label: 'Health', tint: 'var(--dom-health)' },
+  { label: 'Industry', tint: 'var(--dom-industry)' },
+  { label: 'Finance', tint: 'var(--dom-finance)' },
 ];
 
 function initialsFromName(name) {
@@ -67,7 +77,9 @@ export default function AuthPage({ onAuth }) {
       label: cleanName,
       email: cleanEmail,
       initials: initialsFromName(cleanName),
-      accent: '#7c8cff',
+      // Was the old indigo literal, which survived the palette change and made
+      // every signed-up avatar the one colour no longer in the design system.
+      accent: '#22e1c3',
       authType: 'signup',
     });
   }
@@ -77,13 +89,15 @@ export default function AuthPage({ onAuth }) {
       <div className="grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
         {/* ================= brand panel ================= */}
         <section className="relative hidden overflow-hidden border-r border-line lg:block">
-          {/* layered ambient light instead of a flat image wash */}
+          {/* Ambient light. Token-driven rather than the literal rgba values
+              that used to be baked in here, which stayed indigo when the
+              palette changed and no longer matched anything else. */}
           <div
             className="absolute inset-0"
             style={{
               background:
-                'radial-gradient(40rem 30rem at 20% 15%, rgba(124,140,255,.22), transparent 65%),' +
-                'radial-gradient(34rem 26rem at 85% 80%, rgba(167,139,250,.16), transparent 65%)',
+                'radial-gradient(40rem 30rem at 20% 15%, var(--aurora-a), transparent 65%),' +
+                'radial-gradient(34rem 26rem at 85% 80%, var(--aurora-b), transparent 65%)',
             }}
           />
 
@@ -91,7 +105,7 @@ export default function AuthPage({ onAuth }) {
             <div className="flex items-center gap-2.5">
               <div
                 className="flex h-9 w-9 items-center justify-center rounded-xl text-white"
-                style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-2))' }}
+                style={{ background: 'linear-gradient(135deg in oklab, var(--accent), var(--accent-2))' }}
               >
                 <Sparkles size={17} />
               </div>
@@ -105,16 +119,24 @@ export default function AuthPage({ onAuth }) {
 
             <div className="max-w-xl">
               <h1 className="display text-5xl font-extrabold leading-[1.04] text-ink xl:text-[3.4rem]">
-                Find what fits
+                One engine.
                 <br />
-                the mood, not just
-                <br />
-                the keyword.
+                <span className="text-aurora">Every domain.</span>
               </h1>
               <p className="mt-6 max-w-md text-[15px] leading-relaxed text-ink-muted">
-                One workspace for movies, books, and music — where every
-                recommendation shows the signals that ranked it.
+                The same retrieval stack serves entertainment, health, industry
+                and finance. What changes per vertical is configuration — and an
+                eligibility layer that decides what a given viewer may see
+                before anything is ranked.
               </p>
+
+              <div className="mt-7 flex flex-wrap gap-2">
+                {VERTICALS.map(({ label, tint }) => (
+                  <span key={label} className="chip chip-tinted" style={{ '--tint': tint }}>
+                    {label}
+                  </span>
+                ))}
+              </div>
             </div>
 
             <div className="grid max-w-xl gap-2.5">
@@ -141,7 +163,7 @@ export default function AuthPage({ onAuth }) {
             <div className="mb-7 flex items-center gap-2.5 lg:hidden">
               <div
                 className="flex h-9 w-9 items-center justify-center rounded-xl text-white"
-                style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-2))' }}
+                style={{ background: 'linear-gradient(135deg in oklab, var(--accent), var(--accent-2))' }}
               >
                 <Sparkles size={17} />
               </div>
@@ -156,14 +178,26 @@ export default function AuthPage({ onAuth }) {
                     key={value}
                     type="button"
                     onClick={() => setMode(value)}
-                    className="rounded-lg px-4 py-2 text-[13px] font-semibold transition-colors"
-                    style={{
-                      background: mode === value ? 'var(--surface)' : 'transparent',
-                      color: mode === value ? 'var(--ink)' : 'var(--ink-faint)',
-                      boxShadow: mode === value ? 'var(--shadow-sm)' : 'none',
-                    }}
+                    aria-pressed={mode === value}
+                    className="relative rounded-lg px-4 py-2 text-[13px] font-semibold transition-colors"
+                    style={{ color: mode === value ? 'var(--accent-ink)' : 'var(--ink-faint)' }}
                   >
-                    {value === 'login' ? 'Log in' : 'Sign up'}
+                    {/* One indicator slides between the two tabs rather than
+                        each tab fading its own background in and out. */}
+                    {mode === value ? (
+                      <motion.span
+                        layoutId="auth-mode-pill"
+                        transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                        className="absolute inset-0 rounded-lg"
+                        style={{
+                          background: 'linear-gradient(120deg in oklab, var(--accent), var(--accent-2))',
+                          boxShadow: 'var(--shadow-accent)',
+                        }}
+                      />
+                    ) : null}
+                    <span className="relative">
+                      {value === 'login' ? 'Log in' : 'Sign up'}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -266,7 +300,7 @@ export default function AuthPage({ onAuth }) {
                       className="rounded-xl px-3 py-2 text-[12px] font-medium"
                       style={{
                         color: 'var(--bad)',
-                        background: 'color-mix(in srgb, var(--bad) 12%, transparent)',
+                        background: 'color-mix(in oklab, var(--bad) 12%, transparent)',
                       }}
                     >
                       {error}

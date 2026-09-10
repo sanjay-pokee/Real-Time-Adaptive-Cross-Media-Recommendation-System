@@ -118,7 +118,7 @@ export default function SearchBar({ value, onChange, onSearch, loading, disabled
           onChange={e => onChange(e.target.value)}
           onKeyDown={handleKey}
           onFocus={() => suggestions.length > 0 && setOpen(true)}
-          placeholder="Search by title, actor, director, or genre…"
+          placeholder="Describe what you need — a mood, a problem, a product…"
           disabled={disabled}
           className="field h-11 w-full pl-10 pr-9 font-medium"
         />

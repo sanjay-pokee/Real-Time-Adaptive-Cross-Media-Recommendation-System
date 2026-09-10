@@ -101,6 +101,11 @@ export default function Home({ authenticatedUser, onLogout }) {
     error: null,
   });
   const hasRunDefault = useRef(false);
+  // Monotonic id of the newest search, so an out-of-order response can be
+  // discarded rather than overwriting fresher results.
+  const searchSeq = useRef(0);
+  // Bumped to force a scope re-search when only the query text changed.
+  const [scopeNonce, setScopeNonce] = useState(0);
 
   const activeUser = availableUsers.find((user) => user.id === userId) || availableUsers[0];
   const averageScore = results.length
@@ -203,6 +208,27 @@ export default function Home({ authenticatedUser, onLogout }) {
     }
   }, [offeredContentTypes, contentType]);
 
+  // Re-run the search when the scope changes, so picking a domain or dragging
+  // the age slider updates the results immediately instead of leaving stale
+  // ones on screen until the user thinks to press Search again.
+  //
+  // Debounced because the age slider fires on every step; without it a drag
+  // from 8 to 30 would issue twenty-odd requests. Skipped until the first
+  // search has run, so it does not race the initial load.
+  const searchRef = useRef(handleSearch);
+  searchRef.current = handleSearch;
+
+  useEffect(() => {
+    if (!searched) return undefined;
+    const timer = setTimeout(() => searchRef.current(query), 350);
+    return () => clearTimeout(timer);
+    // `query` is deliberately absent from the deps: typing should not
+    // auto-search, only changing who and what we are searching for should.
+    // `scopeNonce` lets a chip force a run when it changes the query but
+    // happens to leave the scope identical.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [domain, age, safeMode, contentType, topK, scopeNonce]);
+
   useEffect(() => {
     if (!hasRunDefault.current && backendStatus === 'online') {
       hasRunDefault.current = true;
@@ -211,7 +237,24 @@ export default function Home({ authenticatedUser, onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backendStatus]);
 
-  async function handleSearch(nextQuery = query) {
+  /**
+   * `overrides` exists because a query chip sets the domain and the age and
+   * then searches in the same gesture. setState is async, so reading those
+   * off state here would use the previous values and run the wrong search.
+   */
+  async function handleSearch(nextQuery = query, overrides = {}) {
+    const scope = {
+      domain: 'domain' in overrides ? overrides.domain : domain,
+      age: 'age' in overrides ? overrides.age : age,
+      safeMode: 'safeMode' in overrides ? overrides.safeMode : safeMode,
+      contentType: 'contentType' in overrides ? overrides.contentType : contentType,
+    };
+    // Searches can overlap — a chip changes several bits of scope at once and
+    // the slider fires repeatedly — and responses do not necessarily come back
+    // in the order they were sent. Without this guard a slower earlier request
+    // could land last and overwrite the correct results with stale ones.
+    const seq = ++searchSeq.current;
+    const isStale = () => seq !== searchSeq.current;
     const cleanQuery = nextQuery.trim();
     if (!cleanQuery) return;
     setQuery(cleanQuery);
@@ -224,21 +267,25 @@ export default function Home({ authenticatedUser, onLogout }) {
         query: cleanQuery,
         user_id: userId,
         top_k: topK,
-        content_type: contentType,
-        domain,
-        age,
-        safe_mode: safeMode,
+        content_type: scope.contentType,
+        domain: scope.domain,
+        age: scope.age,
+        safe_mode: scope.safeMode,
       });
+      if (isStale()) return;
       const nextResults = data.results || [];
       setResults(nextResults);
       // The advisory is a property of the response, not of the selector: the
       // backend decides whether this particular result set needs one.
       setAdvisory(data.advisory || null);
       setElapsed(Math.round(performance.now() - startedAt));
-      if (nextResults.length === 0) {
+      // Silent when the audience filter is the cause: the empty state already
+      // explains that case in full, and a toast on top of it just nags.
+      if (nextResults.length === 0 && !audienceBlocked) {
         addToast({ type: 'info', message: 'No results. Try a different query or filter.' });
       }
     } catch (err) {
+      if (isStale()) return;
       setError(err?.response?.data?.detail || err.message || 'Unknown error');
       setResults([]);
       setElapsed(null);
@@ -248,23 +295,46 @@ export default function Home({ authenticatedUser, onLogout }) {
         message: 'Backend returned an error. Check the API server.',
       });
     } finally {
-      setLoading(false);
+      if (!isStale()) setLoading(false);
     }
   }
 
-  function handleChipSelect(label) {
-    setQuery(label);
-    handleSearch(label);
+  /**
+   * A chip is a whole scenario: query, domain and viewer age together. It
+   * clears any content-type filter, which would otherwise survive from a
+   * previous domain and silently empty the results.
+   */
+  function handleChipSelect(chip) {
+    setQuery(chip.label);
+    setDomain(chip.domain);
+    setAge(chip.age);
+    setSafeMode(false);
+    setContentType(null);
+    // Deliberately does NOT call handleSearch itself. React batches these into
+    // one re-render and the scope effect then runs a single search with all of
+    // them applied. Calling it here as well fired a second request from the
+    // pre-update render — domain already finance, age still null — which
+    // returned nothing and, resolving last, won.
+    setScopeNonce((value) => value + 1);
   }
 
   async function handleSimilar(item) {
     setDrawer({ open: true, title: item.title, results: [], loading: true, error: null });
     try {
+      // The audience scope has to travel with this call too. Without it the
+      // drawer was a hole straight through the eligibility layer: a viewer set
+      // to 8 could click "similar" on a childrens' film and get adult items
+      // back, because /recommend/item was being asked with no age at all.
+      // Domain is deliberately not forwarded — "more like this" legitimately
+      // crosses verticals, and that is the cross-media claim. Age is not
+      // optional in the same way.
       const data = await getSimilarItems({
         global_id: item.global_id,
         user_id: userId,
         top_k: 10,
         content_type: null,
+        age,
+        safe_mode: safeMode,
       });
       setDrawer((current) => ({ ...current, results: data.results || [], loading: false }));
     } catch (err) {
@@ -281,7 +351,7 @@ export default function Home({ authenticatedUser, onLogout }) {
           <div className="flex items-center gap-2.5">
             <div
               className="flex h-8 w-8 items-center justify-center rounded-xl text-white"
-              style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-2))' }}
+              style={{ background: 'linear-gradient(135deg in oklab, var(--accent), var(--accent-2))' }}
             >
               <Sparkles size={15} />
             </div>
@@ -328,7 +398,7 @@ export default function Home({ authenticatedUser, onLogout }) {
         <GlassPanel variant="strong" className="relative z-20 mb-5 p-6 sm:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
-              <span className="chip mb-4" style={{ color: 'var(--accent)', borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)' }}>
+              <span className="chip mb-4" style={{ color: 'var(--accent)', borderColor: 'color-mix(in oklab, var(--accent) 30%, transparent)' }}>
                 <Sparkles size={11} />
                 Hybrid retrieval + graph re-ranking
               </span>
@@ -466,7 +536,7 @@ export default function Home({ authenticatedUser, onLogout }) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="panel mb-4 flex flex-col gap-3 p-5 sm:flex-row sm:items-center"
-                style={{ borderColor: 'color-mix(in srgb, var(--bad) 35%, transparent)' }}
+                style={{ borderColor: 'color-mix(in oklab, var(--bad) 35%, transparent)' }}
               >
                 <AlertCircle size={20} style={{ color: 'var(--bad)' }} className="shrink-0" />
                 <div className="flex-1">
