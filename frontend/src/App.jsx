@@ -53,6 +53,14 @@ export default function App() {
 
   return (
     <InteractionProvider>
+      {/* Ambient background, behind both pages so it survives the auth swap
+          without restarting its animation. Purely decorative. */}
+      <div className="aurora-field" aria-hidden="true">
+        <span className="aurora-blob aurora-blob-a" />
+        <span className="aurora-blob aurora-blob-b" />
+        <span className="aurora-blob aurora-blob-c" />
+      </div>
+
       {sessionUser ? (
         <Home authenticatedUser={sessionUser} onLogout={handleLogout} />
       ) : (

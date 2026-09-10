@@ -40,6 +40,9 @@ RESULT_COLUMNS = [
     "release_date",
     "popularity",
     "rating",
+    # Cover art where the source dataset carries one. Empty for movies and
+    # music, whose datasets ship no artwork column.
+    "image_url",
     # Audience metadata: carried through so a client can show why an item
     # qualified, and so the constraint evaluation can re-check the filter.
     "domain",

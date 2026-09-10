@@ -87,6 +87,7 @@ class RecommendationItem(BaseModel):
     release_date: str = ""
     popularity: float | str = ""
     rating: float | str = ""
+    image_url: str = ""
     domain: str = ""
     maturity: str = ""
     audience_min_age: int | str = ""

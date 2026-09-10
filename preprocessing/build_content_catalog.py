@@ -132,6 +132,10 @@ def normalize_movies(raw_df: pd.DataFrame, dataset_config: dict) -> pd.DataFrame
         for vals in zip(df["title"], genres, df["description"], df["creators"])
     ]
 
+    # No image source for this dataset yet: TMDB's 5000-movie export has
+    # only a homepage column, and the Spotify export has none at all. The
+    # frontend falls back to its generated gradient when this is empty.
+    df["image_url"] = ""
     df["text_hash"] = df["embedding_text"].apply(make_text_hash)
 
     df = _filter_rows(df, content_type, source)
@@ -164,6 +168,10 @@ def normalize_books(raw_df: pd.DataFrame, dataset_config: dict) -> pd.DataFrame:
         for vals in zip(categories, search_category)
     ]
     df["creators"] = raw_df["authors"].apply(clean_text)
+    # Google Books ships a real cover URL; 14,478 of 15,147 rows have one.
+    df["image_url"] = raw_df.get(
+        "thumbnail", pd.Series("", index=raw_df.index)
+    ).fillna("").astype(str)
     df["release_date"] = raw_df[dataset_config["release_date_column"]]
     df["popularity"] = raw_df[dataset_config["popularity_column"]]
     df["rating"] = raw_df[dataset_config["rating_column"]]
@@ -234,6 +242,8 @@ def normalize_music(raw_df: pd.DataFrame, dataset_config: dict) -> pd.DataFrame:
         for vals in zip(df["title"], df["creators"], playlist_genre, playlist_subgenre)
     ]
 
+    # The Spotify songs export carries no artwork column.
+    df["image_url"] = ""
     df["text_hash"] = df["embedding_text"].apply(make_text_hash)
 
     df = _filter_rows(df, content_type, source)
@@ -270,6 +280,9 @@ def normalize_amazon_meta(raw_df: pd.DataFrame, dataset_config: dict) -> pd.Data
     # "store" is the brand or manufacturer, the closest analogue a physical
     # product has to an author or an artist.
     df["creators"] = raw_df["store"].apply(clean_text)
+    df["image_url"] = raw_df.get(
+        "image_url", pd.Series("", index=raw_df.index)
+    ).fillna("").astype(str)
     # Amazon item metadata carries no release date.
     df["release_date"] = None
     df["popularity"] = raw_df[dataset_config["popularity_column"]]

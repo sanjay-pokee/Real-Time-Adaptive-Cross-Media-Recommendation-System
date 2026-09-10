@@ -37,6 +37,7 @@ OUTPUT_COLUMNS = [
     "description",
     "categories",
     "store",
+    "image_url",
     "average_rating",
     "rating_number",
     "main_category",
@@ -50,6 +51,28 @@ def _flatten(value: object) -> str:
     if value is None:
         return ""
     return str(value).strip()
+
+
+def _pick_image(record: dict) -> str:
+    """Best available image URL for an item.
+
+    Amazon ships a list of image objects per item, each with thumb/large/hi_res
+    and a variant tag. The MAIN variant is the primary product shot; prefer it,
+    then fall back to whatever the first entry offers. Preferring "large" over
+    "hi_res" keeps the card grid light - hi_res images are several hundred KB.
+    """
+    images = record.get("images") or []
+    if not images:
+        return ""
+    main = next(
+        (i for i in images if str(i.get("variant", "")).upper() == "MAIN"),
+        images[0],
+    )
+    for key in ("large", "hi_res", "thumb"):
+        url = main.get(key)
+        if url:
+            return str(url)
+    return ""
 
 
 def _matches_categories(record: dict, pattern: "re.Pattern[str] | None") -> bool:
@@ -129,6 +152,7 @@ def fetch_metadata(
                         if str(c).strip()
                     ),
                     "store": _flatten(record.get("store")),
+                    "image_url": _pick_image(record),
                     "average_rating": record.get("average_rating") or "",
                     "rating_number": record.get("rating_number") or "",
                     "main_category": _flatten(record.get("main_category")),

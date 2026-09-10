@@ -2,21 +2,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   AlertCircle,
-  BookOpen,
+  Factory,
   Film,
+  HeartPulse,
+  Landmark,
   LogOut,
   Moon,
-  Music,
   RefreshCw,
   Search,
+  ShieldAlert,
   Sparkles,
   Sun,
 } from 'lucide-react';
 
-import { checkHealth, getRecommendations, getSimilarItems } from '../api/client';
+import { checkHealth, getDomains, getRecommendations, getSimilarItems } from '../api/client';
+import AdvisoryBanner from '../components/AdvisoryBanner';
 import AISignalsPanel from '../components/AISignalsPanel';
+import AudienceControls from '../components/AudienceControls';
 import BackendStatus from '../components/BackendStatus';
 import ContentFilter from '../components/ContentFilter';
+import DomainSelector from '../components/DomainSelector';
 import GlassPanel from '../components/GlassPanel';
 import ItemDetailModal from '../components/ItemDetailModal';
 import QueryChips from '../components/QueryChips';
@@ -31,11 +36,14 @@ import UserSelector, { USERS } from '../components/UserSelector';
 const DEFAULT_QUERY = 'space adventure with aliens';
 const DEFAULT_TOP_K = 10;
 
-const TYPE_META = [
-  { label: 'Movies', value: 'movie', icon: Film, tint: 'var(--type-movie)' },
-  { label: 'Books', value: 'book', icon: BookOpen, tint: 'var(--type-book)' },
-  { label: 'Music', value: 'music', icon: Music, tint: 'var(--type-music)' },
-];
+// Short labels and icons for the hero counters, keyed by domain. A domain
+// with no entry here still gets a tile, using its own label from /domains.
+const DOMAIN_TILE = {
+  entertainment: { label: 'Media',    icon: Film },
+  health:        { label: 'Health',   icon: HeartPulse },
+  industry:      { label: 'Industry', icon: Factory },
+  finance:       { label: 'Finance',  icon: Landmark },
+};
 
 function useTheme() {
   const [theme, setTheme] = useState(() => {
@@ -69,6 +77,14 @@ export default function Home({ authenticatedUser, onLogout }) {
   const [userId, setUserId] = useState(authenticatedUser?.id || USERS[0].id);
   const [topK, setTopK] = useState(DEFAULT_TOP_K);
   const [contentType, setContentType] = useState(null);
+  // Audience + domain scope. `age: null` is a real state, not "unset": the
+  // backend treats a request with no age as capped at the teen ceiling rather
+  // than as an adult, so the UI has to be able to express it.
+  const [domain, setDomain] = useState(null);
+  const [age, setAge] = useState(null);
+  const [safeMode, setSafeMode] = useState(false);
+  const [domainCatalog, setDomainCatalog] = useState({ domains: [], content_types: [] });
+  const [advisory, setAdvisory] = useState(null);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -118,6 +134,75 @@ export default function Home({ authenticatedUser, onLogout }) {
     if (authenticatedUser?.id) setUserId(authenticatedUser.id);
   }, [authenticatedUser?.id]);
 
+  // Load the domain packs once the backend answers. A failure here is not
+  // fatal: the selector simply shows "All domains" and search still works.
+  useEffect(() => {
+    if (backendStatus !== 'online') return;
+    let cancelled = false;
+    getDomains()
+      .then((data) => {
+        if (!cancelled) setDomainCatalog(data);
+      })
+      .catch(() => {
+        /* leave the catalog empty; the UI degrades to domain-agnostic search */
+      });
+    return () => { cancelled = true; };
+  }, [backendStatus]);
+
+  const activeDomain = useMemo(
+    () => domainCatalog.domains?.find((entry) => entry.name === domain) || null,
+    [domainCatalog.domains, domain],
+  );
+
+  const domainCount = domainCatalog.domains?.length || 0;
+
+  // Distinguish "the query matched nothing" from "the eligibility stage
+  // withheld everything". Both look like zero results, but only one is worth
+  // explaining, and only one has an obvious fix.
+  const effectiveAge = safeMode ? 7 : age ?? 13;
+  const audienceBlocked = effectiveAge < 18 && (
+    // A regulated domain is adult-only end to end.
+    (activeDomain?.risk_tier ?? 0) >= 1
+    // As is the industrial catalogue, which is fixed at adult.
+    || activeDomain?.name === 'industry'
+    || contentType === 'industrial'
+  );
+
+  // One tally per domain that actually appears in the current results, so the
+  // hero counters follow the query instead of always naming the same three
+  // entertainment types.
+  const domainTallies = useMemo(() => {
+    const counts = new Map();
+    for (const item of results) {
+      const key = item.domain || 'other';
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return (domainCatalog.domains || [])
+      .filter((entry) => counts.has(entry.name))
+      .map((entry) => ({
+        name: entry.name,
+        label: DOMAIN_TILE[entry.name]?.label || entry.label,
+        icon: DOMAIN_TILE[entry.name]?.icon || Sparkles,
+        tint: `var(--dom-${entry.name})`,
+        count: counts.get(entry.name),
+      }));
+  }, [results, domainCatalog.domains]);
+
+  // The content types offered by the current scope: the selected domain's own
+  // types, or every known type when no domain is chosen.
+  const offeredContentTypes = useMemo(
+    () => activeDomain?.content_types || domainCatalog.content_types || [],
+    [activeDomain, domainCatalog.content_types],
+  );
+
+  // Switching domain can strand a content-type filter that the new domain does
+  // not contain, which would silently return nothing. Clear it.
+  useEffect(() => {
+    if (contentType && !offeredContentTypes.includes(contentType)) {
+      setContentType(null);
+    }
+  }, [offeredContentTypes, contentType]);
+
   useEffect(() => {
     if (!hasRunDefault.current && backendStatus === 'online') {
       hasRunDefault.current = true;
@@ -140,9 +225,15 @@ export default function Home({ authenticatedUser, onLogout }) {
         user_id: userId,
         top_k: topK,
         content_type: contentType,
+        domain,
+        age,
+        safe_mode: safeMode,
       });
       const nextResults = data.results || [];
       setResults(nextResults);
+      // The advisory is a property of the response, not of the selector: the
+      // backend decides whether this particular result set needs one.
+      setAdvisory(data.advisory || null);
       setElapsed(Math.round(performance.now() - startedAt));
       if (nextResults.length === 0) {
         addToast({ type: 'info', message: 'No results. Try a different query or filter.' });
@@ -242,31 +333,31 @@ export default function Home({ authenticatedUser, onLogout }) {
                 Hybrid retrieval + graph re-ranking
               </span>
               <h1 className="display text-[2rem] font-extrabold leading-[1.08] text-ink sm:text-[2.6rem]">
-                Search movies, books,
+                Search anything
                 <br />
-                and music by meaning.
+                <span className="text-aurora">by meaning, not keyword.</span>
               </h1>
               <p className="mt-3 max-w-lg text-[13.5px] leading-relaxed text-ink-muted">
-                Every result shows exactly which signals ranked it — semantic
-                similarity, collaborative graph, session drift, and knowledge-graph
-                proximity.
+                One engine across {domainCount} domains. Every result shows the
+                signals that ranked it, and every result is checked against the
+                viewer before it is scored.
               </p>
             </div>
 
-            {/* live counts per content type */}
-            <div className="flex gap-2">
-              {TYPE_META.map(({ label, value, icon: Icon, tint }) => {
-                const count = results.filter((item) => item.content_type === value).length;
-                return (
-                  <div key={value} className="panel-flat min-w-[86px] px-3 py-2.5 text-center">
-                    <Icon size={14} className="mx-auto" style={{ color: tint }} />
-                    <p className="num display mt-1.5 text-xl font-bold tabular-nums text-ink">
-                      {count}
-                    </p>
-                    <p className="text-[10px] font-medium text-ink-faint">{label}</p>
-                  </div>
-                );
-              })}
+            {/* Live counts, one tile per domain actually present in the
+                results. Previously a fixed Movies/Books/Music trio, which
+                showed three zeroes the moment you searched a health or
+                finance query. */}
+            <div className="flex flex-wrap gap-2">
+              {domainTallies.map(({ name, label, count, tint, icon: Icon }) => (
+                <div key={name} className="panel-flat min-w-[86px] px-3 py-2.5 text-center">
+                  <Icon size={14} className="mx-auto" style={{ color: tint }} />
+                  <p className="num display mt-1.5 text-xl font-bold tabular-nums text-ink">
+                    {count}
+                  </p>
+                  <p className="text-[10px] font-medium text-ink-faint">{label}</p>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -305,6 +396,25 @@ export default function Home({ authenticatedUser, onLogout }) {
               </div>
             </GlassPanel>
 
+            <GlassPanel variant="strong" className="p-4">
+              <p className="label mb-2.5">Domain</p>
+              <DomainSelector
+                domains={domainCatalog.domains || []}
+                value={domain}
+                onChange={setDomain}
+              />
+            </GlassPanel>
+
+            <GlassPanel variant="strong" className="p-4">
+              <p className="label mb-3">Audience</p>
+              <AudienceControls
+                age={age}
+                onAgeChange={setAge}
+                safeMode={safeMode}
+                onSafeModeChange={setSafeMode}
+              />
+            </GlassPanel>
+
             <GlassPanel className="p-4">
               <div className="mb-2.5 flex items-baseline justify-between">
                 <p className="label">Results</p>
@@ -312,15 +422,21 @@ export default function Home({ authenticatedUser, onLogout }) {
               </div>
               <input
                 type="range"
+                className="slider mb-4"
                 min={3}
                 max={20}
                 step={1}
                 value={topK}
+                aria-label="Number of results"
+                style={{ '--fill': `${Math.round(((topK - 3) / 17) * 100)}%` }}
                 onChange={(event) => setTopK(Number(event.target.value))}
-                className="mb-4 w-full cursor-pointer"
               />
               <p className="label mb-2">Content type</p>
-              <ContentFilter value={contentType} onChange={setContentType} />
+              <ContentFilter
+                value={contentType}
+                onChange={setContentType}
+                contentTypes={offeredContentTypes}
+              />
             </GlassPanel>
 
             <GlassPanel className="p-4">
@@ -333,6 +449,18 @@ export default function Home({ authenticatedUser, onLogout }) {
 
           {/* ---------- results ---------- */}
           <section className="min-w-0">
+            {/* Regulated domains return an advisory with every response. It
+                sits above the results, not inside a card, because it governs
+                the whole set. */}
+            <AdvisoryBanner
+              advisory={advisory}
+              tint={
+                activeDomain?.name
+                  ? `var(--dom-${activeDomain.name})`
+                  : 'var(--warn)'
+              }
+            />
+
             {backendStatus === 'offline' && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -415,11 +543,48 @@ export default function Home({ authenticatedUser, onLogout }) {
             )}
 
             {!loading && searched && results.length === 0 && !error && backendStatus !== 'offline' && (
-              <div className="panel px-6 py-20 text-center">
-                <h3 className="display text-lg font-bold text-ink">No results found</h3>
-                <p className="mt-2 text-[13px] text-ink-muted">
-                  Try a different query or clear the content-type filter.
-                </p>
+              <div className="panel px-6 py-16 text-center">
+                {audienceBlocked ? (
+                  <>
+                    {/* An empty result set caused by the eligibility stage is
+                        not a failure, it is the constraint layer working. Say
+                        which rule bound, otherwise it reads as a broken query. */}
+                    <span
+                      className="chip chip-tinted mx-auto mb-3"
+                      style={{ '--tint': 'var(--mat-adult)' }}
+                    >
+                      <ShieldAlert size={11} />
+                      Withheld by the audience filter
+                    </span>
+                    <h3 className="display text-lg font-bold text-ink">
+                      Nothing here is eligible for this viewer
+                    </h3>
+                    <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-ink-muted">
+                      {activeDomain
+                        ? `Every item in ${activeDomain.label} requires 18+. `
+                        : 'The matching items require a higher age than this viewer has. '}
+                      {safeMode
+                        ? 'Safe mode is on, which caps below an adult age.'
+                        : age === null
+                          ? 'No age was declared, so the engine capped at the teen ceiling rather than assuming an adult.'
+                          : `The declared age is ${age}.`}
+                    </p>
+                    <button
+                      type="button"
+                      className="btn btn-primary mt-5 px-4"
+                      onClick={() => { setSafeMode(false); setAge(30); }}
+                    >
+                      Search as a 30-year-old
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="display text-lg font-bold text-ink">No results found</h3>
+                    <p className="mt-2 text-[13px] text-ink-muted">
+                      Try a different query or clear the content-type filter.
+                    </p>
+                  </>
+                )}
               </div>
             )}
           </section>

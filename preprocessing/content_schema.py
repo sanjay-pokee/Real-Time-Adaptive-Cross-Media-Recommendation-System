@@ -17,6 +17,7 @@ CONTENT_COLUMNS = [
     "release_date",
     "popularity",
     "rating",
+    "image_url",
     "metadata_text",
     "embedding_text",
     "text_hash",
@@ -52,6 +53,7 @@ class ContentRecord:
     release_date: Optional[str]
     popularity: Optional[float]
     rating: Optional[float]
+    image_url: str
     metadata_text: str
     embedding_text: str
     text_hash: str
@@ -69,6 +71,7 @@ class ContentRecord:
             "release_date": self.release_date,
             "popularity": self.popularity,
             "rating": self.rating,
+            "image_url": self.image_url,
             "metadata_text": self.metadata_text,
             "embedding_text": self.embedding_text,
             "text_hash": self.text_hash,

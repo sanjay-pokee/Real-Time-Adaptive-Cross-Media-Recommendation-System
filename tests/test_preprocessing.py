@@ -87,8 +87,20 @@ def _valid_catalog(n: int = 3) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 class TestContentSchema:
-    def test_content_columns_count(self):
-        assert len(CONTENT_COLUMNS) == 14
+    def test_content_columns_are_exactly_the_expected_schema(self):
+        """Pin the schema itself rather than just its length.
+
+        This previously asserted len(...) == 14, which broke on any change
+        without saying which column was unexpected. Naming them means a
+        deliberate addition is a one-line edit and an accidental one is caught
+        with a readable diff.
+        """
+        assert CONTENT_COLUMNS == [
+            "global_id", "content_type", "source", "source_id",
+            "title", "description", "creators", "categories",
+            "release_date", "popularity", "rating", "image_url",
+            "metadata_text", "embedding_text", "text_hash",
+        ]
 
     def test_content_columns_includes_required(self):
         required = [

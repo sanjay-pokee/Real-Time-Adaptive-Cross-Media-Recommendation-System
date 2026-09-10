@@ -69,6 +69,9 @@ def build_qdrant_collection(
             "release_date": _clean(row.get("release_date", "")),
             "popularity": _clean(row.get("popularity", "")),
             "rating": _clean(row.get("rating", "")),
+            # Cover art, where the source dataset carries one. Empty for movies
+            # and music; the frontend falls back to a generated gradient.
+            "image_url": _clean(row.get("image_url", "")),
         }
         # Audience metadata is queried as a Qdrant filter, not just displayed, so
         # these must be real numbers: a Range condition skips any point where the

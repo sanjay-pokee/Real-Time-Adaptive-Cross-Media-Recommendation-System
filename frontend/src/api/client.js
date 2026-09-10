@@ -17,13 +17,49 @@ export async function checkHealth() {
   return res.data;
 }
 
-export async function getRecommendations({ query, user_id, top_k = 10, content_type = null }) {
-  const res = await api.post('/recommend', { query, user_id, top_k, content_type });
+/**
+ * The domain packs this deployment serves.
+ *
+ * Fetched rather than hardcoded: the backend builds them from
+ * config/domains.yaml, so a vertical added there shows up in the UI without a
+ * frontend change. That is the whole architectural claim, so the UI should not
+ * quietly contradict it by keeping its own list.
+ *
+ * Returns: { domains: [{ name, label, description, content_types, risk_tier,
+ *            advisory }], content_types: [...] }
+ */
+export async function getDomains() {
+  const res = await api.get('/domains');
   return res.data;
 }
 
-export async function getSimilarItems({ global_id, user_id, top_k = 10, content_type = null }) {
-  const res = await api.post('/recommend/item', { global_id, user_id, top_k, content_type });
+export async function getRecommendations({
+  query,
+  user_id,
+  top_k = 10,
+  content_type = null,
+  domain = null,
+  age = null,
+  safe_mode = false,
+}) {
+  const res = await api.post('/recommend', {
+    query, user_id, top_k, content_type, domain, age, safe_mode,
+  });
+  return res.data;
+}
+
+export async function getSimilarItems({
+  global_id,
+  user_id,
+  top_k = 10,
+  content_type = null,
+  domain = null,
+  age = null,
+  safe_mode = false,
+}) {
+  const res = await api.post('/recommend/item', {
+    global_id, user_id, top_k, content_type, domain, age, safe_mode,
+  });
   return res.data;
 }
 

@@ -1,14 +1,32 @@
 import { motion } from 'framer-motion';
-import { ArrowUpRight, BookOpen, Film, Music, Star } from 'lucide-react';
+import {
+  ArrowUpRight,
+  BookOpen,
+  Factory,
+  Film,
+  HeartPulse,
+  Landmark,
+  Music,
+  Package,
+  Star,
+} from 'lucide-react';
 import InteractionButtons from './InteractionButtons';
+import MaturityBadge from './MaturityBadge';
 import ScoreBreakdown from './ScoreBreakdown';
-import { coverFor, monogram } from '../utils/cover';
+import { coverFor, imageFor, monogram } from '../utils/cover';
 
 const TYPE_META = {
-  movie: { label: 'Movie', icon: Film, color: 'var(--type-movie)' },
-  book: { label: 'Book', icon: BookOpen, color: 'var(--type-book)' },
-  music: { label: 'Music', icon: Music, color: 'var(--type-music)' },
+  movie:      { label: 'Movie',      icon: Film,       color: 'var(--type-movie)' },
+  book:       { label: 'Book',       icon: BookOpen,   color: 'var(--type-book)' },
+  music:      { label: 'Music',      icon: Music,      color: 'var(--type-music)' },
+  health:     { label: 'Health',     icon: HeartPulse, color: 'var(--type-health)' },
+  industrial: { label: 'Industrial', icon: Factory,    color: 'var(--type-industrial)' },
+  finance:    { label: 'Finance',    icon: Landmark,   color: 'var(--type-finance)' },
 };
+
+// A content type this build has no styling for should still render, rather
+// than silently borrowing the Movie identity.
+const FALLBACK_META = { label: 'Item', icon: Package, color: 'var(--accent)' };
 
 function splitCategories(value, limit = 3) {
   return String(value || '')
@@ -37,9 +55,10 @@ export default function RecommendationCard({
   onView,
   onToast,
 }) {
-  const meta = TYPE_META[result.content_type] || TYPE_META.movie;
+  const meta = TYPE_META[result.content_type] || FALLBACK_META;
   const Icon = meta.icon;
   const cover = coverFor(result);
+  const imageUrl = imageFor(result);
   const categories = splitCategories(result.categories);
   const creator = leadCreator(result.creators);
   const year = result.release_date ? String(result.release_date).slice(0, 4) : null;
@@ -61,12 +80,24 @@ export default function RecommendationCard({
           style={{ background: cover.background }}
           aria-label={`Open ${result.title}`}
         >
+          {/* The monogram sits underneath, so a real cover that 404s or is
+              blocked reveals the gradient rather than an empty box. */}
           <span className="absolute inset-0 flex items-center justify-center display text-lg font-extrabold text-white/95 drop-shadow">
             {monogram(result.title)}
           </span>
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-cover"
+              onError={(event) => { event.currentTarget.style.display = 'none'; }}
+            />
+          ) : null}
           <Icon
             size={12}
-            className="absolute bottom-1 right-1 text-white/80 drop-shadow"
+            className="absolute bottom-1 right-1 text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,.9)]"
             strokeWidth={2.5}
           />
         </button>
@@ -111,6 +142,18 @@ export default function RecommendationCard({
               </span>
             )}
           </div>
+
+          {/* The audience rating the eligibility stage filtered on. Showing it
+              per item is what makes an age-filtered result set legible: you can
+              see that every card really is below the ceiling. */}
+          {result.maturity ? (
+            <div className="mt-2">
+              <MaturityBadge
+                maturity={result.maturity}
+                minAge={Number(result.audience_min_age)}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
 

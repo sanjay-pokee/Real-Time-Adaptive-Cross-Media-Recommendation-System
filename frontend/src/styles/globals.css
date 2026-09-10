@@ -3,104 +3,159 @@
 @tailwind utilities;
 
 /* ============================================================
-   NEXUS DESIGN SYSTEM
-   Dark-first, with a light theme on [data-theme="light"].
+   NEXUS — "LIQUID AURORA"
+   Dark-first. Light theme on [data-theme="light"].
    Every colour is a token so both themes stay in sync.
+
+   Palette rationale: the engine serves four unrelated verticals,
+   so the hues are chosen to be maximally separable at a glance.
+   Aqua, violet, magenta, lime and amber sit far apart on the
+   wheel and stay distinguishable for the common CVD types.
    ============================================================ */
 
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
 
   :root {
-    /* ---- surfaces ---- */
-    --bg:            #0a0b0f;
-    --bg-glow-a:     rgba(99, 102, 241, 0.13);
-    --bg-glow-b:     rgba(56, 189, 248, 0.08);
-    --surface:       #101219;
-    --surface-2:     #161923;
-    --surface-3:     #1c2029;
-    --surface-hover: #1a1e28;
+    color-scheme: dark;
+
+    /* ---- surfaces: cold near-black, never pure black ---- */
+    --bg:            #04070c;
+    --surface:       #0a1018;
+    --surface-2:     #0f1721;
+    --surface-3:     #141e2b;
+    --surface-hover: #1a2634;
+
+    /* ---- aurora field behind everything ---- */
+    --aurora-a: oklch(72% 0.17 190 / 0.20);
+    --aurora-b: oklch(66% 0.24 320 / 0.16);
+    --aurora-c: oklch(80% 0.19 130 / 0.10);
+
+    /* ---- liquid glass ---- */
+    --glass:       color-mix(in oklab, var(--surface) 58%, transparent);
+    --glass-heavy: color-mix(in oklab, var(--surface) 78%, transparent);
+    --glass-edge:  oklch(100% 0 0 / 0.10);
+    --glass-spec:  oklch(100% 0 0 / 0.16);
+    --glass-blur:  20px;
 
     /* ---- lines ---- */
-    --line:        rgba(255, 255, 255, 0.07);
-    --line-strong: rgba(255, 255, 255, 0.13);
+    --line:        oklch(100% 0 0 / 0.08);
+    --line-strong: oklch(100% 0 0 / 0.16);
 
     /* ---- ink ---- */
-    --ink:       #eef0f5;
-    --ink-muted: #97a0b2;
-    --ink-faint: #626b7d;
+    --ink:       #e8f1f5;
+    --ink-muted: #8ea3b4;
+    --ink-faint: #566a7c;
 
-    /* ---- brand ---- */
-    --accent:      #7c8cff;
-    --accent-2:    #a78bfa;
-    --accent-ink:  #ffffff;
-    --accent-soft: rgba(124, 140, 255, 0.14);
+    /* ---- brand: aqua to violet ---- */
+    --accent:      #22e1c3;
+    --accent-2:    #c13bff;
+    --accent-ink:  #04070c;
+    --accent-soft: oklch(80% 0.15 185 / 0.14);
 
-    /* ---- signal colours (one per ranking signal) ---- */
-    --sig-semantic: #8b93ff;
-    --sig-graph:    #34d399;
-    --sig-ema:      #fbbf24;
-    --sig-kg:       #38bdf8;
-    --sig-profile:  #f472b6;
+    /* ---- ranking signals, one hue each ---- */
+    --sig-semantic: #4cc9ff;
+    --sig-graph:    #39ff9e;
+    --sig-ema:      #ffb03a;
+    --sig-kg:       #c13bff;
+    --sig-profile:  #ff4d8d;
 
-    /* ---- content-type identity ---- */
-    --type-movie: #60a5fa;
-    --type-book:  #34d399;
-    --type-music: #f472b6;
+    /* ---- content-type identity, all six ---- */
+    --type-movie:      #4cc9ff;
+    --type-book:       #39ff9e;
+    --type-music:      #ff4d8d;
+    --type-health:     #22e1c3;
+    --type-industrial: #ffb03a;
+    --type-finance:    #c7ff3a;
+
+    /* ---- domain identity ---- */
+    --dom-entertainment: #ff4d8d;
+    --dom-health:        #22e1c3;
+    --dom-industry:      #ffb03a;
+    --dom-finance:       #c7ff3a;
+
+    /* ---- audience maturity ---- */
+    --mat-all_ages:   #39ff9e;
+    --mat-teen:       #4cc9ff;
+    --mat-adult:      #ffb03a;
+    --mat-restricted: #ff4d6d;
 
     /* ---- feedback ---- */
-    --ok:   #34d399;
-    --warn: #fbbf24;
-    --bad:  #fb7185;
+    --ok:   #39ff9e;
+    --warn: #ffb03a;
+    --bad:  #ff4d6d;
 
-    /* ---- elevation (layered, not flat) ---- */
-    --shadow-sm: 0 1px 2px rgba(0,0,0,.35);
-    --shadow:    0 2px 4px rgba(0,0,0,.25), 0 8px 24px rgba(0,0,0,.35);
-    --shadow-lg: 0 4px 8px rgba(0,0,0,.3), 0 20px 56px rgba(0,0,0,.5);
-    --shadow-accent: 0 8px 28px rgba(124, 140, 255, .32);
+    /* ---- elevation ---- */
+    --shadow-sm: 0 1px 2px oklch(0% 0 0 / .40);
+    --shadow:    0 2px 4px oklch(0% 0 0 / .30), 0 10px 30px oklch(0% 0 0 / .40);
+    --shadow-lg: 0 4px 10px oklch(0% 0 0 / .35), 0 26px 70px oklch(0% 0 0 / .55);
+    --shadow-accent: 0 10px 34px oklch(80% 0.15 185 / .30);
 
     --radius:    14px;
-    --radius-lg: 20px;
+    --radius-lg: 22px;
   }
 
   [data-theme="light"] {
-    --bg:            #f7f8fc;
-    --bg-glow-a:     rgba(99, 102, 241, 0.10);
-    --bg-glow-b:     rgba(56, 189, 248, 0.08);
+    color-scheme: light;
+
+    --bg:            #f2f6f8;
     --surface:       #ffffff;
     --surface-2:     #ffffff;
-    --surface-3:     #f4f6fb;
-    --surface-hover: #f8fafd;
+    --surface-3:     #eef3f7;
+    --surface-hover: #e6eef4;
 
-    --line:        rgba(15, 23, 42, 0.09);
-    --line-strong: rgba(15, 23, 42, 0.16);
+    --aurora-a: oklch(72% 0.17 190 / 0.16);
+    --aurora-b: oklch(66% 0.24 320 / 0.12);
+    --aurora-c: oklch(80% 0.19 130 / 0.10);
 
-    --ink:       #0d1220;
-    --ink-muted: #5a647a;
-    --ink-faint: #8b95a8;
+    --glass:       color-mix(in oklab, #ffffff 68%, transparent);
+    --glass-heavy: color-mix(in oklab, #ffffff 86%, transparent);
+    --glass-edge:  oklch(0% 0 0 / 0.08);
+    --glass-spec:  oklch(100% 0 0 / 0.80);
 
-    --accent:      #5560f0;
-    --accent-2:    #8b5cf6;
-    --accent-soft: rgba(85, 96, 240, 0.10);
+    --line:        oklch(0% 0 0 / 0.09);
+    --line-strong: oklch(0% 0 0 / 0.18);
 
-    --sig-semantic: #6366f1;
+    --ink:       #06131a;
+    --ink-muted: #4a6070;
+    --ink-faint: #7e94a3;
+
+    --accent:      #00a892;
+    --accent-2:    #8b1fd4;
+    --accent-ink:  #ffffff;
+    --accent-soft: oklch(60% 0.13 185 / 0.14);
+
+    --sig-semantic: #0284c7;
     --sig-graph:    #059669;
-    --sig-ema:      #d97706;
-    --sig-kg:       #0284c7;
+    --sig-ema:      #b45309;
+    --sig-kg:       #8b1fd4;
     --sig-profile:  #db2777;
 
-    --type-movie: #2563eb;
-    --type-book:  #059669;
-    --type-music: #db2777;
+    --type-movie:      #0284c7;
+    --type-book:       #059669;
+    --type-music:      #db2777;
+    --type-health:     #00a892;
+    --type-industrial: #b45309;
+    --type-finance:    #5c8a00;
+
+    --dom-entertainment: #db2777;
+    --dom-health:        #00a892;
+    --dom-industry:      #b45309;
+    --dom-finance:       #5c8a00;
+
+    --mat-all_ages:   #059669;
+    --mat-teen:       #0284c7;
+    --mat-adult:      #b45309;
+    --mat-restricted: #dc2626;
 
     --ok:   #059669;
-    --warn: #d97706;
-    --bad:  #e11d48;
+    --warn: #b45309;
+    --bad:  #dc2626;
 
-    --shadow-sm: 0 1px 2px rgba(15,23,42,.06);
-    --shadow:    0 1px 3px rgba(15,23,42,.06), 0 8px 24px rgba(15,23,42,.07);
-    --shadow-lg: 0 4px 10px rgba(15,23,42,.07), 0 24px 60px rgba(15,23,42,.13);
-    --shadow-accent: 0 8px 26px rgba(85, 96, 240, .26);
+    --shadow-sm: 0 1px 2px oklch(0% 0 0 / .06);
+    --shadow:    0 1px 3px oklch(0% 0 0 / .07), 0 10px 28px oklch(0% 0 0 / .08);
+    --shadow-lg: 0 4px 12px oklch(0% 0 0 / .08), 0 28px 68px oklch(0% 0 0 / .14);
+    --shadow-accent: 0 10px 30px oklch(60% 0.13 185 / .28);
   }
 
   /* overflow-x lives on html, never on body: setting it on body turns body
@@ -121,16 +176,16 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Ambient light behind everything - gives the page depth. */
-  body::before {
+  /* Fine grain stops the large flat gradients banding on 8-bit panels. */
+  body::after {
     content: '';
     position: fixed;
     inset: 0;
     pointer-events: none;
     z-index: 0;
-    background:
-      radial-gradient(60rem 40rem at 12% -8%, var(--bg-glow-a), transparent 70%),
-      radial-gradient(50rem 34rem at 92% 4%, var(--bg-glow-b), transparent 70%);
+    opacity: .035;
+    background-image: radial-gradient(oklch(100% 0 0) .5px, transparent .5px);
+    background-size: 3px 3px;
   }
 
   ::selection { background: var(--accent-soft); color: var(--ink); }
@@ -148,7 +203,7 @@
   :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-    border-radius: 6px;
+    border-radius: 8px;
   }
 
   input[type='range'] { accent-color: var(--accent); }
@@ -156,13 +211,98 @@
 
 @layer components {
 
+  /* ---------- aurora field ---------- */
+  /* The container is fixed and exactly viewport-sized, and the blobs that
+     actually move live inside it, clipped.
+     This was originally one oversized `position: fixed; inset: -30%`
+     pseudo-element that animated itself. A fixed layer larger than the
+     viewport that also animates continuously falls out of sync with the
+     scroller, and the page painted a black band above the sticky header while
+     scrolling. Clipping to the viewport and moving the animation onto
+     contained children keeps the fixed layer stable. */
+  .aurora-field {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    contain: strict;
+  }
+
+  .aurora-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    --animation-reduced: none;
+  }
+
+  .aurora-blob-a {
+    inline-size: 46rem; block-size: 34rem;
+    inset-block-start: -10rem; inset-inline-start: -8rem;
+    background: var(--aurora-a);
+    animation: blob-a 30s ease-in-out infinite alternate;
+  }
+  .aurora-blob-b {
+    inline-size: 40rem; block-size: 32rem;
+    inset-block-start: -6rem; inset-inline-end: -10rem;
+    background: var(--aurora-b);
+    animation: blob-b 38s ease-in-out infinite alternate;
+  }
+  .aurora-blob-c {
+    inline-size: 38rem; block-size: 30rem;
+    inset-block-end: -12rem; inset-inline-start: 30%;
+    background: var(--aurora-c);
+    animation: blob-c 44s ease-in-out infinite alternate;
+  }
+
+  /* ---------- liquid glass ---------- */
+  .glass {
+    position: relative;
+    background: var(--glass);
+    backdrop-filter: blur(var(--glass-blur)) saturate(170%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(170%);
+    border: 1px solid var(--glass-edge);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow), inset 0 1px 0 var(--glass-spec);
+  }
+
+  /* If backdrop-filter is unavailable the translucent background alone
+     leaves text sitting on a busy aurora. Fall back to an opaque surface. */
+  @supports not (backdrop-filter: blur(1px)) {
+    .glass { background: var(--surface-2); }
+  }
+
+  .glass-heavy { background: var(--glass-heavy); }
+
+  /* Specular highlight along the top edge, tinted by the brand ramp. */
+  .glass-lit::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    border-radius: inherit;
+    background: linear-gradient(90deg,
+      transparent,
+      color-mix(in oklab, var(--accent) 70%, white) 20%,
+      var(--glass-spec) 50%,
+      color-mix(in oklab, var(--accent-2) 70%, white) 80%,
+      transparent);
+    opacity: .55;
+    pointer-events: none;
+  }
+
   /* ---------- surfaces ---------- */
   .panel {
     position: relative;
-    background: var(--surface);
-    border: 1px solid var(--line);
+    background: var(--glass);
+    backdrop-filter: blur(var(--glass-blur)) saturate(170%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(170%);
+    border: 1px solid var(--glass-edge);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow), inset 0 1px 0 var(--glass-spec);
+  }
+  @supports not (backdrop-filter: blur(1px)) {
+    .panel { background: var(--surface); }
   }
 
   .panel-flat {
@@ -171,32 +311,42 @@
     border-radius: var(--radius);
   }
 
-  /* A hairline highlight along the top edge reads as real light. */
   .panel-lit::after {
     content: '';
     position: absolute;
     inset: 0 0 auto 0;
     height: 1px;
     border-radius: inherit;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent);
+    background: linear-gradient(90deg,
+      transparent,
+      color-mix(in oklab, var(--accent) 60%, white) 25%,
+      color-mix(in oklab, var(--accent-2) 60%, white) 75%,
+      transparent);
+    opacity: .6;
     pointer-events: none;
   }
-  [data-theme="light"] .panel-lit::after { display: none; }
 
   .card {
     position: relative;
-    background: var(--surface);
-    border: 1px solid var(--line);
+    background: var(--glass);
+    backdrop-filter: blur(16px) saturate(165%);
+    -webkit-backdrop-filter: blur(16px) saturate(165%);
+    border: 1px solid var(--glass-edge);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
-    transition: transform .22s cubic-bezier(.4,0,.2,1),
-                box-shadow .22s cubic-bezier(.4,0,.2,1),
-                border-color .22s ease;
+    transition: translate .26s cubic-bezier(.2,.8,.2,1),
+                scale .26s cubic-bezier(.2,.8,.2,1),
+                box-shadow .26s cubic-bezier(.2,.8,.2,1),
+                border-color .26s ease;
+  }
+  @supports not (backdrop-filter: blur(1px)) {
+    .card { background: var(--surface); }
   }
   .card:hover {
-    transform: translateY(-3px);
-    border-color: var(--line-strong);
-    box-shadow: var(--shadow-lg);
+    translate: 0 -4px;
+    border-color: color-mix(in oklab, var(--accent) 40%, var(--line-strong));
+    box-shadow: var(--shadow-lg),
+                0 0 0 1px color-mix(in oklab, var(--accent) 22%, transparent);
   }
 
   /* ---------- buttons ---------- */
@@ -206,28 +356,33 @@
     justify-content: center;
     gap: .5rem;
     border-radius: 12px;
-    font-weight: 600;
+    font-weight: 650;
     font-size: .8125rem;
     letter-spacing: -.01em;
     white-space: nowrap;
+    min-block-size: 2.25rem;
     transition: background .18s ease, border-color .18s ease,
-                color .18s ease, transform .12s ease, box-shadow .18s ease;
+                color .18s ease, scale .12s ease, box-shadow .18s ease;
   }
-  .btn:active { transform: translateY(.5px) scale(.99); }
-  .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  /* Coarse pointers need a larger hit area than a mouse does. */
+  @media (pointer: coarse) { .btn { min-block-size: 2.75rem; } }
+  .btn:active { scale: .975; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; scale: 1; }
 
   .btn-primary {
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    background: linear-gradient(120deg in oklab, var(--accent), var(--accent-2));
     color: var(--accent-ink);
     border: 1px solid transparent;
     box-shadow: var(--shadow-accent);
   }
-  .btn-primary:hover:not(:disabled) { filter: brightness(1.07); }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.1) saturate(1.1); }
 
   .btn-ghost {
-    background: var(--surface-3);
+    background: color-mix(in oklab, var(--surface-3) 70%, transparent);
     color: var(--ink-muted);
     border: 1px solid var(--line);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
   .btn-ghost:hover:not(:disabled) {
     background: var(--surface-hover);
@@ -238,12 +393,14 @@
   /* ---------- inputs ---------- */
   .field {
     width: 100%;
-    background: var(--surface-3);
+    background: color-mix(in oklab, var(--surface-3) 76%, transparent);
     border: 1px solid var(--line);
     border-radius: 12px;
     color: var(--ink);
     font-size: .875rem;
     outline: none;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
   }
   .field::placeholder { color: var(--ink-faint); }
@@ -253,6 +410,9 @@
     box-shadow: 0 0 0 3px var(--accent-soft);
   }
   .field:disabled { opacity: .5; cursor: not-allowed; }
+  /* :user-invalid, not :invalid — only flag a field the user has touched,
+     instead of shouting at required-empty fields on first paint. */
+  .field:user-invalid { border-color: var(--bad); }
 
   /* ---------- chips / pills ---------- */
   .chip {
@@ -262,10 +422,10 @@
     padding: .25rem .5625rem;
     border-radius: 999px;
     font-size: .6875rem;
-    font-weight: 600;
+    font-weight: 650;
     letter-spacing: .01em;
     border: 1px solid var(--line);
-    background: var(--surface-3);
+    background: color-mix(in oklab, var(--surface-3) 70%, transparent);
     color: var(--ink-muted);
     white-space: nowrap;
   }
@@ -277,6 +437,112 @@
     background: var(--surface-hover);
   }
 
+  /* Pill tinted by a caller-supplied --tint custom property. */
+  .chip-tinted {
+    border-color: color-mix(in oklab, var(--tint) 45%, transparent);
+    background: color-mix(in oklab, var(--tint) 15%, transparent);
+    color: var(--tint);
+  }
+
+  /* ---------- liquid slider ---------- */
+  /* Recreating the thumb is justified here: the native one cannot carry the
+     glow that ties it to the domain tint. The input element itself is kept,
+     so keyboard stepping, arrow keys and AT semantics all still work. */
+  .slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 26px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .slider::-webkit-slider-runnable-track {
+    height: 8px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(90deg in oklab,
+        var(--accent) 0%,
+        var(--accent-2) var(--fill, 50%),
+        transparent var(--fill, 50%)),
+      var(--surface-3);
+  }
+  .slider::-moz-range-track {
+    height: 8px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface-3);
+  }
+  .slider::-moz-range-progress {
+    height: 8px;
+    border-radius: 999px;
+    background: linear-gradient(90deg in oklab, var(--accent), var(--accent-2));
+  }
+
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    margin-top: -7px;
+    border-radius: 50%;
+    border: 2px solid var(--bg);
+    background: linear-gradient(140deg in oklab, white, var(--accent));
+    box-shadow: 0 0 0 1px var(--accent),
+                0 0 18px -2px var(--accent),
+                var(--shadow-sm);
+    transition: scale .14s ease, box-shadow .14s ease;
+  }
+  .slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--bg);
+    background: linear-gradient(140deg in oklab, white, var(--accent));
+    box-shadow: 0 0 0 1px var(--accent), 0 0 18px -2px var(--accent);
+  }
+  .slider:hover::-webkit-slider-thumb  { scale: 1.14; }
+  .slider:active::-webkit-slider-thumb { scale: 1.22; }
+  .slider:disabled { cursor: not-allowed; opacity: .45; }
+
+  /* ---------- switch ---------- */
+  /* appearance:none plus generated content, per the multiple-choice guidance —
+     still a real checkbox, so it stays focusable and announces its state. */
+  .switch {
+    -webkit-appearance: none;
+    appearance: none;
+    position: relative;
+    inline-size: 40px;
+    block-size: 23px;
+    flex: none;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    background: var(--surface-3);
+    cursor: pointer;
+    transition: background .2s ease, border-color .2s ease;
+  }
+  .switch::after {
+    content: '';
+    position: absolute;
+    inset-block-start: 2px;
+    inset-inline-start: 2px;
+    inline-size: 17px;
+    block-size: 17px;
+    border-radius: 50%;
+    background: var(--ink-faint);
+    transition: translate .22s cubic-bezier(.2,.8,.2,1), background .22s ease;
+  }
+  .switch:checked {
+    background: linear-gradient(120deg in oklab, var(--accent), var(--accent-2));
+    border-color: transparent;
+  }
+  .switch:checked::after {
+    translate: 17px 0;
+    background: white;
+  }
+  .switch:disabled { opacity: .45; cursor: not-allowed; }
+
   /* ---------- meters ---------- */
   .track {
     height: 6px;
@@ -287,15 +553,27 @@
   }
 
   /* ---------- type ---------- */
-  .display { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; letter-spacing: -.03em; }
+  .display { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; letter-spacing: -.035em; }
   .num     { font-variant-numeric: tabular-nums; }
 
   .label {
     font-size: .6875rem;
-    font-weight: 600;
-    letter-spacing: .09em;
+    font-weight: 700;
+    letter-spacing: .10em;
     text-transform: uppercase;
     color: var(--ink-faint);
+  }
+
+  /* Aurora gradient text for hero words. */
+  .text-aurora {
+    background: linear-gradient(100deg in oklab,
+      var(--accent), var(--accent-2) 45%, var(--dom-finance) 95%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: aurora-text 9s ease-in-out infinite alternate;
+    --animation-reduced: none;
   }
 
   /* ---------- skeleton ---------- */
@@ -304,6 +582,7 @@
       var(--surface-3) 0%, var(--surface-hover) 50%, var(--surface-3) 100%);
     background-size: 200% 100%;
     animation: shimmer 1.6s ease-in-out infinite;
+    --animation-reduced: shimmer 6s ease-in-out infinite;
     border-radius: 8px;
   }
 }
@@ -313,9 +592,61 @@
   .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .above   { position: relative; z-index: 1; }
+
+  /* Long result lists: skip painting offscreen cards. The intrinsic size has
+     to be close to the real card height or the scrollbar jumps as you scroll. */
+  .defer-paint {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 21rem;
+  }
 }
 
 @keyframes shimmer {
   0%   { background-position: -200% 0; }
   100% { background-position:  200% 0; }
+}
+
+/* Each blob drifts on its own clock so the field never visibly loops.
+   translate/scale only, so these stay on the compositor. */
+@keyframes blob-a {
+  0%   { translate:   0    0; scale: 1;    }
+  50%  { translate:  6vw  4vh; scale: 1.15; }
+  100% { translate:  2vw  9vh; scale: 1.05; }
+}
+@keyframes blob-b {
+  0%   { translate:   0    0; scale: 1.05; }
+  50%  { translate: -7vw  6vh; scale: 1;    }
+  100% { translate: -3vw 11vh; scale: 1.18; }
+}
+@keyframes blob-c {
+  0%   { translate:   0    0; scale: 1.1;  }
+  50%  { translate:  5vw -7vh; scale: 1;    }
+  100% { translate: -6vw -3vh; scale: 1.12; }
+}
+
+@keyframes aurora-text {
+  0%   { background-position:   0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; translate: 0 14px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+/* Reduced motion: opt each animation out individually through
+   --animation-reduced rather than zeroing every duration globally, which can
+   make some animations more jarring rather than less. */
+@property --animation-reduced {
+  syntax: "*";
+  inherits: false;
+  initial-value: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: var(--animation-reduced) !important;
+    scroll-behavior: auto;
+  }
+  .card { transition-duration: .01ms; }
 }
