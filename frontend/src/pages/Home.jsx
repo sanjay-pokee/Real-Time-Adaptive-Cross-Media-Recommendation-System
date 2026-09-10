@@ -405,7 +405,7 @@ export default function Home({ authenticatedUser, onLogout }) {
               <h1 className="display text-[2rem] font-extrabold leading-[1.08] text-ink sm:text-[2.6rem]">
                 Search anything
                 <br />
-                <span className="text-aurora">by meaning, not keyword.</span>
+                <span className="text-irid">by meaning, not keyword.</span>
               </h1>
               <p className="mt-3 max-w-lg text-[13.5px] leading-relaxed text-ink-muted">
                 One engine across {domainCount} domains. Every result shows the

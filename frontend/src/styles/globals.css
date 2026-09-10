@@ -3,14 +3,21 @@
 @tailwind utilities;
 
 /* ============================================================
-   NEXUS — "LIQUID AURORA"
-   Dark-first. Light theme on [data-theme="light"].
-   Every colour is a token so both themes stay in sync.
+   NEXUS — "IRIDESCENT"
+   Dark-first slate, pearl light theme on [data-theme="light"].
 
-   Palette rationale: the engine serves four unrelated verticals,
-   so the hues are chosen to be maximally separable at a glance.
-   Aqua, violet, magenta, lime and amber sit far apart on the
-   wheel and stay distinguishable for the common CVD types.
+   The whole surface language is one idea: sheets of real glass
+   floating over a slow-moving iridescent field. Colour comes from
+   an oil-slick ramp (cyan -> magenta -> gold) rather than from a
+   single brand hue, so panels catch different light depending on
+   where they sit.
+
+   Glass is built from four layers, and it needs all four to read
+   as glass rather than as a translucent rectangle:
+     1. heavy blur + high saturation backdrop
+     2. a chromatic refractive edge (gradient ring)
+     3. inset specular highlights that imply thickness
+     4. a travelling light sweep
    ============================================================ */
 
 @layer base {
@@ -19,143 +26,158 @@
   :root {
     color-scheme: dark;
 
-    /* ---- surfaces: cold near-black, never pure black ---- */
-    --bg:            #04070c;
-    --surface:       #0a1018;
-    --surface-2:     #0f1721;
-    --surface-3:     #141e2b;
-    --surface-hover: #1a2634;
+    /* ---- the iridescent ramp: every accent derives from this ---- */
+    --irid-1: #4dd9ff;   /* cyan   */
+    --irid-2: #ff4fd8;   /* magenta*/
+    --irid-3: #ffc64d;   /* gold   */
+    --irid-4: #7cffb2;   /* mint   */
 
-    /* ---- aurora field behind everything ---- */
-    --aurora-a: oklch(72% 0.17 190 / 0.20);
-    --aurora-b: oklch(66% 0.24 320 / 0.16);
-    --aurora-c: oklch(80% 0.19 130 / 0.10);
+    /* ---- surfaces: cool slate, never pure black ---- */
+    --bg:            #0b0d14;
+    --surface:       #12151f;
+    --surface-2:     #171b27;
+    --surface-3:     #1d2230;
+    --surface-hover: #242a3a;
+
+    /* ---- the field behind the glass ---- */
+    --field-a: oklch(78% 0.16 220 / 0.22);
+    --field-b: oklch(70% 0.26 340 / 0.20);
+    --field-c: oklch(85% 0.16 90  / 0.14);
+    --field-d: oklch(84% 0.18 150 / 0.12);
 
     /* ---- liquid glass ---- */
-    --glass:       color-mix(in oklab, var(--surface) 58%, transparent);
-    --glass-heavy: color-mix(in oklab, var(--surface) 78%, transparent);
-    --glass-edge:  oklch(100% 0 0 / 0.10);
-    --glass-spec:  oklch(100% 0 0 / 0.16);
-    --glass-blur:  20px;
+    --lg-tint:       color-mix(in oklab, var(--surface) 42%, transparent);
+    --lg-tint-heavy: color-mix(in oklab, var(--surface) 72%, transparent);
+    --lg-blur:       40px;
+    --lg-sat:        200%;
+    --lg-edge-light: oklch(100% 0 0 / 0.22);
+    --lg-edge-dark:  oklch(0%   0 0 / 0.34);
+    --lg-ring:       0.55;   /* chromatic edge opacity */
+    --lg-sweep:      0.10;   /* specular sweep opacity */
 
     /* ---- lines ---- */
-    --line:        oklch(100% 0 0 / 0.08);
-    --line-strong: oklch(100% 0 0 / 0.16);
+    --line:        oklch(100% 0 0 / 0.09);
+    --line-strong: oklch(100% 0 0 / 0.18);
 
     /* ---- ink ---- */
-    --ink:       #e8f1f5;
-    --ink-muted: #8ea3b4;
-    --ink-faint: #566a7c;
+    --ink:       #eaf0f7;
+    --ink-muted: #94a3ba;
+    --ink-faint: #5d6b82;
 
-    /* ---- brand: aqua to violet ---- */
-    --accent:      #22e1c3;
-    --accent-2:    #c13bff;
-    --accent-ink:  #04070c;
-    --accent-soft: oklch(80% 0.15 185 / 0.14);
+    /* ---- brand ---- */
+    --accent:      var(--irid-1);
+    --accent-2:    var(--irid-2);
+    --accent-3:    var(--irid-3);
+    --accent-ink:  #07090f;
+    --accent-soft: oklch(78% 0.16 220 / 0.16);
 
-    /* ---- ranking signals, one hue each ---- */
-    --sig-semantic: #4cc9ff;
-    --sig-graph:    #39ff9e;
-    --sig-ema:      #ffb03a;
-    --sig-kg:       #c13bff;
-    --sig-profile:  #ff4d8d;
+    /* ---- ranking signals ---- */
+    --sig-semantic: var(--irid-1);
+    --sig-graph:    var(--irid-4);
+    --sig-ema:      var(--irid-3);
+    --sig-kg:       var(--irid-2);
+    --sig-profile:  #ff7ab8;
 
-    /* ---- content-type identity, all six ---- */
-    --type-movie:      #4cc9ff;
-    --type-book:       #39ff9e;
-    --type-music:      #ff4d8d;
-    --type-health:     #22e1c3;
-    --type-industrial: #ffb03a;
-    --type-finance:    #c7ff3a;
+    /* ---- content-type identity ---- */
+    --type-movie:      #4dd9ff;
+    --type-book:       #7cffb2;
+    --type-music:      #ff4fd8;
+    --type-health:     #56e8d5;
+    --type-industrial: #ffc64d;
+    --type-finance:    #b6f24d;
 
     /* ---- domain identity ---- */
-    --dom-entertainment: #ff4d8d;
-    --dom-health:        #22e1c3;
-    --dom-industry:      #ffb03a;
-    --dom-finance:       #c7ff3a;
+    --dom-entertainment: #ff4fd8;
+    --dom-health:        #4dd9ff;
+    --dom-industry:      #ffc64d;
+    --dom-finance:       #7cffb2;
 
     /* ---- audience maturity ---- */
-    --mat-all_ages:   #39ff9e;
-    --mat-teen:       #4cc9ff;
-    --mat-adult:      #ffb03a;
-    --mat-restricted: #ff4d6d;
+    --mat-all_ages:   #7cffb2;
+    --mat-teen:       #4dd9ff;
+    --mat-adult:      #ffc64d;
+    --mat-restricted: #ff5470;
 
     /* ---- feedback ---- */
-    --ok:   #39ff9e;
-    --warn: #ffb03a;
-    --bad:  #ff4d6d;
+    --ok:   #7cffb2;
+    --warn: #ffc64d;
+    --bad:  #ff5470;
 
     /* ---- elevation ---- */
-    --shadow-sm: 0 1px 2px oklch(0% 0 0 / .40);
-    --shadow:    0 2px 4px oklch(0% 0 0 / .30), 0 10px 30px oklch(0% 0 0 / .40);
-    --shadow-lg: 0 4px 10px oklch(0% 0 0 / .35), 0 26px 70px oklch(0% 0 0 / .55);
-    --shadow-accent: 0 10px 34px oklch(80% 0.15 185 / .30);
+    --shadow-sm: 0 1px 2px oklch(0% 0 0 / .45);
+    --shadow:    0 2px 6px oklch(0% 0 0 / .32), 0 12px 34px oklch(0% 0 0 / .44);
+    --shadow-lg: 0 6px 14px oklch(0% 0 0 / .38), 0 32px 80px oklch(0% 0 0 / .58);
+    --shadow-accent: 0 12px 40px oklch(78% 0.16 220 / .34);
 
-    --radius:    14px;
-    --radius-lg: 22px;
+    --radius:    16px;
+    --radius-lg: 26px;
   }
 
   [data-theme="light"] {
     color-scheme: light;
 
-    --bg:            #f2f6f8;
+    --bg:            #f4f1ea;
     --surface:       #ffffff;
     --surface-2:     #ffffff;
-    --surface-3:     #eef3f7;
-    --surface-hover: #e6eef4;
+    --surface-3:     #efece4;
+    --surface-hover: #e7e3d9;
 
-    --aurora-a: oklch(72% 0.17 190 / 0.16);
-    --aurora-b: oklch(66% 0.24 320 / 0.12);
-    --aurora-c: oklch(80% 0.19 130 / 0.10);
+    --field-a: oklch(78% 0.16 220 / 0.20);
+    --field-b: oklch(70% 0.26 340 / 0.16);
+    --field-c: oklch(85% 0.16 90  / 0.16);
+    --field-d: oklch(84% 0.18 150 / 0.12);
 
-    --glass:       color-mix(in oklab, #ffffff 68%, transparent);
-    --glass-heavy: color-mix(in oklab, #ffffff 86%, transparent);
-    --glass-edge:  oklch(0% 0 0 / 0.08);
-    --glass-spec:  oklch(100% 0 0 / 0.80);
+    --lg-tint:       color-mix(in oklab, #ffffff 58%, transparent);
+    --lg-tint-heavy: color-mix(in oklab, #ffffff 84%, transparent);
+    --lg-edge-light: oklch(100% 0 0 / 0.85);
+    --lg-edge-dark:  oklch(0%   0 0 / 0.10);
+    --lg-ring:       0.42;
+    --lg-sweep:      0.16;
 
-    --line:        oklch(0% 0 0 / 0.09);
-    --line-strong: oklch(0% 0 0 / 0.18);
+    --line:        oklch(0% 0 0 / 0.10);
+    --line-strong: oklch(0% 0 0 / 0.20);
 
-    --ink:       #06131a;
-    --ink-muted: #4a6070;
-    --ink-faint: #7e94a3;
+    --ink:       #10131a;
+    --ink-muted: #4f5b6b;
+    --ink-faint: #7d8899;
 
-    --accent:      #00a892;
-    --accent-2:    #8b1fd4;
+    --accent:      #0a8fbd;
+    --accent-2:    #c81fa8;
+    --accent-3:    #a8720a;
     --accent-ink:  #ffffff;
-    --accent-soft: oklch(60% 0.13 185 / 0.14);
+    --accent-soft: oklch(60% 0.13 220 / 0.14);
 
-    --sig-semantic: #0284c7;
-    --sig-graph:    #059669;
-    --sig-ema:      #b45309;
-    --sig-kg:       #8b1fd4;
-    --sig-profile:  #db2777;
+    --sig-semantic: #0a8fbd;
+    --sig-graph:    #12855a;
+    --sig-ema:      #a8720a;
+    --sig-kg:       #c81fa8;
+    --sig-profile:  #c02a72;
 
-    --type-movie:      #0284c7;
-    --type-book:       #059669;
-    --type-music:      #db2777;
-    --type-health:     #00a892;
-    --type-industrial: #b45309;
-    --type-finance:    #5c8a00;
+    --type-movie:      #0a8fbd;
+    --type-book:       #12855a;
+    --type-music:      #c81fa8;
+    --type-health:     #0b8b83;
+    --type-industrial: #a8720a;
+    --type-finance:    #5e7d0c;
 
-    --dom-entertainment: #db2777;
-    --dom-health:        #00a892;
-    --dom-industry:      #b45309;
-    --dom-finance:       #5c8a00;
+    --dom-entertainment: #c81fa8;
+    --dom-health:        #0a8fbd;
+    --dom-industry:      #a8720a;
+    --dom-finance:       #12855a;
 
-    --mat-all_ages:   #059669;
-    --mat-teen:       #0284c7;
-    --mat-adult:      #b45309;
-    --mat-restricted: #dc2626;
+    --mat-all_ages:   #12855a;
+    --mat-teen:       #0a8fbd;
+    --mat-adult:      #a8720a;
+    --mat-restricted: #cc2244;
 
-    --ok:   #059669;
-    --warn: #b45309;
-    --bad:  #dc2626;
+    --ok:   #12855a;
+    --warn: #a8720a;
+    --bad:  #cc2244;
 
-    --shadow-sm: 0 1px 2px oklch(0% 0 0 / .06);
-    --shadow:    0 1px 3px oklch(0% 0 0 / .07), 0 10px 28px oklch(0% 0 0 / .08);
-    --shadow-lg: 0 4px 12px oklch(0% 0 0 / .08), 0 28px 68px oklch(0% 0 0 / .14);
-    --shadow-accent: 0 10px 30px oklch(60% 0.13 185 / .28);
+    --shadow-sm: 0 1px 2px oklch(0% 0 0 / .07);
+    --shadow:    0 2px 6px oklch(0% 0 0 / .07), 0 12px 32px oklch(0% 0 0 / .10);
+    --shadow-lg: 0 6px 16px oklch(0% 0 0 / .10), 0 34px 80px oklch(0% 0 0 / .16);
+    --shadow-accent: 0 12px 36px oklch(60% 0.13 220 / .28);
   }
 
   /* overflow-x lives on html, never on body: setting it on body turns body
@@ -176,14 +198,15 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Fine grain stops the large flat gradients banding on 8-bit panels. */
+  /* Grain over everything. Large soft gradients band badly on 8-bit panels,
+     and a little noise is also what stops the glass reading as flat plastic. */
   body::after {
     content: '';
     position: fixed;
     inset: 0;
     pointer-events: none;
     z-index: 0;
-    opacity: .035;
+    opacity: .04;
     background-image: radial-gradient(oklch(100% 0 0) .5px, transparent .5px);
     background-size: 3px 3px;
   }
@@ -203,7 +226,7 @@
   :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-    border-radius: 8px;
+    border-radius: 10px;
   }
 
   input[type='range'] { accent-color: var(--accent); }
@@ -211,16 +234,11 @@
 
 @layer components {
 
-  /* ---------- aurora field ---------- */
-  /* The container is fixed and exactly viewport-sized, and the blobs that
-     actually move live inside it, clipped.
-     This was originally one oversized `position: fixed; inset: -30%`
-     pseudo-element that animated itself. A fixed layer larger than the
-     viewport that also animates continuously falls out of sync with the
-     scroller, and the page painted a black band above the sticky header while
-     scrolling. Clipping to the viewport and moving the animation onto
-     contained children keeps the fixed layer stable. */
-  .aurora-field {
+  /* ============ the iridescent field ============ */
+  /* Fixed and clipped to exactly the viewport, with the blobs that move living
+     inside it. An oversized fixed layer that animates itself falls out of sync
+     with the scroller and paints bands over sticky elements. */
+  .field {
     position: fixed;
     inset: 0;
     z-index: 0;
@@ -229,94 +247,209 @@
     contain: strict;
   }
 
-  .aurora-blob {
+  .field-blob {
     position: absolute;
     border-radius: 50%;
-    filter: blur(60px);
+    filter: blur(70px);
     --animation-reduced: none;
   }
-
-  .aurora-blob-a {
-    inline-size: 46rem; block-size: 34rem;
-    inset-block-start: -10rem; inset-inline-start: -8rem;
-    background: var(--aurora-a);
-    animation: blob-a 30s ease-in-out infinite alternate;
+  .field-a {
+    inline-size: 48rem; block-size: 36rem;
+    inset-block-start: -12rem; inset-inline-start: -10rem;
+    background: var(--field-a);
+    animation: drift-a 32s ease-in-out infinite alternate;
   }
-  .aurora-blob-b {
+  .field-b {
+    inline-size: 42rem; block-size: 34rem;
+    inset-block-start: -8rem; inset-inline-end: -12rem;
+    background: var(--field-b);
+    animation: drift-b 40s ease-in-out infinite alternate;
+  }
+  .field-c {
     inline-size: 40rem; block-size: 32rem;
-    inset-block-start: -6rem; inset-inline-end: -10rem;
-    background: var(--aurora-b);
-    animation: blob-b 38s ease-in-out infinite alternate;
+    inset-block-end: -14rem; inset-inline-start: 26%;
+    background: var(--field-c);
+    animation: drift-c 46s ease-in-out infinite alternate;
   }
-  .aurora-blob-c {
-    inline-size: 38rem; block-size: 30rem;
-    inset-block-end: -12rem; inset-inline-start: 30%;
-    background: var(--aurora-c);
-    animation: blob-c 44s ease-in-out infinite alternate;
+  .field-d {
+    inline-size: 34rem; block-size: 28rem;
+    inset-block-start: 34%; inset-inline-start: 46%;
+    background: var(--field-d);
+    animation: drift-d 52s ease-in-out infinite alternate;
   }
 
-  /* ---------- liquid glass ---------- */
-  .glass {
+  /* ============ LIQUID GLASS ============ */
+  /* Layer 1 — the refracting body. */
+  .lg {
     position: relative;
-    background: var(--glass);
-    backdrop-filter: blur(var(--glass-blur)) saturate(170%);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(170%);
-    border: 1px solid var(--glass-edge);
+    isolation: isolate;
+    background: var(--lg-tint);
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.06);
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.06);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow), inset 0 1px 0 var(--glass-spec);
+    /* Layer 3 — inset speculars. A bright top edge and a dark bottom edge are
+       what make a flat rectangle read as a sheet with thickness. */
+    box-shadow:
+      inset 0 1px 0 var(--lg-edge-light),
+      inset 0 -1px 0 var(--lg-edge-dark),
+      inset 0 0 30px -10px oklch(100% 0 0 / .14),
+      var(--shadow);
   }
 
-  /* If backdrop-filter is unavailable the translucent background alone
-     leaves text sitting on a busy aurora. Fall back to an opaque surface. */
+  /* Without backdrop-filter a 42%-opaque panel over a moving field is
+     unreadable, so fall back to an opaque surface rather than a tint. */
   @supports not (backdrop-filter: blur(1px)) {
-    .glass { background: var(--surface-2); }
+    .lg { background: var(--surface-2); }
   }
 
-  .glass-heavy { background: var(--glass-heavy); }
-
-  /* Specular highlight along the top edge, tinted by the brand ramp. */
-  .glass-lit::before {
+  /* Layer 2 — the chromatic refractive edge. A gradient ring masked to a 1px
+     border, so the rim splits light the way a real glass edge does. */
+  .lg::before {
     content: '';
     position: absolute;
-    inset: 0 0 auto 0;
-    height: 1px;
+    inset: 0;
+    z-index: -1;
     border-radius: inherit;
-    background: linear-gradient(90deg,
-      transparent,
-      color-mix(in oklab, var(--accent) 70%, white) 20%,
-      var(--glass-spec) 50%,
-      color-mix(in oklab, var(--accent-2) 70%, white) 80%,
-      transparent);
-    opacity: .55;
+    padding: 1px;
+    background: linear-gradient(140deg in oklab,
+      var(--irid-1), var(--irid-2) 38%, var(--irid-3) 66%, var(--irid-4) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: var(--lg-ring);
     pointer-events: none;
   }
 
-  /* ---------- surfaces ---------- */
-  .panel {
+  /* Layer 4 — a travelling specular sweep, so the light looks like it moves
+     across the sheet rather than being painted on. */
+  .lg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: linear-gradient(105deg,
+      transparent 34%,
+      oklch(100% 0 0 / var(--lg-sweep)) 47%,
+      transparent 60%);
+    background-size: 280% 100%;
+    animation: sweep 9s ease-in-out infinite;
+    --animation-reduced: none;
+    pointer-events: none;
+  }
+
+  .lg-heavy { background: var(--lg-tint-heavy); }
+  .lg-quiet::after { display: none; }
+  .lg-quiet::before { opacity: calc(var(--lg-ring) * 0.5); }
+
+  /* Interactive glass: lifts, and the chromatic rim brightens. */
+  .lg-hover {
+    transition: translate .3s cubic-bezier(.2,.8,.2,1),
+                box-shadow .3s cubic-bezier(.2,.8,.2,1);
+  }
+  .lg-hover:hover { translate: 0 -5px; box-shadow:
+      inset 0 1px 0 var(--lg-edge-light),
+      inset 0 -1px 0 var(--lg-edge-dark),
+      inset 0 0 34px -8px oklch(100% 0 0 / .20),
+      var(--shadow-lg); }
+  .lg-hover:hover::before { opacity: 1; }
+
+  /* ---------- legacy surface aliases ----------
+     The existing components are written against .panel/.card, so those resolve
+     to the same glass recipe rather than every call site being rewritten.
+     Spelled out rather than using `composes`, which is a CSS Modules feature
+     and does nothing in a plain PostCSS/Tailwind pipeline. */
+  .panel,
+  .card {
     position: relative;
-    background: var(--glass);
-    backdrop-filter: blur(var(--glass-blur)) saturate(170%);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(170%);
-    border: 1px solid var(--glass-edge);
+    isolation: isolate;
+    background: var(--lg-tint);
+    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.06);
+    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.06);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow), inset 0 1px 0 var(--glass-spec);
+    box-shadow:
+      inset 0 1px 0 var(--lg-edge-light),
+      inset 0 -1px 0 var(--lg-edge-dark),
+      inset 0 0 30px -10px oklch(100% 0 0 / .14),
+      var(--shadow);
   }
   @supports not (backdrop-filter: blur(1px)) {
-    .panel { background: var(--surface); }
+    .panel, .card { background: var(--surface-2); }
   }
+  .panel::before,
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(140deg in oklab,
+      var(--irid-1), var(--irid-2) 38%, var(--irid-3) 66%, var(--irid-4) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: var(--lg-ring);
+    pointer-events: none;
+  }
+
+  /* Layer 4 on the legacy aliases too. This was defined only on .lg, and since
+     every component is written against .panel/.card the specular sweep was
+     missing from the entire UI. */
+  .panel::after,
+  .card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: linear-gradient(105deg,
+      transparent 34%,
+      oklch(100% 0 0 / var(--lg-sweep)) 47%,
+      transparent 60%);
+    background-size: 280% 100%;
+    animation: sweep 9s ease-in-out infinite;
+    --animation-reduced: none;
+    pointer-events: none;
+  }
+
+  /* Stagger the sweeps across a grid, so a wall of cards does not glint in
+     unison like a single object. */
+  .card:nth-child(3n+2)::after { animation-delay: -3s; }
+  .card:nth-child(3n+3)::after { animation-delay: -6s; }
+
+  .card {
+    transition: translate .3s cubic-bezier(.2,.8,.2,1),
+                box-shadow .3s cubic-bezier(.2,.8,.2,1);
+  }
+  .card:hover {
+    translate: 0 -5px;
+    box-shadow:
+      inset 0 1px 0 var(--lg-edge-light),
+      inset 0 -1px 0 var(--lg-edge-dark),
+      inset 0 0 34px -8px oklch(100% 0 0 / .20),
+      var(--shadow-lg);
+  }
+  .card:hover::before { opacity: 1; }
+
+  /* The old lit-edge modifier is now redundant — every glass surface has a
+     chromatic rim — so it just strengthens it. */
+  .panel-lit::before { opacity: 1; }
 
   .panel-flat {
-    background: var(--surface-3);
+    background: color-mix(in oklab, var(--surface-3) 82%, transparent);
     border: 1px solid var(--line);
     border-radius: var(--radius);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
-  /* Opaque surface for anything that floats ON TOP of other content:
-     autocomplete dropdowns, menus, modals.
-     Glass is for panels with the page behind them. A translucent dropdown over
-     a grid of result cards is simply unreadable — you can see the cards through
-     the suggestions — and backdrop-filter cannot save it because the content
-     behind is high-contrast text, not a soft gradient. */
+  /* Opaque surface for anything floating ON TOP of other content: dropdowns,
+     menus, popovers. Glass needs a soft backdrop to refract; over a grid of
+     high-contrast result cards it is simply unreadable, and backdrop-filter
+     cannot rescue it. */
   .panel-overlay {
     position: relative;
     background: var(--surface-2);
@@ -325,78 +458,47 @@
     box-shadow: var(--shadow-lg);
   }
 
-  .panel-lit::after {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 1px;
-    border-radius: inherit;
-    background: linear-gradient(90deg,
-      transparent,
-      color-mix(in oklab, var(--accent) 60%, white) 25%,
-      color-mix(in oklab, var(--accent-2) 60%, white) 75%,
-      transparent);
-    opacity: .6;
-    pointer-events: none;
-  }
-
-  .card {
-    position: relative;
-    background: var(--glass);
-    backdrop-filter: blur(16px) saturate(165%);
-    -webkit-backdrop-filter: blur(16px) saturate(165%);
-    border: 1px solid var(--glass-edge);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow);
-    transition: translate .26s cubic-bezier(.2,.8,.2,1),
-                scale .26s cubic-bezier(.2,.8,.2,1),
-                box-shadow .26s cubic-bezier(.2,.8,.2,1),
-                border-color .26s ease;
-  }
-  @supports not (backdrop-filter: blur(1px)) {
-    .card { background: var(--surface); }
-  }
-  .card:hover {
-    translate: 0 -4px;
-    border-color: color-mix(in oklab, var(--accent) 40%, var(--line-strong));
-    box-shadow: var(--shadow-lg),
-                0 0 0 1px color-mix(in oklab, var(--accent) 22%, transparent);
-  }
-
   /* ---------- buttons ---------- */
   .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: .5rem;
-    border-radius: 12px;
+    border-radius: 13px;
     font-weight: 650;
     font-size: .8125rem;
     letter-spacing: -.01em;
     white-space: nowrap;
     min-block-size: 2.25rem;
     transition: background .18s ease, border-color .18s ease,
-                color .18s ease, scale .12s ease, box-shadow .18s ease;
+                color .18s ease, scale .12s ease, box-shadow .18s ease,
+                filter .18s ease;
   }
-  /* Coarse pointers need a larger hit area than a mouse does. */
   @media (pointer: coarse) { .btn { min-block-size: 2.75rem; } }
   .btn:active { scale: .975; }
   .btn:disabled { opacity: .45; cursor: not-allowed; scale: 1; }
 
+  /* The primary button carries the full ramp, and drifts, so it reads as the
+     same material as the panels. */
   .btn-primary {
-    background: linear-gradient(120deg in oklab, var(--accent), var(--accent-2));
+    position: relative;
+    background: linear-gradient(110deg in oklab,
+      var(--irid-1), var(--irid-2) 45%, var(--irid-3) 100%);
+    background-size: 220% 100%;
+    animation: ramp-drift 11s ease-in-out infinite alternate;
+    --animation-reduced: none;
     color: var(--accent-ink);
     border: 1px solid transparent;
-    box-shadow: var(--shadow-accent);
+    box-shadow: var(--shadow-accent), inset 0 1px 0 oklch(100% 0 0 / .35);
   }
-  .btn-primary:hover:not(:disabled) { filter: brightness(1.1) saturate(1.1); }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.12) saturate(1.12); }
 
   .btn-ghost {
-    background: color-mix(in oklab, var(--surface-3) 70%, transparent);
+    background: color-mix(in oklab, var(--surface-3) 62%, transparent);
     color: var(--ink-muted);
     border: 1px solid var(--line);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(12px) saturate(150%);
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
   }
   .btn-ghost:hover:not(:disabled) {
     background: var(--surface-hover);
@@ -405,30 +507,31 @@
   }
 
   /* ---------- inputs ---------- */
+  .field-input,
   .field {
     width: 100%;
-    background: color-mix(in oklab, var(--surface-3) 76%, transparent);
+    background: color-mix(in oklab, var(--surface-3) 68%, transparent);
     border: 1px solid var(--line);
-    border-radius: 12px;
+    border-radius: 13px;
     color: var(--ink);
     font-size: .875rem;
     outline: none;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(12px) saturate(150%);
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
     transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
   }
   .field::placeholder { color: var(--ink-faint); }
   .field:focus {
-    border-color: var(--accent);
+    border-color: transparent;
     background: var(--surface-2);
-    box-shadow: 0 0 0 3px var(--accent-soft);
+    box-shadow: 0 0 0 2px var(--accent), 0 0 24px -6px var(--accent);
   }
   .field:disabled { opacity: .5; cursor: not-allowed; }
   /* :user-invalid, not :invalid — only flag a field the user has touched,
-     instead of shouting at required-empty fields on first paint. */
+     rather than shouting at required-empty fields on first paint. */
   .field:user-invalid { border-color: var(--bad); }
 
-  /* ---------- chips / pills ---------- */
+  /* ---------- chips ---------- */
   .chip {
     display: inline-flex;
     align-items: center;
@@ -439,9 +542,11 @@
     font-weight: 650;
     letter-spacing: .01em;
     border: 1px solid var(--line);
-    background: color-mix(in oklab, var(--surface-3) 70%, transparent);
+    background: color-mix(in oklab, var(--surface-3) 64%, transparent);
     color: var(--ink-muted);
     white-space: nowrap;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
   .chip-interactive { cursor: pointer; transition: all .16s ease; }
@@ -451,17 +556,16 @@
     background: var(--surface-hover);
   }
 
-  /* Pill tinted by a caller-supplied --tint custom property. */
   .chip-tinted {
-    border-color: color-mix(in oklab, var(--tint) 45%, transparent);
-    background: color-mix(in oklab, var(--tint) 15%, transparent);
+    border-color: color-mix(in oklab, var(--tint) 48%, transparent);
+    background: color-mix(in oklab, var(--tint) 16%, transparent);
     color: var(--tint);
   }
 
   /* ---------- liquid slider ---------- */
-  /* Recreating the thumb is justified here: the native one cannot carry the
-     glow that ties it to the domain tint. The input element itself is kept,
-     so keyboard stepping, arrow keys and AT semantics all still work. */
+  /* Recreating the thumb is justified: the native one cannot carry the glow
+     that ties it to the ramp. The input element is kept, so keyboard stepping
+     and AT semantics still work. */
   .slider {
     -webkit-appearance: none;
     appearance: none;
@@ -470,54 +574,43 @@
     background: transparent;
     cursor: pointer;
   }
-
   .slider::-webkit-slider-runnable-track {
     height: 8px;
     border-radius: 999px;
     border: 1px solid var(--line);
     background:
       linear-gradient(90deg in oklab,
-        var(--accent) 0%,
-        var(--accent-2) var(--fill, 50%),
+        var(--irid-1) 0%, var(--irid-2) var(--fill, 50%),
         transparent var(--fill, 50%)),
-      var(--surface-3);
+      color-mix(in oklab, var(--surface-3) 80%, transparent);
   }
   .slider::-moz-range-track {
-    height: 8px;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: var(--surface-3);
+    height: 8px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--surface-3);
   }
   .slider::-moz-range-progress {
-    height: 8px;
-    border-radius: 999px;
-    background: linear-gradient(90deg in oklab, var(--accent), var(--accent-2));
+    height: 8px; border-radius: 999px;
+    background: linear-gradient(90deg in oklab, var(--irid-1), var(--irid-2));
   }
-
   .slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 20px;
-    height: 20px;
+    width: 21px; height: 21px;
     margin-top: -7px;
     border-radius: 50%;
     border: 2px solid var(--bg);
-    background: linear-gradient(140deg in oklab, white, var(--accent));
-    box-shadow: 0 0 0 1px var(--accent),
-                0 0 18px -2px var(--accent),
-                var(--shadow-sm);
-    transition: scale .14s ease, box-shadow .14s ease;
+    background: radial-gradient(circle at 34% 30%, white, var(--irid-1) 78%);
+    box-shadow: 0 0 0 1px var(--irid-1), 0 0 20px -2px var(--irid-1), var(--shadow-sm);
+    transition: scale .14s ease;
   }
   .slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
+    width: 21px; height: 21px; border-radius: 50%;
     border: 2px solid var(--bg);
-    background: linear-gradient(140deg in oklab, white, var(--accent));
-    box-shadow: 0 0 0 1px var(--accent), 0 0 18px -2px var(--accent);
+    background: radial-gradient(circle at 34% 30%, white, var(--irid-1) 78%);
+    box-shadow: 0 0 0 1px var(--irid-1), 0 0 20px -2px var(--irid-1);
   }
   .slider:hover::-webkit-slider-thumb  { scale: 1.14; }
-  .slider:active::-webkit-slider-thumb { scale: 1.22; }
+  .slider:active::-webkit-slider-thumb { scale: 1.24; }
   .slider:disabled { cursor: not-allowed; opacity: .45; }
 
   /* ---------- switch ---------- */
@@ -527,29 +620,30 @@
     -webkit-appearance: none;
     appearance: none;
     position: relative;
-    inline-size: 40px;
-    block-size: 23px;
+    inline-size: 41px;
+    block-size: 24px;
     flex: none;
     border-radius: 999px;
     border: 1px solid var(--line-strong);
-    background: var(--surface-3);
+    background: color-mix(in oklab, var(--surface-3) 84%, transparent);
     cursor: pointer;
-    transition: background .2s ease, border-color .2s ease;
+    transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
   }
   .switch::after {
     content: '';
     position: absolute;
     inset-block-start: 2px;
     inset-inline-start: 2px;
-    inline-size: 17px;
-    block-size: 17px;
+    inline-size: 18px;
+    block-size: 18px;
     border-radius: 50%;
     background: var(--ink-faint);
-    transition: translate .22s cubic-bezier(.2,.8,.2,1), background .22s ease;
+    transition: translate .24s cubic-bezier(.2,.8,.2,1), background .24s ease;
   }
   .switch:checked {
-    background: linear-gradient(120deg in oklab, var(--accent), var(--accent-2));
+    background: linear-gradient(110deg in oklab, var(--irid-1), var(--irid-2));
     border-color: transparent;
+    box-shadow: 0 0 18px -4px var(--irid-2);
   }
   .switch:checked::after {
     translate: 17px 0;
@@ -560,33 +654,33 @@
   /* ---------- meters ---------- */
   .track {
     height: 6px;
-    background: var(--surface-3);
+    background: color-mix(in oklab, var(--surface-3) 84%, transparent);
     border: 1px solid var(--line);
     border-radius: 999px;
     overflow: hidden;
   }
 
   /* ---------- type ---------- */
-  .display { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; letter-spacing: -.035em; }
+  .display { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; letter-spacing: -.038em; }
   .num     { font-variant-numeric: tabular-nums; }
 
   .label {
     font-size: .6875rem;
     font-weight: 700;
-    letter-spacing: .10em;
+    letter-spacing: .11em;
     text-transform: uppercase;
     color: var(--ink-faint);
   }
 
-  /* Aurora gradient text for hero words. */
-  .text-aurora {
+  /* Oil-slick text for hero words. */
+  .text-irid {
     background: linear-gradient(100deg in oklab,
-      var(--accent), var(--accent-2) 45%, var(--dom-finance) 95%);
-    background-size: 220% 100%;
+      var(--irid-1), var(--irid-2) 34%, var(--irid-3) 62%, var(--irid-4) 92%);
+    background-size: 260% 100%;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    animation: aurora-text 9s ease-in-out infinite alternate;
+    animation: ramp-drift 10s ease-in-out infinite alternate;
     --animation-reduced: none;
   }
 
@@ -597,7 +691,7 @@
     background-size: 200% 100%;
     animation: shimmer 1.6s ease-in-out infinite;
     --animation-reduced: shimmer 6s ease-in-out infinite;
-    border-radius: 8px;
+    border-radius: 10px;
   }
 }
 
@@ -607,11 +701,11 @@
   .clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .above   { position: relative; z-index: 1; }
 
-  /* Long result lists: skip painting offscreen cards. The intrinsic size has
-     to be close to the real card height or the scrollbar jumps as you scroll. */
+  /* Long result lists: skip painting offscreen cards. The intrinsic size has to
+     be close to the real card height or the scrollbar jumps while scrolling. */
   .defer-paint {
     content-visibility: auto;
-    contain-intrinsic-size: auto 21rem;
+    contain-intrinsic-size: auto 22rem;
   }
 }
 
@@ -622,29 +716,40 @@
 
 /* Each blob drifts on its own clock so the field never visibly loops.
    translate/scale only, so these stay on the compositor. */
-@keyframes blob-a {
-  0%   { translate:   0    0; scale: 1;    }
-  50%  { translate:  6vw  4vh; scale: 1.15; }
-  100% { translate:  2vw  9vh; scale: 1.05; }
+@keyframes drift-a {
+  0%   { translate:  0    0;  scale: 1;    }
+  50%  { translate:  7vw  5vh; scale: 1.18; }
+  100% { translate:  2vw 11vh; scale: 1.06; }
 }
-@keyframes blob-b {
-  0%   { translate:   0    0; scale: 1.05; }
-  50%  { translate: -7vw  6vh; scale: 1;    }
-  100% { translate: -3vw 11vh; scale: 1.18; }
+@keyframes drift-b {
+  0%   { translate:  0    0;  scale: 1.06; }
+  50%  { translate: -8vw  7vh; scale: 1;    }
+  100% { translate: -3vw 13vh; scale: 1.20; }
 }
-@keyframes blob-c {
-  0%   { translate:   0    0; scale: 1.1;  }
-  50%  { translate:  5vw -7vh; scale: 1;    }
-  100% { translate: -6vw -3vh; scale: 1.12; }
+@keyframes drift-c {
+  0%   { translate:  0    0;  scale: 1.12; }
+  50%  { translate:  6vw -8vh; scale: 1;    }
+  100% { translate: -7vw -3vh; scale: 1.14; }
+}
+@keyframes drift-d {
+  0%   { translate:  0    0;  scale: 1;    }
+  50%  { translate: -6vw -6vh; scale: 1.22; }
+  100% { translate:  5vw  4vh; scale: 1.08; }
 }
 
-@keyframes aurora-text {
+/* The specular sweep travelling across a glass sheet. */
+@keyframes sweep {
+  0%, 100% { background-position: 130% 0; }
+  50%      { background-position: -30% 0; }
+}
+
+@keyframes ramp-drift {
   0%   { background-position:   0% 50%; }
   100% { background-position: 100% 50%; }
 }
 
 @keyframes rise-in {
-  from { opacity: 0; translate: 0 14px; }
+  from { opacity: 0; translate: 0 16px; }
   to   { opacity: 1; translate: 0 0; }
 }
 
@@ -662,5 +767,5 @@
     animation: var(--animation-reduced) !important;
     scroll-behavior: auto;
   }
-  .card { transition-duration: .01ms; }
+  .card, .lg-hover { transition-duration: .01ms; }
 }

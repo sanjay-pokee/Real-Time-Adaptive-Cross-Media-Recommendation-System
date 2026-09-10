@@ -53,12 +53,14 @@ export default function App() {
 
   return (
     <InteractionProvider>
-      {/* Ambient background, behind both pages so it survives the auth swap
-          without restarting its animation. Purely decorative. */}
-      <div className="aurora-field" aria-hidden="true">
-        <span className="aurora-blob aurora-blob-a" />
-        <span className="aurora-blob aurora-blob-b" />
-        <span className="aurora-blob aurora-blob-c" />
+      {/* The iridescent field the glass refracts. Behind both pages so it
+          survives the auth swap without restarting its animation, and purely
+          decorative, so it is hidden from assistive tech. */}
+      <div className="field" aria-hidden="true">
+        <span className="field-blob field-a" />
+        <span className="field-blob field-b" />
+        <span className="field-blob field-c" />
+        <span className="field-blob field-d" />
       </div>
 
       {sessionUser ? (

@@ -77,9 +77,9 @@ export default function AuthPage({ onAuth }) {
       label: cleanName,
       email: cleanEmail,
       initials: initialsFromName(cleanName),
-      // Was the old indigo literal, which survived the palette change and made
-      // every signed-up avatar the one colour no longer in the design system.
-      accent: '#22e1c3',
+      // Kept in sync with --irid-1 by hand: this value is stored on the session
+      // object, so it cannot be a CSS variable.
+      accent: '#4dd9ff',
       authType: 'signup',
     });
   }
@@ -96,8 +96,8 @@ export default function AuthPage({ onAuth }) {
             className="absolute inset-0"
             style={{
               background:
-                'radial-gradient(40rem 30rem at 20% 15%, var(--aurora-a), transparent 65%),' +
-                'radial-gradient(34rem 26rem at 85% 80%, var(--aurora-b), transparent 65%)',
+                'radial-gradient(40rem 30rem at 20% 15%, var(--field-a), transparent 65%),' +
+                'radial-gradient(34rem 26rem at 85% 80%, var(--field-b), transparent 65%)',
             }}
           />
 
@@ -121,7 +121,7 @@ export default function AuthPage({ onAuth }) {
               <h1 className="display text-5xl font-extrabold leading-[1.04] text-ink xl:text-[3.4rem]">
                 One engine.
                 <br />
-                <span className="text-aurora">Every domain.</span>
+                <span className="text-irid">Every domain.</span>
               </h1>
               <p className="mt-6 max-w-md text-[15px] leading-relaxed text-ink-muted">
                 The same retrieval stack serves entertainment, health, industry
