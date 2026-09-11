@@ -145,7 +145,13 @@ def normalize_movies(raw_df: pd.DataFrame, dataset_config: dict) -> pd.DataFrame
     df["description"] = raw_df[dataset_config["description_column"]].apply(clean_text)
 
     genres = raw_df["genres"].apply(lambda v: ", ".join(parse_name_list(v)))
-    keywords = raw_df["keywords"].apply(lambda v: ", ".join(parse_name_list(v)))
+    # Optional: the Kaggle export carried a keywords column, the live TMDb
+    # fetch does not (/discover omits them, and a per-title lookup would be
+    # another 22k calls for a field that only enriches metadata_text and never
+    # reaches embedding_text). Absent it, the rest of the row is unaffected.
+    keywords = raw_df.get(
+        "keywords", pd.Series("", index=raw_df.index)
+    ).apply(lambda v: ", ".join(parse_name_list(v)))
 
     df["categories"] = genres
     df["release_date"] = raw_df[dataset_config["release_date_column"]]
@@ -174,10 +180,13 @@ def normalize_movies(raw_df: pd.DataFrame, dataset_config: dict) -> pd.DataFrame
         for vals in zip(df["title"], genres, df["description"], df["creators"])
     ]
 
-    # No image source for this dataset yet: TMDB's 5000-movie export has
-    # only a homepage column, and the Spotify export has none at all. The
-    # frontend falls back to its generated gradient when this is empty.
-    df["image_url"] = ""
+    # The Kaggle 5000-movie export has only a homepage column, but the live
+    # TMDb fetch (scripts.fetch_tmdb_movies) supplies poster_url. Read it when
+    # present so either source works; blank falls back to the generated
+    # gradient, and scripts.backfill_cover_art can still fill blanks after.
+    df["image_url"] = raw_df.get(
+        "poster_url", pd.Series("", index=raw_df.index)
+    ).fillna("").astype(str)
     df["text_hash"] = df["embedding_text"].apply(make_text_hash)
 
     df = _filter_rows(df, content_type, source)

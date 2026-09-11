@@ -38,6 +38,14 @@ from pathlib import Path
 
 import pandas as pd
 import requests
+from dotenv import load_dotenv
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+# The project keeps secrets in a gitignored .env that backend.settings already
+# reads. Load it here too, so TMDB_API_KEY does not have to be exported into
+# the shell separately just to run this script.
+load_dotenv()
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = PROJECT_ROOT / "data" / "processed" / "content_catalog.csv"
@@ -65,6 +73,20 @@ def _session() -> requests.Session:
         # Identify the caller. Anonymous floods are what gets an address throttled.
         "User-Agent": "nexus-recommender/1.0 (academic project; cover-art backfill)",
     })
+    # Transient connection resets do happen over a run of several thousand
+    # requests - one was observed against api.themoviedb.org while verifying
+    # the key, and the very next attempt succeeded. Retrying inside the adapter
+    # keeps those invisible, instead of letting them look like refusals and
+    # burn the throttle back-off.
+    retry = Retry(
+        total=4,
+        connect=4,
+        read=4,
+        backoff_factor=1.5,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET"],
+    )
+    session.mount("https://", HTTPAdapter(max_retries=retry))
     return session
 
 

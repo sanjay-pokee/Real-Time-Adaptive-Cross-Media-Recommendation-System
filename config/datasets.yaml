@@ -1,9 +1,16 @@
 datasets:
   movies:
     content_type: movie
-    source: tmdb_5000_movies
-    path: datasets/movies/movies/tmdb_5000_movies.csv
-    credits_path: datasets/movies/movies/tmdb_5000_credits.csv
+    # Was the Kaggle "TMDB 5000 Movie Dataset", a static 2017 export capped at
+    # 4,803 rows. TMDb itself carries 1.18M titles, so the ceiling was the file
+    # rather than the source. Now fetched live:
+    #   python -m scripts.fetch_tmdb_movies --min-votes 100 --from-year 1960
+    #   python -m scripts.fetch_tmdb_credits
+    # vote_count >= 100 keeps released, reviewed titles and drops the long tail
+    # of shorts and unreleased entries, which would embed to noise.
+    source: tmdb_api
+    path: datasets/tmdb/tmdb_movies.csv
+    credits_path: datasets/tmdb/tmdb_credits.csv
     id_column: id
     title_column: title
     description_column: overview
