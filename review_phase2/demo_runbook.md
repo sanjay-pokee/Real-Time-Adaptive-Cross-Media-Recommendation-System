@@ -32,18 +32,21 @@ then `Stop-Process -Id <pid> -Force`.
 
 ## Row-by-row proof
 
-### Data pipeline — 48,294 items, 14 columns
+### Data pipeline — 106,332 items, 18 columns
 ```powershell
 python -c "import pandas as pd; d=pd.read_csv('data/processed/content_catalog.csv'); print(f'{len(d):,} rows x {len(d.columns)} cols'); print(d.content_type.value_counts())"
 ```
-Expect `48,294 rows x 14 cols` and music 28,352 / book 15,139 / movie 4,803.
-**Verified.**
+Expect `106,332 rows x 18 cols` and music 28,352 / movie 22,116 / health 20,000 /
+industrial 20,000 / book 15,139 / finance 725. **Verified.**
 
-### Embeddings — 48,294 x 384
+The four extra columns over the original schema are `image_url` plus the audience
+trio `domain`, `maturity`, `audience_min_age`, `risk_tier`.
+
+### Embeddings — 106,332 x 384
 ```powershell
 python -c "import numpy as np; a=np.load('embeddings/content_embeddings.npy'); print(a.shape, a.dtype)"
 ```
-Expect `(48294, 384) float32`. **Verified.**
+Expect `(106332, 384) float32`. **Verified.**
 
 ### Vector search + Creator search — live endpoints
 Open `http://127.0.0.1:8000/docs` and run `POST /recommend` from the Swagger UI.
@@ -70,28 +73,69 @@ python -c "import json; c=json.load(open('models/graph/artifacts/lightgcn_embedd
 Expect `embedding_dim: 64, num_layers: 3`. **Verified.**
 > See the warning below before opening this file in front of anyone.
 
-### Backend APIs — 7 endpoints
+### Backend APIs — 8 endpoints
 ```powershell
 Select-String -Path backend\app.py -Pattern "@app\.(get|post)" | Measure-Object
 ```
-Expect 7. Or just show `/docs`. **Verified.**
+Expect 8 - `/domains` was added with the multi-domain work. Or just show
+`/docs`. **Verified.**
 
-### Frontend UI — 14 components, 2 pages
+### Frontend UI — 19 components, 2 pages
 ```powershell
 (Get-ChildItem frontend\src\components\*.jsx).Count; (Get-ChildItem frontend\src\pages\*.jsx).Count
 ```
-Expect 14 and 2. **Verified.**
+Expect 19 and 2. **Verified.**
 
 ### Integration — feedback loop, no retraining
 The strongest live moment. In the UI: like an item, then re-run the query and
 show its ranking move, with the Profile / EMA segments changing in the score
 bar. Then open the MySQL `interactions` table to show the row landed.
 
-### Quality gate — 55/55 green
+### Multi-domain engine — 4 domains, config-driven
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/domains | ConvertTo-Json -Depth 4
+```
+Expect entertainment, health, industry and finance, with `risk_tier: 1` and an
+advisory on health and finance. The list is built from `config/domains.yaml`, so
+this is the claim "adding a vertical is a config change" being demonstrated
+rather than asserted. **Verified.**
+
+### Audience eligibility — the strongest live moment
+In the UI, click the two "dark violent thriller" query chips back to back. Same
+query, same engine, two viewers:
+
+- **age 8** returns only `all_ages` items
+- **age 25** brings `18+` titles back
+
+Then pick Health with no age declared. It returns nothing, and says why:
+"Every item in Health & Household requires 18+. No age was declared, so the
+engine capped at the teen ceiling rather than assuming an adult." That is the
+constraint layer explaining itself, not an empty result.
+
+Command-line proof, if the UI is unavailable:
+```powershell
+.\.venv\Scripts\python.exe -m scripts.evaluate_constraints --k 20
+```
+Expect `PASS: zero violations@20 across all 9 profiles`. Exits non-zero if any
+ineligible item reaches a viewer. **Verified.**
+
+### Explainability — counterfactual ranking
+Open any result and look at "Why this ranked here". Beyond the score breakdown it
+re-ranks with each signal removed, which answers a question the bar chart cannot:
+whether a signal actually changed the outcome.
+
+For Interstellar at #1, semantic is 66% of the score but removing it leaves it at
+#1, while removing the graph signal - far fewer points - drops it to #4. The
+largest contributor is not the decisive one. **Verified.**
+
+### Quality gate — 175/175 green
 ```powershell
 pytest tests/ -q
 ```
-Expect `55 passed`. Took 9.08 s on this machine. **Verified just now.**
+Expect `175 passed`. Takes about 5 s. **Verified.**
+
+Note `pytest` is not on PATH; run it through the venv interpreter:
+`.\.venv\Scripts\python.exe -m pytest tests/ -q`
 
 Add `-v` if they want to see individual test names.
 
@@ -118,11 +162,27 @@ it looks bad.
 > d=64. The artifact currently loaded is a synthetic smoke-test set, because
 > our own platform has no real user base yet. That is exactly why we are
 > training on Amazon Reviews 2023 — a 40k-user run already beats the
-> popularity baseline 2x on Recall@20, and the 200k run is finishing now."
+> popularity baseline by 58% on Recall@20 - and it holds on an unrelated
+> vertical, beating it by 24% on Industrial & Scientific."
 
-That turns the weakness into the reason the benchmark work exists. You have the
-numbers to back it: Recall@20 0.0364 vs 0.0182 popularity, NDCG 0.0156 vs
-0.0082, MRR 0.0099 vs 0.0053.
+That turns the weakness into the reason the benchmark work exists. The measured
+numbers, from `reports/domain_benchmark_table.md` (50,000 users, 60 epochs, K=20):
+
+| Domain | LightGCN R@20 | Popularity R@20 | Lift |
+| --- | --- | --- | --- |
+| Entertainment (Movies & TV) | 0.0288 | 0.0182 | 1.59x |
+| Industry (Industrial & Sci.) | 0.0326 | 0.0264 | 1.24x |
+| Health (Health & Household) | 0.0121 | 0.0221 | **0.55x** |
+
+Do not round 1.59x up to "2x" - the earlier 0.0364 figure was a smaller run and no
+longer matches the reports in the repo.
+
+**Health is the one they may notice: LightGCN loses there.** Say it first rather
+than being caught by it:
+> "Collaborative filtering needs taste. Health and household goods are commodity
+> purchases where nearly everyone buys the same top sellers, so popularity is
+> genuinely hard to beat. That is the empirical case for the engine being a
+> hybrid, and why `lightgcn_weight` is tunable per domain."
 
 ### 2. There is no knowledge graph in the backend
 
@@ -151,5 +211,6 @@ figure into the Review-3 planned row. Then nothing on the slide overstates.
 
 ## If the backend dies mid-demo
 
-`pytest tests/ -q` needs no server and proves 55/55 in under 10 s. The frontend
+`.\.venv\Scripts\python.exe -m pytest tests/ -q` needs no server and proves 175/175 in
+about 5 s. The frontend
 also renders its offline state cleanly rather than crashing.

@@ -69,7 +69,21 @@ python -m scripts.init_mysql
 
 You do not need to manually create tables. You only need a running MySQL server and a user with permission to create the configured database.
 
-External API ingestion helpers are available for TMDb movies, Open Library books, and MusicBrainz recordings. Set `TMDB_API_KEY` before using TMDb. Open Library and MusicBrainz do not need API keys, but MusicBrainz requires a descriptive `MUSICBRAINZ_USER_AGENT` for production use.
+Movies are fetched from the live TMDb API rather than a static dump. Set `TMDB_API_KEY`
+in `.env` (the v3 API key, not the v4 Read Access Token), then:
+
+```powershell
+python -m scripts.fetch_tmdb_movies --min-votes 100 --from-year 1960
+python -m scripts.fetch_tmdb_credits
+```
+
+`fetch_tmdb_movies` pulls from `/discover/movie`, which returns the overview and the poster
+path together. It slices requests by release year because `/discover` caps pagination at 500
+pages, and `--min-votes` drops the long tail of shorts and unreleased entries, which embed to
+noise. `fetch_tmdb_credits` then adds cast and director, which `/discover` does not return.
+
+`backend/api_ingestion.py` contains unused TMDb, Open Library and MusicBrainz clients. Nothing
+imports it; it is scaffolding from an earlier approach and is not part of the pipeline.
 
 Load the processed catalog into MySQL after building it:
 
@@ -154,13 +168,20 @@ The retrieval stack (SBERT -> Qdrant -> rerank) is domain-agnostic: it only ever
 
 Shipped domains:
 
-| Domain | Content types | Risk tier |
-| --- | --- | --- |
-| `entertainment` | `movie`, `book`, `music` | 0 (informational) |
-| `industry` | `industrial` | 0 |
-| `health` | `health` | 1 (advisory shown) |
+| Domain | Content types | Items | Risk tier |
+| --- | --- | --- | --- |
+| `entertainment` | `movie`, `book`, `music` | 65,607 | 0 (informational) |
+| `health` | `health` | 20,000 | 1 (advisory shown) |
+| `industry` | `industrial` | 20,000 | 0 |
+| `finance` | `finance` | 725 | 1 (advisory shown) |
 
-Health and any future finance domain are scoped to **information and product discovery**. The engine does not give medical, diagnostic or investment advice, and `risk_tier: 2` items (those needing a licensed professional) are withheld by default.
+106,332 items in total. Finance is smaller because it is not one of Amazon's 28 top-level
+categories: it is carved out of the Software category's "Accounting & Finance" subtree, and
+725 is what is genuinely there rather than what padding with office software would give.
+
+Health and finance are scoped to **information and product discovery**. The engine does not
+give medical, diagnostic or investment advice, and `risk_tier: 2` items (those needing a
+licensed professional) are withheld by default.
 
 List what a deployment serves:
 
