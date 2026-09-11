@@ -6,6 +6,7 @@ Usage:
 
 from __future__ import annotations
 
+import shutil
 import sys
 import uuid
 from pathlib import Path
@@ -20,6 +21,22 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = PROJECT_ROOT / "data" / "processed" / "content_catalog.csv"
 NPY_PATH = PROJECT_ROOT / "embeddings" / "content_embeddings.npy"
 INDEX_PATH = PROJECT_ROOT / "embeddings" / "content_embedding_index.csv"
+
+
+def _purge_local_collection(storage_path: Path, collection: str) -> None:
+    """Remove an embedded collection's on-disk data.
+
+    The client must be closed before this runs: Windows will not unlink an open
+    sqlite file, and a silent failure here reintroduces exactly the stale-point
+    bug this exists to prevent. Everything here is derived from the catalogue
+    and the embedding matrix, so removing it loses nothing that a rebuild does
+    not restore.
+    """
+    target = storage_path / "collection" / collection
+    if not target.exists():
+        return
+    shutil.rmtree(target)
+    print(f"  Purged stale local collection data: {target}")
 
 
 def build_qdrant_collection(
@@ -50,7 +67,32 @@ def build_qdrant_collection(
         client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key)
     dimension = vectors.shape[1]
 
-    client.recreate_collection(
+    # Wipe the collection for real before rebuilding.
+    #
+    # Neither recreate_collection (deprecated) nor delete_collection actually
+    # clears embedded mode: the points live in
+    # <path>/collection/<name>/storage.sqlite, and dropping the collection only
+    # removes its entry from meta.json. Recreating the same name re-attaches
+    # that file and every old point returns.
+    #
+    # This is not a harmless leak, because point ids are uuid5(global_id): when
+    # a dataset's `source` changes, every item arrives under a new id and the
+    # old one survives beside it. Re-sourcing movies from the TMDb API left
+    # 4,803 stale tmdb_5000_movies points in a 106,332-row catalogue, and a
+    # search returned the same film twice.
+    # Order matters. delete_collection clears the entry in meta.json but leaves
+    # storage.sqlite; removing the directory clears the data but leaves the
+    # registration, and then create_collection fails with "already exists". Both
+    # are needed, registration first.
+    if client.collection_exists(settings.qdrant_collection):
+        client.delete_collection(settings.qdrant_collection)
+
+    if settings.qdrant_path:
+        client.close()
+        _purge_local_collection(Path(settings.qdrant_path), settings.qdrant_collection)
+        client = QdrantClient(path=settings.qdrant_path)
+
+    client.create_collection(
         collection_name=settings.qdrant_collection,
         vectors_config=VectorParams(size=dimension, distance=Distance.COSINE),
     )
