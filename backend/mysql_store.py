@@ -14,15 +14,28 @@ from backend.settings import Settings, get_settings
 
 CREATE_DATABASE_SQL = "CREATE DATABASE IF NOT EXISTS `{database}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
 
+# Rows per executemany when loading the catalogue. Sized so one statement stays
+# comfortably inside a default max_allowed_packet even though each row carries a
+# full description and embedding_text.
+CATALOG_UPSERT_BATCH = 2000
+
 TABLE_SQL = [
     """
     CREATE TABLE IF NOT EXISTS content_entities (
-      global_id VARCHAR(512) PRIMARY KEY,
+      -- utf8mb4_bin, because these ids are case-sensitive. The database
+      -- default is utf8mb4_unicode_ci, under which Google Books ids like
+      -- be0XAQAAIAAJ and be0xAQAAIAAJ - two different books - collide on
+      -- the primary key and one silently overwrites the other.
+      global_id VARCHAR(512) COLLATE utf8mb4_bin PRIMARY KEY,
       content_type VARCHAR(64) NOT NULL,
       source VARCHAR(128) NOT NULL,
       source_id VARCHAR(256) NOT NULL,
       title TEXT NOT NULL,
-      description TEXT,
+      -- MEDIUMTEXT, not TEXT: Amazon product descriptions concatenate the
+      -- feature bullets and run past TEXT's 65,535-byte ceiling. Two rows in a
+      -- 106k catalogue do, which is enough to fail the whole load with
+      -- "Data too long for column 'description'".
+      description MEDIUMTEXT,
       creators TEXT,
       categories TEXT,
       release_date VARCHAR(64),
@@ -50,7 +63,9 @@ TABLE_SQL = [
     CREATE TABLE IF NOT EXISTS user_interactions (
       id BIGINT AUTO_INCREMENT PRIMARY KEY,
       user_id VARCHAR(191) NOT NULL,
-      entity_id VARCHAR(512) NOT NULL,
+      -- Must match content_entities.global_id exactly, or the foreign key
+      -- below is rejected for incompatible collations.
+      entity_id VARCHAR(512) COLLATE utf8mb4_bin NOT NULL,
       event_type VARCHAR(64) NOT NULL,
       event_value DOUBLE,
       context JSON,
@@ -62,6 +77,23 @@ TABLE_SQL = [
         ON DELETE CASCADE
     )
     """,
+]
+
+
+# Applied after TABLE_SQL on every init. CREATE TABLE IF NOT EXISTS silently
+# leaves an existing table alone, so a schema change never reaches a database
+# that was created before it. These widen columns in place and are safe to
+# re-run: MODIFY to the type a column already has is a no-op.
+MIGRATION_SQL = [
+    "ALTER TABLE content_entities MODIFY description MEDIUMTEXT",
+    # Collation change on a column a foreign key points at: the constraint has
+    # to come off first and go back on after, and both sides must end up with
+    # the same collation.
+    ("ALTER TABLE user_interactions DROP FOREIGN KEY fk_interaction_entity", True),
+    "ALTER TABLE content_entities MODIFY global_id VARCHAR(512) COLLATE utf8mb4_bin NOT NULL",
+    "ALTER TABLE user_interactions MODIFY entity_id VARCHAR(512) COLLATE utf8mb4_bin NOT NULL",
+    ("ALTER TABLE user_interactions ADD CONSTRAINT fk_interaction_entity "
+     "FOREIGN KEY (entity_id) REFERENCES content_entities(global_id) ON DELETE CASCADE", True),
 ]
 
 
@@ -91,6 +123,20 @@ class MySQLStore:
             with conn.cursor() as cursor:
                 for statement in TABLE_SQL:
                     cursor.execute(statement)
+                for migration in MIGRATION_SQL:
+                    # A tuple marks a statement that may legitimately fail:
+                    # dropping a constraint that is already gone, or adding one
+                    # that is already there. Everything else fails loudly,
+                    # because a migration that silently no-ops is worse than one
+                    # that stops.
+                    statement, optional = (
+                        migration if isinstance(migration, tuple) else (migration, False)
+                    )
+                    try:
+                        cursor.execute(statement)
+                    except Exception:
+                        if not optional:
+                            raise
             conn.commit()
         finally:
             conn.close()
@@ -123,8 +169,13 @@ class MySQLStore:
         conn = self._connect_database()
         try:
             with conn.cursor() as cursor:
-                cursor.executemany(
-                    """
+                # Chunked, because executemany builds one statement per call and
+                # MySQL drops the connection when it exceeds max_allowed_packet.
+                # Every row carries a full description and embedding_text, so a
+                # single call for the whole catalogue is hundreds of megabytes;
+                # this started failing with "Lost connection to MySQL server
+                # during query" once the catalogue passed ~100k rows.
+                statement = """
                     INSERT INTO content_entities
                       (global_id, content_type, source, source_id, title, description,
                        creators, categories, release_date, popularity, rating, metadata,
@@ -144,9 +195,46 @@ class MySQLStore:
                       metadata = VALUES(metadata),
                       embedding_text = VALUES(embedding_text),
                       text_hash = VALUES(text_hash)
-                    """,
-                    rows,
+                    """
+                for start in range(0, len(rows), CATALOG_UPSERT_BATCH):
+                    cursor.executemany(
+                        statement, rows[start : start + CATALOG_UPSERT_BATCH]
+                    )
+
+                # Drop rows the catalogue no longer contains. The upsert alone
+                # is additive, so an item that changed global_id - which happens
+                # whenever a dataset's `source` changes - stayed behind forever
+                # beside its replacement. Re-sourcing movies from the TMDb API
+                # left 4,803 dead tmdb_5000_movies rows here, and 88 seeded
+                # interactions still pointing at them.
+                #
+                # user_interactions has ON DELETE CASCADE against this table, so
+                # removing a stale entity cleans up its orphaned interactions
+                # rather than leaving them referencing something unsearchable.
+                keep = [row[0] for row in rows]
+                # The collation must match content_entities.global_id exactly. A join
+                # across different collations cannot use an index, so this DELETE
+                # degrades to a row-by-row scan of the whole catalogue and takes
+                # minutes instead of milliseconds.
+                cursor.execute(
+                    "CREATE TEMPORARY TABLE _keep ("
+                    "id VARCHAR(512) COLLATE utf8mb4_bin PRIMARY KEY)"
                 )
+                for start in range(0, len(keep), CATALOG_UPSERT_BATCH):
+                    chunk = keep[start : start + CATALOG_UPSERT_BATCH]
+                    cursor.executemany(
+                        "INSERT IGNORE INTO _keep (id) VALUES (%s)",
+                        [(value,) for value in chunk],
+                    )
+                cursor.execute(
+                    "DELETE ce FROM content_entities ce "
+                    "LEFT JOIN _keep k ON k.id = ce.global_id "
+                    "WHERE k.id IS NULL"
+                )
+                removed = cursor.rowcount
+                cursor.execute("DROP TEMPORARY TABLE _keep")
+                if removed:
+                    print(f"  Removed {removed:,} catalogue rows no longer present")
             conn.commit()
         finally:
             conn.close()
