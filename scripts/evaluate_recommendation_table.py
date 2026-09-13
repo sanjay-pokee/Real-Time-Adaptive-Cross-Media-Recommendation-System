@@ -22,6 +22,13 @@ from scripts.seed_demo_interactions import USER_PROFILES
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = PROJECT_ROOT / "data" / "processed" / "content_catalog.csv"
+
+# Tokens carrying no retrieval signal. Substring matching over a 106k catalogue
+# makes these match nearly everything, which flattened the candidate set.
+STOPWORDS = frozenset({
+    "and", "for", "the", "with", "from", "into", "about", "that", "this",
+    "your", "you", "all", "any", "are", "was", "has", "had", "its", "out",
+})
 REPORT_DIR = PROJECT_ROOT / "reports"
 CSV_PATH = REPORT_DIR / "recommendation_evaluation_table.csv"
 MD_PATH = REPORT_DIR / "recommendation_evaluation_table.md"
@@ -57,6 +64,27 @@ SCENARIOS = [
         "query": "space adventure with aliens",
         "user_id": "user_scifi",
         "expected_terms": ["space", "science fiction", "alien", "adventure"],
+    },
+    # The three verticals the review asked for. Without these the measured table
+    # only ever evidenced entertainment, which is the narrow reading of the
+    # project the panel is asking us to widen.
+    {
+        "name": "Health product discovery",
+        "query": "joint pain supplements and mobility support",
+        "user_id": "user_health_caregiver",
+        "expected_terms": ["joint", "supplement", "mobility", "pain", "support"],
+    },
+    {
+        "name": "Industrial supply lookup",
+        "query": "protective safety gloves for the lab",
+        "user_id": "user_industry_engineer",
+        "expected_terms": ["safety", "glove", "protective", "lab", "nitrile"],
+    },
+    {
+        "name": "Finance literacy discovery",
+        "query": "personal budgeting and bookkeeping",
+        "user_id": "user_finance_planner",
+        "expected_terms": ["budget", "finance", "accounting", "bookkeeping", "tax"],
     },
 ]
 
@@ -127,18 +155,40 @@ def _candidate_rows(
         + catalog["metadata_text"].astype(str)
     ).str.lower()
 
-    terms = [query.lower(), *[term.lower() for term in expected_terms]]
-    mask = pd.Series(False, index=catalog.index)
-    for term in terms:
-        for part in term.split():
-            if len(part) > 2:
-                mask = mask | text.str.contains(part, regex=False)
+    # Count how many distinct query tokens a row matches, rather than keeping
+    # every row that matches *any* of them. Under the any-token rule a stopword
+    # like "with" in "space adventure with aliens" matched most of the catalogue,
+    # so the candidate set was effectively the whole corpus.
+    tokens = {
+        part
+        for term in [query.lower(), *[t.lower() for t in expected_terms]]
+        for part in term.split()
+        if len(part) > 2 and part not in STOPWORDS
+    }
+    matches = pd.Series(0, index=catalog.index)
+    for token in tokens:
+        matches = matches + text.str.contains(token, regex=False).astype(int)
 
-    rows = catalog[mask].copy()
+    rows = catalog[matches > 0].copy()
     if rows.empty:
         rows = catalog.head(limit).copy()
+        rows["term_matches"] = 0
+    else:
+        rows["term_matches"] = matches[matches > 0]
+
+    # Rank within content type, not on the raw number. `popularity` means a
+    # different thing per source - Amazon ships rating counts (health peaks at
+    # 294,761), TMDb a float that peaks near 800, Spotify a 0-100 index - so
+    # sorting a mixed pool by it returned Amazon health and industrial rows for
+    # every query, including "space adventure with aliens". A within-type
+    # percentile is comparable across sources; the raw value is not.
     rows["popularity_numeric"] = pd.to_numeric(rows["popularity"], errors="coerce").fillna(0)
-    rows = rows.sort_values("popularity_numeric", ascending=False).head(limit)
+    rows["popularity_rank"] = (
+        rows.groupby("content_type")["popularity_numeric"].rank(pct=True)
+    )
+    rows = rows.sort_values(
+        ["term_matches", "popularity_rank"], ascending=[False, False]
+    ).head(limit)
     return [
         {
             "global_id": row.get("global_id", ""),

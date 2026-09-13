@@ -1,9 +1,9 @@
 profile,effective_age,domain,catalog_items,eligible_items,coverage,violations_filter_on,violation_rate_on,violations_filter_off,violation_rate_off,overlap_with_unconstrained,advisory
-Child (8),8,all,106332,3236,0.030432983485686342,0,0.0,20,1.0,0.0,
-Teen (15),15,all,106332,60426,0.568276718203363,0,0.0,20,1.0,0.0,
+Child (8),8,all,106332,3698,0.03477786555317308,0,0.0,20,1.0,0.0,
+Teen (15),15,all,106332,55250,0.5195989918368883,0,0.0,20,1.0,0.0,
 Adult (25),25,all,106332,106332,1.0,0,0.0,0,0.0,1.0,
-"Adult, safe mode",7,all,106332,3236,0.030432983485686342,0,0.0,20,1.0,0.0,
-Age not supplied,13,all,106332,60426,0.568276718203363,0,0.0,20,1.0,0.0,
+"Adult, safe mode",7,all,106332,3698,0.03477786555317308,0,0.0,20,1.0,0.0,
+Age not supplied,13,all,106332,55250,0.5195989918368883,0,0.0,20,1.0,0.0,
 "Adult, Entertainment",30,entertainment,106332,65607,0.6170014671030358,0,0.0,20,1.0,0.0,
 "Adult, Personal & Business Finance",30,finance,106332,725,0.006818267313696723,0,0.0,20,1.0,0.0,"Product discovery only. This is not financial, investment or tax advice. Consult a qualified financial professional."
 "Adult, Health & Household",30,health,106332,20000,0.18809013279163375,0,0.0,2,0.1,0.9,"Product discovery only. This is not medical advice, diagnosis or treatment. Consult a qualified healthcare professional."

@@ -14,6 +14,12 @@ const USERS = [
   { id: 'user_family', label: 'Family & Animation', initials: 'FA', accent: '#EA580C' },
   { id: 'user_dark_thriller', label: 'Dark Thriller Addict', initials: 'DT', accent: '#111827' },
   { id: 'user_balanced', label: 'Balanced Taste', initials: 'BT', accent: '#4F46E5' },
+  // The verticals the review asked for. Seeded by scripts.seed_demo_interactions
+  // so these three have real history in health, industry and finance rather than
+  // falling back to pure semantic search the way an unseeded user does.
+  { id: 'user_health_caregiver', label: 'Health Caregiver', initials: 'HC', accent: '#0D9488' },
+  { id: 'user_industry_engineer', label: 'Industrial Engineer', initials: 'IE', accent: '#B45309' },
+  { id: 'user_finance_planner', label: 'Finance Planner', initials: 'FP', accent: '#15803D' },
 ];
 
 export default function UserSelector({ value, onChange, users = USERS }) {

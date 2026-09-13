@@ -11,7 +11,16 @@ from backend.mysql_store import MySQLStore
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = PROJECT_ROOT / "data" / "processed" / "content_catalog.csv"
-CONTENT_TYPES = ["movie", "book", "music"]
+
+# The entertainment trio every persona is seeded across unless it says otherwise.
+# Seeding the new verticals into all of them would hand the family persona
+# adult-only health products, so a persona that belongs to another domain
+# declares `seed_types` instead of this being widened globally.
+ENTERTAINMENT_TYPES = ["movie", "book", "music"]
+
+# Every type any persona can be seeded from, for the summary counts.
+CONTENT_TYPES = ENTERTAINMENT_TYPES + ["health", "industrial", "finance"]
+
 LIKE_LIMIT_PER_TYPE = 16
 SKIP_LIMIT_PER_TYPE = 4
 FALLBACK_LIMIT_PER_TYPE = 6
@@ -108,6 +117,49 @@ USER_PROFILES = {
         "likes": ["adventure", "comedy", "drama", "pop", "science fiction"],
         "skips": ["horror"],
     },
+    # --- The verticals the review asked for -------------------------------
+    #
+    # Without these, every seeded interaction sat in entertainment: the graph
+    # and EMA layers had no history at all in health, industry or finance, so
+    # picking a persona and searching those verticals fell back to pure
+    # semantic search. That is the one thing the panel is asking to see
+    # generalised, so each vertical gets a persona whose history lives in it.
+    #
+    # Each pairs its product domain with `book`, because these are information
+    # *and* product discovery domains - a caregiver reads about a condition and
+    # buys a brace - which is also what keeps the cross-media claim true here.
+    # All three are `adult`: health, industrial and finance default to adult
+    # maturity, so a younger persona would have its own history filtered away.
+    "user_health_caregiver": {
+        "age_group": "adult",
+        "profession": "nurse",
+        "skills": ["care", "health", "biology"],
+        "interests": ["wellness", "nutrition", "mobility", "first aid"],
+        "preferred_content_types": ["health", "book"],
+        "seed_types": ["health", "book"],
+        "likes": ["supplement", "vitamin", "first aid", "mobility", "nutrition", "health"],
+        "skips": ["horror", "gaming"],
+    },
+    "user_industry_engineer": {
+        "age_group": "adult",
+        "profession": "mechanical engineer",
+        "skills": ["engineering", "safety", "measurement"],
+        "interests": ["tools", "safety equipment", "lab", "measurement"],
+        "preferred_content_types": ["industrial", "book"],
+        "seed_types": ["industrial", "book"],
+        "likes": ["safety", "tool", "measurement", "lab", "industrial", "engineering"],
+        "skips": ["romance", "children"],
+    },
+    "user_finance_planner": {
+        "age_group": "adult",
+        "profession": "financial analyst",
+        "skills": ["finance", "accounting", "analysis"],
+        "interests": ["budgeting", "tax", "accounting", "investing basics"],
+        "preferred_content_types": ["finance", "book"],
+        "seed_types": ["finance", "book"],
+        "likes": ["budget", "tax", "accounting", "finance", "payroll", "bookkeeping"],
+        "skips": ["horror", "children"],
+    },
 }
 
 
@@ -133,9 +185,10 @@ def main() -> None:
             "preferences": profile,
             "ema_vector": [],
         })
-        liked = _pick_balanced_items(catalog, profile["likes"], LIKE_LIMIT_PER_TYPE)
-        skipped = _pick_balanced_items(catalog, profile["skips"], SKIP_LIMIT_PER_TYPE)
-        liked = _add_popular_fallbacks(catalog, liked, FALLBACK_LIMIT_PER_TYPE)
+        seed_types = profile.get("seed_types", ENTERTAINMENT_TYPES)
+        liked = _pick_balanced_items(catalog, profile["likes"], LIKE_LIMIT_PER_TYPE, seed_types)
+        skipped = _pick_balanced_items(catalog, profile["skips"], SKIP_LIMIT_PER_TYPE, seed_types)
+        liked = _add_popular_fallbacks(catalog, liked, FALLBACK_LIMIT_PER_TYPE, seed_types)
 
         offset = user_index * 1000
         for item_index, global_id in enumerate(liked):
@@ -170,7 +223,7 @@ def main() -> None:
                 "timestamp": now - timedelta(minutes=offset + item_index + 600),
             })
 
-        counts = _count_by_type(catalog, liked)
+        counts = _count_by_type(catalog, liked, seed_types)
         print(f"{user_id}: liked {counts}")
 
     profile_count = store.upsert_user_profiles(profiles)
@@ -197,18 +250,28 @@ def _clear_seeded_interactions(store: MySQLStore) -> None:
         conn.close()
 
 
-def _pick_balanced_items(catalog: pd.DataFrame, terms: list[str], limit_per_type: int) -> list[str]:
+def _pick_balanced_items(
+    catalog: pd.DataFrame,
+    terms: list[str],
+    limit_per_type: int,
+    content_types: list[str],
+) -> list[str]:
     selected: list[str] = []
-    for content_type in CONTENT_TYPES:
+    for content_type in content_types:
         matches = _pick_items(catalog, terms, limit_per_type, content_type=content_type)
         selected.extend(matches)
     return _dedupe(selected)
 
 
-def _add_popular_fallbacks(catalog: pd.DataFrame, selected: list[str], limit_per_type: int) -> list[str]:
+def _add_popular_fallbacks(
+    catalog: pd.DataFrame,
+    selected: list[str],
+    limit_per_type: int,
+    content_types: list[str],
+) -> list[str]:
     selected_set = set(selected)
     output = list(selected)
-    for content_type in CONTENT_TYPES:
+    for content_type in content_types:
         type_rows = catalog[catalog["content_type"] == content_type].copy()
         if type_rows.empty:
             continue
@@ -249,10 +312,17 @@ def _pick_items(
     return sampled["global_id"].head(limit).tolist()
 
 
-def _count_by_type(catalog: pd.DataFrame, global_ids: list[str]) -> dict[str, int]:
+def _count_by_type(
+    catalog: pd.DataFrame,
+    global_ids: list[str],
+    content_types: list[str] | None = None,
+) -> dict[str, int]:
     rows = catalog[catalog["global_id"].isin(global_ids)]
     counts = rows["content_type"].value_counts().to_dict()
-    return {content_type: int(counts.get(content_type, 0)) for content_type in CONTENT_TYPES}
+    return {
+        content_type: int(counts.get(content_type, 0))
+        for content_type in (content_types or CONTENT_TYPES)
+    }
 
 
 def _count_type_ids(catalog: pd.DataFrame, global_ids: list[str], content_type: str) -> int:
