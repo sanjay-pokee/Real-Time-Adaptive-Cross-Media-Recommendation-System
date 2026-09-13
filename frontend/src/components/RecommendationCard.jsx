@@ -59,6 +59,8 @@ export default function RecommendationCard({
   const Icon = meta.icon;
   const cover = coverFor(result);
   const imageUrl = imageFor(result);
+  // Movies carry a 16:9 still; nothing else does. See MEDIA_COLUMNS.
+  const backdropUrl = String(result.backdrop_url || '').trim();
   const categories = splitCategories(result.categories);
   const creator = leadCreator(result.creators);
   const year = result.release_date ? String(result.release_date).slice(0, 4) : null;
@@ -69,65 +71,96 @@ export default function RecommendationCard({
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: Math.min(index, 8) * 0.035, duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
-      className="card group flex flex-col p-4"
+      className="card group flex flex-col overflow-hidden"
     >
-      {/* ---------- head: cover + identity ---------- */}
-      <div className="flex gap-3.5">
-        <button
-          type="button"
-          onClick={() => onView?.(result)}
-          className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl ring-1 ring-inset ring-white/10 transition-transform duration-300 group-hover:scale-[1.04]"
-          style={{ background: cover.background }}
-          aria-label={`Open ${result.title}`}
-        >
-          {/* The monogram sits underneath, so a real cover that 404s or is
-              blocked reveals the gradient rather than an empty box. */}
-          <span className="absolute inset-0 flex items-center justify-center display text-lg font-extrabold text-white/95 drop-shadow">
-            {monogram(result.title)}
-          </span>
-          {imageUrl ? (
+      {/* ---------- media header ----------
+          Leads with the picture. Movies carry a landscape still, which fills
+          this strip at its own ratio; everything else has a portrait cover,
+          which is blurred to fill behind a sharp contained copy rather than
+          being stretched into a shape it was never cropped for. The monogram
+          gradient sits underneath, so a cover that 404s degrades to the
+          gradient instead of an empty box. */}
+      <button
+        type="button"
+        onClick={() => onView?.(result)}
+        aria-label={`Open ${result.title}`}
+        className="relative block h-36 w-full shrink-0 overflow-hidden text-left"
+        style={{ background: cover.background }}
+      >
+        <span className="absolute inset-0 flex items-center justify-center display text-4xl font-extrabold text-white/20">
+          {monogram(result.title)}
+        </span>
+
+        {backdropUrl ? (
+          <img
+            src={backdropUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-[700ms] ease-out group-hover:scale-[1.06]"
+            onError={(event) => { event.currentTarget.style.display = 'none'; }}
+          />
+        ) : imageUrl ? (
+          <>
             <img
               src={imageUrl}
               alt=""
               loading="lazy"
               decoding="async"
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full scale-125 object-cover blur-2xl saturate-150"
               onError={(event) => { event.currentTarget.style.display = 'none'; }}
             />
-          ) : null}
-          <Icon
-            size={12}
-            className="absolute bottom-1 right-1 text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,.9)]"
-            strokeWidth={2.5}
-          />
-        </button>
+            <img
+              src={imageUrl}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-contain p-3 drop-shadow-2xl transition-transform duration-[700ms] ease-out group-hover:scale-[1.06]"
+              onError={(event) => { event.currentTarget.style.display = 'none'; }}
+            />
+          </>
+        ) : null}
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <div className="mb-1 flex items-center gap-2">
-            <span
-              className="text-[10px] font-bold uppercase tracking-[0.09em]"
-              style={{ color: meta.color }}
-            >
-              {meta.label}
-            </span>
-            {result.source && (
-              <span className="truncate text-[10px] font-medium text-ink-faint">
-                {result.source}
-              </span>
-            )}
-            <span className="num ml-auto shrink-0 text-[11px] font-semibold tabular-nums text-ink-faint">
-              #{index + 1}
-            </span>
-          </div>
+        {/* Scrim: the title sits on an arbitrary photograph, so it needs a
+            guaranteed dark base under it rather than luck. */}
+        <span className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
 
-          <button type="button" onClick={() => onView?.(result)} className="text-left">
-            <h3 className="display clamp-2 text-[15px] font-bold leading-snug text-ink transition-colors group-hover:text-accent">
-              {result.title}
-            </h3>
-          </button>
+        {/* A specular sweep that only runs on hover - the same language as the
+            glass panels, tied to a pointer rather than a timer. */}
+        <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/12 to-transparent transition-transform duration-[900ms] ease-out group-hover:translate-x-full" />
+
+        <span className="num absolute left-3 top-3 rounded-lg bg-black/55 px-2 py-0.5 text-[11px] font-bold tabular-nums text-white/95 backdrop-blur-sm">
+          #{index + 1}
+        </span>
+
+        <span
+          className="absolute right-3 top-3 flex items-center gap-1.5 rounded-lg bg-black/55 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.09em] backdrop-blur-sm"
+          style={{ color: meta.color }}
+        >
+          <Icon size={11} strokeWidth={2.5} />
+          {meta.label}
+        </span>
+
+        <span className="absolute inset-x-3 bottom-2.5 block">
+          <h3 className="display clamp-2 text-[16px] font-bold leading-snug text-white drop-shadow-[0_2px_6px_rgba(0,0,0,.9)]">
+            {result.title}
+          </h3>
+        </span>
+      </button>
+
+      {/* ---------- identity ---------- */}
+      {/* flex-1 so the score block below can still be pushed to the bottom with
+          mt-auto and every card in a row lines its actions up. */}
+      <div className="flex flex-1 flex-col p-4">
+        <div className="flex min-w-0 flex-col">
+          {result.source && (
+            <span className="mb-1 truncate text-[10px] font-medium text-ink-faint">
+              {result.source}
+            </span>
+          )}
 
           {/* meta line - only renders separators for values that exist */}
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-faint">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-faint">
             {rating != null && (
               <span className="flex items-center gap-1 font-semibold text-warn">
                 <Star size={10} fill="currentColor" />
@@ -155,7 +188,6 @@ export default function RecommendationCard({
             </div>
           ) : null}
         </div>
-      </div>
 
       {/* ---------- description ---------- */}
       {result.description ? (
@@ -201,6 +233,7 @@ export default function RecommendationCard({
           Find similar
           <ArrowUpRight size={13} />
         </button>
+        </div>
       </div>
     </motion.article>
   );

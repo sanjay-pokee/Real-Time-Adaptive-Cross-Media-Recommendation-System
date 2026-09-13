@@ -300,13 +300,20 @@ class QdrantRecommender:
             return cached
 
         haystack = self.catalog["title"].map(
-            lambda value: f"\n{_normalize_lookup_text(value)}\n"
+            lambda value: " " + _tokenize_lookup_text(value) + " "
         )
         self._title_haystack_cache = haystack
         return haystack
 
     def _keyword_haystack(self) -> pd.Series:
-        """Title plus categories, for token matching on a descriptive query."""
+        """Title plus categories, for token matching on a descriptive query.
+
+        Punctuation becomes whitespace and the whole string is space-padded, so
+        a token can be matched as `" token "` and only ever hits a whole word.
+        Without that, a bare substring test matches inside anything: "f1" found
+        an ULAB Erlenmeyer flask because the sequence appears in its product
+        code, and ranked it second for the query "F1".
+        """
         cached = getattr(self, "_keyword_haystack_cache", None)
         if cached is not None and len(cached) == len(self.catalog):
             return cached
@@ -316,7 +323,7 @@ class QdrantRecommender:
             "categories", pd.Series("", index=self.catalog.index)
         ).fillna("").astype(str)
         haystack = (titles + " " + categories).map(
-            lambda value: f" {_normalize_lookup_text(value)} "
+            lambda value: " " + _tokenize_lookup_text(value) + " "
         )
         self._keyword_haystack_cache = haystack
         return haystack
@@ -390,19 +397,29 @@ class QdrantRecommender:
             keywords = keywords[type_mask]
             popularity_rank = popularity_rank[type_mask]
 
-        exact = titles.eq(f"\n{q_norm}\n")
-        prefix = titles.str.startswith(f"\n{q_norm}", na=False)
-        contains = titles.str.contains(q_norm, regex=False, na=False)
+        # Whole words throughout, via the space-padded tokenized haystack. A bare
+        # substring test is far too loose on a short query: "F1" matched
+        # FORMUFIT F1144WT, a Tacwise nail gun pack and a PVC ball valve, all of
+        # which carry the sequence inside a product code, and they took the
+        # three places behind the film.
+        q_tokens = _tokenize_lookup_text(q_norm)
+        if not q_tokens:
+            return []
+        exact = titles.eq(f" {q_tokens} ")
+        prefix = titles.str.startswith(f" {q_tokens} ", na=False)
+        contains = titles.str.contains(f" {q_tokens} ", regex=False, na=False)
 
         # Tier 3: every meaningful token present. Tokens of one character are
         # dropped - they match almost everything and carry no intent - but the
         # whole query is still matched verbatim by tiers 0-2, so a genuinely
         # short title like "1" or "F1" is reachable there.
-        tokens = [token for token in q_norm.split() if len(token) > 1]
+        tokens = [token for token in _tokenize_lookup_text(q_norm).split() if len(token) > 1]
         if tokens:
             all_tokens = pd.Series(True, index=catalog.index)
             for token in tokens:
-                all_tokens &= keywords.str.contains(token, regex=False, na=False)
+                # Space-padded, so this matches a whole word rather than any
+                # occurrence of the characters inside a longer one.
+                all_tokens &= keywords.str.contains(f" {token} ", regex=False, na=False)
         else:
             all_tokens = pd.Series(False, index=catalog.index)
 
@@ -682,6 +699,19 @@ def _split_categories(value: Any) -> list[str]:
 def _split_creators(value: Any) -> list[str]:
     text = str(_clean_value(value) or "")
     return [part.strip() for part in text.split(",") if part.strip()]
+
+
+def _tokenize_lookup_text(text: Any) -> str:
+    """Normalized text with punctuation reduced to single spaces.
+
+    Token matching pads a token with spaces to force a whole-word hit, which
+    only works if punctuation is not glued to the word: "Action, Drama" has to
+    become "action drama" or the token "action" never matches " action ".
+    """
+    normalized = _normalize_lookup_text(text)
+    return " ".join(
+        "".join(char if char.isalnum() else " " for char in normalized).split()
+    )
 
 
 def _normalize_lookup_text(text: Any) -> str:
