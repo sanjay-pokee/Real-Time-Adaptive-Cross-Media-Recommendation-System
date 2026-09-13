@@ -63,6 +63,33 @@ export default function App() {
         <span className="field-blob field-d" />
       </div>
 
+      {/*
+        Refraction. Frost alone (backdrop-filter: blur) reads as plastic; what
+        makes glass look like glass is that it *bends* what is behind it. CSS
+        has no lensing primitive, but backdrop-filter accepts an SVG filter
+        reference, so a displacement map perturbs the backdrop per-pixel.
+
+        The map is a low-frequency fractal turbulence, which gives a slow
+        organic warp rather than a regular ripple. Scale is deliberately small
+        (12): past roughly 20 the text behind a panel starts to smear into
+        something that reads as a rendering fault.
+
+        Applied only to `.lg-refract` — the hero — never to every panel. Each
+        displaced backdrop is a full-size offscreen pass, and doing that to
+        dozens of cards drops the frame rate on integrated graphics.
+      */}
+      <svg aria-hidden="true" focusable="false"
+           style={{ position: 'absolute', width: 0, height: 0, pointerEvents: 'none' }}>
+        <filter id="lg-refraction" x="0%" y="0%" width="100%" height="100%"
+                colorInterpolationFilters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.008 0.012"
+                        numOctaves="2" seed="7" result="noise" />
+          <feGaussianBlur in="noise" stdDeviation="2" result="softNoise" />
+          <feDisplacementMap in="SourceGraphic" in2="softNoise" scale="12"
+                             xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+      </svg>
+
       {sessionUser ? (
         <Home authenticatedUser={sessionUser} onLogout={handleLogout} />
       ) : (

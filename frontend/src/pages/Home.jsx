@@ -395,7 +395,10 @@ export default function Home({ authenticatedUser, onLogout }) {
         {/* ================= hero + search ================= */}
         {/* No overflow-hidden here: the search bar's autocomplete dropdown is
             absolutely positioned and would be clipped by this panel's edge. */}
-        <GlassPanel variant="strong" className="relative z-20 mb-5 p-6 sm:p-8">
+        {/* lg-refract: the hero is the one surface large enough for the
+            displacement lensing to read, and cheap enough to do it on once.
+            See the .lg-refract rule in globals.css. */}
+        <GlassPanel variant="strong" className="lg-refract relative z-20 mb-5 p-6 sm:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
               <span className="chip mb-4" style={{ color: 'var(--accent)', borderColor: 'color-mix(in oklab, var(--accent) 30%, transparent)' }}>

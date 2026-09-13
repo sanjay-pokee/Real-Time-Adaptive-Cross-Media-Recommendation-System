@@ -39,21 +39,42 @@
     --surface-3:     #1d2230;
     --surface-hover: #242a3a;
 
-    /* ---- the field behind the glass ---- */
-    --field-a: oklch(78% 0.16 220 / 0.22);
-    --field-b: oklch(70% 0.26 340 / 0.20);
-    --field-c: oklch(85% 0.16 90  / 0.14);
-    --field-d: oklch(84% 0.18 150 / 0.12);
+    /* ---- the field behind the glass ----
+       Held to a narrow cool band, hue 225-290, rather than spread across the
+       wheel. Glass takes its colour from what sits behind it: four blobs at
+       cyan, magenta, gold and mint read as a rainbow wash and made every panel
+       look tinted at random. A tight blue-to-violet range still gives the
+       depth and movement the refraction needs something to bend, without the
+       surface itself appearing coloured. Chroma is also down (0.26 -> 0.13
+       at most), because saturated backdrops are what force panel text into
+       low contrast. */
+    --field-a: oklch(72% 0.13 258 / 0.24);   /* cool blue        */
+    --field-b: oklch(64% 0.12 285 / 0.22);   /* indigo / violet  */
+    --field-c: oklch(78% 0.09 232 / 0.16);   /* pale ice         */
+    --field-d: oklch(58% 0.10 268 / 0.16);   /* deep periwinkle  */
 
-    /* ---- liquid glass ---- */
-    --lg-tint:       color-mix(in oklab, var(--surface) 42%, transparent);
-    --lg-tint-heavy: color-mix(in oklab, var(--surface) 72%, transparent);
-    --lg-blur:       40px;
-    --lg-sat:        200%;
-    --lg-edge-light: oklch(100% 0 0 / 0.22);
-    --lg-edge-dark:  oklch(0%   0 0 / 0.34);
-    --lg-ring:       0.55;   /* chromatic edge opacity */
-    --lg-sweep:      0.10;   /* specular sweep opacity */
+    /* ---- liquid glass ----
+       The edge is where glass is legible as glass: a bright rim on top where
+       light lands, a dark rim underneath where it falls away, and a crisp
+       specular that moves. Those are raised here; the chromatic ring is cut
+       back, since a rainbow outline on every panel is the single biggest
+       reason the old surface read as plastic rather than glass. */
+    --lg-tint:       color-mix(in oklab, var(--surface) 38%, transparent);
+    --lg-tint-heavy: color-mix(in oklab, var(--surface) 70%, transparent);
+    --lg-blur:       44px;
+    --lg-sat:        185%;
+    --lg-edge-light: oklch(100% 0 0 / 0.40);
+    --lg-edge-dark:  oklch(0%   0 0 / 0.40);
+    --lg-ring:       0.30;   /* chromatic edge opacity */
+    --lg-sweep:      0.16;   /* specular sweep opacity */
+
+    /* The rim gradient itself: near-white specular fading to a faint cool
+       tint, instead of cycling through four accent hues. */
+    --lg-rim: linear-gradient(140deg in oklab,
+      oklch(100% 0 0 / 0.95),
+      oklch(88% 0.05 250 / 0.40) 34%,
+      oklch(70% 0.03 270 / 0.10) 60%,
+      oklch(100% 0 0 / 0.55) 100%);
 
     /* ---- lines ---- */
     --line:        oklch(100% 0 0 / 0.09);
@@ -122,17 +143,25 @@
     --surface-3:     #efece4;
     --surface-hover: #e7e3d9;
 
-    --field-a: oklch(78% 0.16 220 / 0.20);
-    --field-b: oklch(70% 0.26 340 / 0.16);
-    --field-c: oklch(85% 0.16 90  / 0.16);
-    --field-d: oklch(84% 0.18 150 / 0.12);
+    /* Same narrow cool band as dark, lifted for a light ground. */
+    --field-a: oklch(80% 0.10 258 / 0.20);
+    --field-b: oklch(76% 0.09 285 / 0.17);
+    --field-c: oklch(86% 0.07 232 / 0.16);
+    --field-d: oklch(72% 0.08 268 / 0.13);
 
     --lg-tint:       color-mix(in oklab, #ffffff 58%, transparent);
     --lg-tint-heavy: color-mix(in oklab, #ffffff 84%, transparent);
-    --lg-edge-light: oklch(100% 0 0 / 0.85);
-    --lg-edge-dark:  oklch(0%   0 0 / 0.10);
-    --lg-ring:       0.42;
-    --lg-sweep:      0.16;
+    --lg-edge-light: oklch(100% 0 0 / 0.92);
+    --lg-edge-dark:  oklch(0%   0 0 / 0.14);
+    --lg-ring:       0.26;
+    --lg-sweep:      0.18;
+
+    /* On a light ground the rim reads as a shadowed edge, not a glow. */
+    --lg-rim: linear-gradient(140deg in oklab,
+      oklch(100% 0 0 / 0.95),
+      oklch(55% 0.04 258 / 0.28) 38%,
+      oklch(45% 0.03 275 / 0.10) 64%,
+      oklch(100% 0 0 / 0.70) 100%);
 
     --line:        oklch(0% 0 0 / 0.10);
     --line-strong: oklch(0% 0 0 / 0.20);
@@ -320,8 +349,8 @@
     z-index: -1;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(140deg in oklab,
-      var(--irid-1), var(--irid-2) 38%, var(--irid-3) 66%, var(--irid-4) 100%);
+    /* A specular rim, not an accent ramp. See --lg-rim. */
+    background: var(--lg-rim);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -394,8 +423,8 @@
     z-index: -1;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(140deg in oklab,
-      var(--irid-1), var(--irid-2) 38%, var(--irid-3) 66%, var(--irid-4) 100%);
+    /* A specular rim, not an accent ramp. See --lg-rim. */
+    background: var(--lg-rim);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -446,6 +475,37 @@
   /* The old lit-edge modifier is now redundant — every glass surface has a
      chromatic rim — so it just strengthens it. */
   .panel-lit::before { opacity: 1; }
+
+  /* ---------- refraction ----------
+     Frost says "translucent"; bending the backdrop says "glass". The filter
+     lives in App.jsx and is referenced here, appended to the existing frost so
+     a panel keeps its blur and saturation and gains lensing on top.
+
+     Deliberately opt-in and used on the hero alone. A displaced backdrop is a
+     full offscreen pass per element, and applying it to a grid of result cards
+     costs far more than it adds — the effect is only legible on a large surface
+     anyway.
+
+     @supports gates it: a browser without backdrop-filter never sees the rule,
+     and one that has backdrop-filter but ignores url() filters keeps the plain
+     frost rather than losing the background entirely. */
+  @supports (backdrop-filter: blur(1px)) {
+    .lg-refract {
+      backdrop-filter:
+        blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.06)
+        url(#lg-refraction);
+      -webkit-backdrop-filter:
+        blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.06);
+    }
+  }
+
+  /* Refraction is motion-adjacent: it warps whatever is behind it as the field
+     drifts. Respect a reduced-motion preference by dropping back to frost. */
+  @media (prefers-reduced-motion: reduce) {
+    .lg-refract {
+      backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.06);
+    }
+  }
 
   .panel-flat {
     background: color-mix(in oklab, var(--surface-3) 82%, transparent);
