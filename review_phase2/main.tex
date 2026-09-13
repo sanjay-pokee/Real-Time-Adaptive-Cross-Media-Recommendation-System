@@ -193,7 +193,7 @@
 \draw[astrip] (11.05,0.95) rectangle (11.61,7.60);
 \node[white, font=\tiny\bfseries, rotate=90] at (11.33,4.28) {OFFLINE / TRAINING PIPELINE};
 \node[offb] (o1) at (13.40,6.85) {\textbf{Raw datasets}\\TMDb API $\cdot$ Google Books\\Spotify Songs $\cdot$ Amazon Reviews 2023};
-\node[offb] (o2) at (13.40,5.65) {\texttt{preprocessing.}\\\texttt{build\_content\_catalog}\\unified 19-column schema};
+\node[offb] (o2) at (13.40,5.65) {\texttt{preprocessing.}\\\texttt{build\_content\_catalog}\\unified 20-column schema};
 \node[offb] (o3) at (13.40,4.45) {\texttt{embeddings.}\\\texttt{build\_embeddings}\\SHA-256 cache, 384-d};
 \node[offb] (o4) at (13.40,3.25) {\texttt{embeddings.}\\\texttt{build\_qdrant\_collection}\\vector + payload upsert};
 \node[offb] (o5) at (13.40,1.90) {\texttt{models.graph.}\\\texttt{train\_lightgcn}\\BPR loss, 3 layers, $d{=}64$};
@@ -300,7 +300,7 @@ POST /recommend
         \toprule
         \textbf{Subsystem} & \textbf{Current implementation state (verified)} & \textbf{Evidence} & \textbf{Status} \\
         \midrule
-        Data pipeline & \textbf{4 domains / 6 content types} normalised into one 19-column catalog: \textbf{106{,}332} items (28{,}352 music / 22{,}116 movies / 20{,}000 health / 20{,}000 industrial / 15{,}139 books / 725 finance) & \texttt{content\_catalog.csv} & \sOK \\
+        Data pipeline & \textbf{4 domains / 6 content types} normalised into one 20-column catalog: \textbf{106{,}332} items (28{,}352 music / 22{,}116 movies / 20{,}000 health / 20{,}000 industrial / 15{,}139 books / 725 finance) & \texttt{content\_catalog.csv} & \sOK \\
         Domain packs & Domain, maturity, minimum age and risk tier declared per content type in one config; a new vertical is a config entry, not a code change & \texttt{config/domains.yaml} & \sOK \\
         Embeddings & SBERT \texttt{all-MiniLM-L6-v2}, \textbf{106{,}332 $\times$ 384} float32; SHA-256 hash skips unchanged rows on rebuild & \texttt{content\_embeddings.npy} & \sOK \\
         Vector search & Qdrant collection with full payloads; cosine ANN plus optional \texttt{content\_type} and domain filters inside the search & \texttt{/recommend} 200 OK & \sOK \\

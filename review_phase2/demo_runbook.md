@@ -32,15 +32,16 @@ then `Stop-Process -Id <pid> -Force`.
 
 ## Row-by-row proof
 
-### Data pipeline — 106,332 items, 19 columns
+### Data pipeline — 106,332 items, 20 columns
 ```powershell
 python -c "import pandas as pd; d=pd.read_csv('data/processed/content_catalog.csv'); print(f'{len(d):,} rows x {len(d.columns)} cols'); print(d.content_type.value_counts())"
 ```
-Expect `106,332 rows x 19 cols` and music 28,352 / movie 22,116 / health 20,000 /
+Expect `106,332 rows x 20 cols` and music 28,352 / movie 22,116 / health 20,000 /
 industrial 20,000 / book 15,139 / finance 725. **Verified.**
 
-The five extra columns over the original 14-column schema are `image_url` plus the
-audience quartet `domain`, `maturity`, `audience_min_age`, `risk_tier`.
+The six extra columns over the original 14-column schema are `image_url` and
+`backdrop_url` plus the audience quartet `domain`, `maturity`,
+`audience_min_age`, `risk_tier`.
 
 ### Embeddings — 106,332 x 384
 ```powershell
