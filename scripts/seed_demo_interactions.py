@@ -230,9 +230,51 @@ def main() -> None:
     inserted = store.bulk_log_interactions(interactions)
     print(f"Seeded {profile_count} demo user profiles.")
     print(f"Seeded {inserted} balanced demo interactions for {len(USER_PROFILES)} users.")
+
+    # Derive each profile's EMA vector from the interactions just written.
+    #
+    # The profiles above are seeded with `ema_vector: []`, because the vector is
+    # a function of the interaction history and that history does not exist
+    # until the line above runs. Nothing then filled it in, so every demo user
+    # carried an empty vector and the EMA stage contributed *nothing* to any
+    # ranking - one of the four advertised signals silently absent from every
+    # result, and silently re-broken by each reseed. Rebuilding here keeps the
+    # two in step, since a reseed invalidates whatever vectors already existed.
+    rebuilt = _rebuild_ema_vectors(store)
+    print(f"Rebuilt EMA vectors for {rebuilt} users.")
+
     print("Try user_id values:")
     for user_id in USER_PROFILES:
         print(f"  - {user_id}")
+
+
+def _rebuild_ema_vectors(store: MySQLStore) -> int:
+    """Replay each user's interactions through the EMA update, in time order."""
+    from backend.ema_recommender import EMAEmbeddingStore
+
+    ema_store = EMAEmbeddingStore()
+    logged = store.get_lightgcn_interactions(limit=500_000)
+    if logged.empty:
+        return 0
+
+    logged = logged.sort_values(["user_id", "timestamp"])
+    rebuilt = 0
+    for user_id, rows in logged.groupby("user_id", sort=True):
+        vector: list[float] = []
+        for row in rows.itertuples(index=False):
+            updated = ema_store.update_profile_vector(
+                vector,
+                str(row.entity_id),
+                str(row.event_type),
+                None if pd.isna(row.event_value) else float(row.event_value),
+                alpha=store.settings.ema_alpha,
+            )
+            if updated is not None:
+                vector = updated
+        if vector:
+            store.update_user_ema_vector(str(user_id), vector)
+            rebuilt += 1
+    return rebuilt
 
 
 def _clear_seeded_interactions(store: MySQLStore) -> None:
