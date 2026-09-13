@@ -11,7 +11,7 @@
     {
       "name": "backend",
       "runtimeExecutable": ".venv/Scripts/python.exe",
-      "runtimeArgs": ["-m", "uvicorn", "backend.app:app", "--port", "8000"],
+      "runtimeArgs": ["-X", "faulthandler", "-m", "uvicorn", "backend.app:app", "--port", "8000"],
       "port": 8000
     }
   ]

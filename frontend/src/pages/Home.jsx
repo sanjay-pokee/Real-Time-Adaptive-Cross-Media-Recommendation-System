@@ -670,8 +670,24 @@ export default function Home({ authenticatedUser, onLogout }) {
               </div>
             )}
 
-            {!loading && results.length > 0 && (
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+            {/* Cross-fade between result sets.
+                Keyed on the query the results came from, with mode="wait", so
+                the outgoing set clears before the incoming one starts: the
+                cards stagger in on their own 35 ms cascade, and running that
+                over the top of the previous grid read as a flicker rather than
+                a transition. The fade is deliberately short - 160 ms out - so
+                it reads as responsive rather than as an animation to sit
+                through, on a search that already takes ~400 ms to answer. */}
+            <AnimatePresence mode="wait" initial={false}>
+              {!loading && results.length > 0 && (
+                <motion.div
+                  key={resultQuery || 'results'}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.16, ease: 'easeOut' }}
+                  className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3"
+                >
                 {results.map((result, index) => (
                   <RecommendationCard
                     key={result.global_id}
@@ -684,8 +700,9 @@ export default function Home({ authenticatedUser, onLogout }) {
                     onToast={addToast}
                   />
                 ))}
-              </div>
-            )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {!loading && searched && results.length === 0 && !error && backendStatus !== 'offline' && (
               <div className="panel px-6 py-16 text-center">
