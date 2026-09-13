@@ -595,7 +595,18 @@ export default function Home({ authenticatedUser, onLogout }) {
                 <div className="flex-1">
                   <h2 className="display text-[15px] font-bold text-ink">Backend offline</h2>
                   <p className="mt-1 text-xs text-ink-muted">
-                    Cannot reach http://127.0.0.1:8000 — start the FastAPI server to load results.
+                    Cannot reach http://127.0.0.1:8000. Nothing here is broken — the
+                    API is not answering.
+                  </p>
+                  {/* The command, not a description of it. This panel is most
+                      likely to be read mid-demo, where the useful thing is
+                      something to run rather than something to diagnose. */}
+                  <code className="mt-2 block select-all rounded-lg bg-surface-3 px-2.5 py-1.5 font-mono text-[11px] text-ink-muted">
+                    .venv\Scripts\python.exe -m uvicorn backend.app:app --port 8000
+                  </code>
+                  <p className="mt-1.5 text-[11px] text-ink-faint">
+                    Takes about 40 s to load the embedding model. This panel clears
+                    itself once /health answers.
                   </p>
                 </div>
                 <button onClick={pingBackend} className="btn btn-ghost px-3 py-2">
@@ -626,12 +637,23 @@ export default function Home({ authenticatedUser, onLogout }) {
             )}
 
             {error && !loading && (
-              <div className="panel p-8 text-center">
-                <p className="display font-bold" style={{ color: 'var(--bad)' }}>
+              <div className="panel px-6 py-10 text-center">
+                <AlertCircle size={24} className="mx-auto" style={{ color: 'var(--bad)' }} />
+                <p className="display mt-3 text-lg font-bold" style={{ color: 'var(--bad)' }}>
                   Search error
                 </p>
-                <p className="mt-2 font-mono text-xs text-ink-muted">{error}</p>
-                <button onClick={() => handleSearch()} className="btn btn-primary mx-auto mt-4 px-4 py-2">
+                {/* Say what it means, then show the raw text. A timeout and a
+                    dead API are different problems with different fixes, and
+                    "timeout of 15000ms exceeded" alone tells a viewer neither. */}
+                <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-ink-muted">
+                  {/timeout/i.test(String(error))
+                    ? 'The API did not answer within 15 seconds. The first search after the server starts is slower, because the embedding model loads on demand — retrying usually succeeds.'
+                    : 'The request reached the frontend but the API could not complete it. Retry, and if it persists the backend has most likely stopped.'}
+                </p>
+                <p className="mx-auto mt-3 max-w-md break-words font-mono text-[11px] text-ink-faint">
+                  {error}
+                </p>
+                <button onClick={() => handleSearch()} className="btn btn-primary mx-auto mt-5 px-4 py-2">
                   <RefreshCw size={13} />
                   Retry
                 </button>

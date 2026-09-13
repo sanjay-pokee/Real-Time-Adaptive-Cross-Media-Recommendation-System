@@ -95,7 +95,7 @@ export default function SearchBar({ value, onChange, onSearch, loading, disabled
     setSuggestions([]);
     setOpen(false);
     setActiveIdx(-1);
-    onSearch && onSearch(sug.query);
+    onSearch?.(sug.query);
   }
 
   return (
