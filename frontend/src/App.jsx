@@ -56,7 +56,7 @@ export default function App() {
       {/* The iridescent field the glass refracts. Behind both pages so it
           survives the auth swap without restarting its animation, and purely
           decorative, so it is hidden from assistive tech. */}
-      <div className="field" aria-hidden="true">
+      <div className="ambient-field" aria-hidden="true">
         <span className="field-blob field-a" />
         <span className="field-blob field-b" />
         <span className="field-blob field-c" />
