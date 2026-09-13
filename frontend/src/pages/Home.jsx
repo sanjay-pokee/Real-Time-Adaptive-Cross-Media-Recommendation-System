@@ -488,7 +488,7 @@ export default function Home({ authenticatedUser, onLogout }) {
             the filters stay reachable without scrolling back up. */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[248px_1fr] xl:grid-cols-[264px_1fr]">
           {/* ---------- sidebar ---------- */}
-          <aside className="flex flex-col gap-3 lg:sticky lg:top-[76px] lg:self-start lg:max-h-[calc(100vh-92px)] lg:overflow-y-auto lg:pr-1">
+          <aside className="order-2 flex flex-col gap-3 lg:order-1 lg:sticky lg:top-[76px] lg:self-start lg:max-h-[calc(100vh-92px)] lg:overflow-y-auto lg:pr-1">
             <GlassPanel className="p-4">
               <p className="label mb-2.5">Profile</p>
               <UserSelector value={userId} onChange={setUserId} users={availableUsers} />
@@ -561,7 +561,11 @@ export default function Home({ authenticatedUser, onLogout }) {
           </aside>
 
           {/* ---------- results ---------- */}
-          <section className="min-w-0">
+          {/* order-1 below `lg`: under the two-column split the rail stacks,
+              and stacking it first put every filter panel ahead of the first
+              recommendation again - 5.7 screens of scrolling at phone width.
+              Results lead; the filters follow. */}
+          <section className="order-1 min-w-0 lg:order-2">
             {/* Regulated domains return an advisory with every response. It
                 sits above the results, not inside a card, because it governs
                 the whole set. */}
