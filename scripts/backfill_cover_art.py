@@ -3,10 +3,35 @@
 Books and the Amazon-sourced verticals already ship an image URL, so this only
 has to cover the two that do not:
 
-* music  - the Spotify export has no artwork column. Looked up on the iTunes
-           Search API: free, no key, no OAuth. Deliberately NOT Spotify's own
-           API, whose Developer Terms forbid ingesting Spotify Content into a
-           machine-learning model, which is exactly what this catalogue feeds.
+* music  - the Spotify export has no artwork column. Two sources, --provider:
+
+           `spotify` (fast, but see the blocker): the music rows ARE a Spotify
+           export, so `source_id` is already a Spotify track id. /v1/tracks takes
+           50 ids per request, making the whole catalogue ~570 requests instead
+           of 28,352, with no title/artist matching to get wrong. Needs
+           SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env.
+
+           BLOCKER: Spotify now requires the app owner to hold an active Premium
+           subscription. Client credentials authenticate fine (token 200), then
+           every Web API endpoint - tracks, albums, search, single or batch -
+           returns 403 "Active premium subscription required for the owner of the
+           app". There is no free tier for this any more, so this provider is
+           unusable without a paid account. Kept because the code is correct and
+           the id-exact approach is the right one the moment that account exists.
+
+           This file previously ruled that out, on the grounds that Spotify's
+           Developer Terms forbid ingesting Spotify Content into a
+           machine-learning model "which is exactly what this catalogue feeds".
+           That is not what happens: only the image URL is read, and it is a
+           display field. `embedding_text` for music is title + artist + genre +
+           subgenre, all of it from the Kaggle CSV, and the URL appears in zero
+           of the catalogue's embedding_text or metadata_text values - checked,
+           not assumed. Nothing fetched here reaches SBERT or LightGCN. Spotify
+           asks for attribution when their content is displayed; revisit this if
+           the project is ever published or commercialised.
+
+           `itunes` (default): title/artist matched on the iTunes Search API.
+           Free, no key, no OAuth, but capped near 20 lookups/minute.
 * movie  - TMDB's 5000-movie export has only a homepage column. Needs a TMDb
            API key in TMDB_API_KEY; skipped when that is unset.
 
@@ -20,6 +45,7 @@ iTunes refused all but the first few dozen: 6,000 lookups produced 53 covers,
 where the first 40 alone had produced 40.
 
 Usage:
+    python -m scripts.backfill_cover_art --content-type music --provider spotify --limit 30000
     python -m scripts.backfill_cover_art --content-type music --limit 1200
     python -m scripts.backfill_cover_art --content-type movie --limit 4803
     python -m scripts.backfill_cover_art --purge-unanswered
@@ -53,6 +79,12 @@ CACHE_PATH = PROJECT_ROOT / "data" / "processed" / "cover_art_cache.csv"
 
 ITUNES_SEARCH = "https://itunes.apple.com/search"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
+
+SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
+SPOTIFY_TRACKS_URL = "https://api.spotify.com/v1/tracks"
+# /v1/tracks accepts up to 50 ids per request, which is the whole reason this
+# provider exists: 28,352 tracks is 568 requests rather than 28,352.
+SPOTIFY_BATCH = 50
 
 CACHE_COLUMNS = ["global_id", "image_url"]
 
@@ -137,6 +169,141 @@ def _tmdb_poster(session: requests.Session, source_id: str, api_key: str):
     return f"{TMDB_IMAGE_BASE}{path}" if path else ""
 
 
+def _spotify_token(session: requests.Session) -> str:
+    """Client-credentials token. Needs no user login - this reads public data."""
+    client_id = os.getenv("SPOTIFY_CLIENT_ID", "").strip()
+    client_secret = os.getenv("SPOTIFY_CLIENT_SECRET", "").strip()
+    if not client_id or not client_secret:
+        raise SystemExit(
+            "Spotify needs SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET in .env."
+            + NEWLINE
+            + "Create an app at https://developer.spotify.com/dashboard - free, no"
+            " review, takes a minute. Add the two values to .env yourself; they are"
+            " secrets and belong in the gitignored file, not on a command line."
+        )
+
+    response = session.post(
+        SPOTIFY_TOKEN_URL,
+        data={"grant_type": "client_credentials"},
+        auth=(client_id, client_secret),
+        timeout=25,
+    )
+    if response.status_code != 200:
+        raise SystemExit(
+            f"Spotify refused the credentials ({response.status_code}). Check the"
+            " client id and secret in .env."
+        )
+    token = response.json().get("access_token")
+    if not token:
+        raise SystemExit("Spotify returned no access token.")
+    return str(token)
+
+
+def _spotify_artwork(session: requests.Session, token: str, track_ids: list[str]):
+    """Return {track_id: image_url} for up to 50 ids, or THROTTLED.
+
+    The catalogue's music rows are a Spotify export, so `source_id` is already a
+    Spotify track id - there is no title/artist matching to get wrong, and a miss
+    means the track genuinely has no artwork rather than that the lookup failed.
+
+    Only the image URL is read. It is a display field: it never reaches
+    `embedding_text`, so no Spotify content enters the embedding model.
+    """
+    try:
+        response = session.get(
+            SPOTIFY_TRACKS_URL,
+            params={"ids": ",".join(track_ids)},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=30,
+        )
+        if response.status_code == 403:
+            # Not a throttle and not worth retrying: Spotify gates the whole Web
+            # API on the app owner holding Premium. Fail loudly rather than
+            # looping to the give-up threshold with nothing cached.
+            raise SystemExit(
+                "Spotify refused the request (403): "
+                + (response.text or "").strip()[:160]
+                + NEWLINE
+                + "The Web API now requires the app owner to have an active"
+                " Premium subscription. Use --provider itunes instead."
+            )
+        if response.status_code in (401, 429, 503):
+            return THROTTLED
+        response.raise_for_status()
+        payload = response.json()
+    except (requests.RequestException, ValueError):
+        return THROTTLED
+
+    artwork: dict[str, str] = {}
+    for track_id, track in zip(track_ids, payload.get("tracks") or []):
+        if not track:
+            # An id the catalogue has but Spotify no longer serves. A genuine
+            # miss, cached as such so a re-run does not ask again.
+            artwork[track_id] = ""
+            continue
+        images = (track.get("album") or {}).get("images") or []
+        # images come widest-first; prefer a middle size over a 640px original.
+        chosen = images[1] if len(images) > 1 else (images[0] if images else None)
+        artwork[track_id] = str(chosen.get("url") or "") if chosen else ""
+    return artwork
+
+
+def _backfill_music_via_spotify(records, cache: dict[str, str]) -> None:
+    """Batch path: 50 tracks per request instead of one lookup per track."""
+    session = _session()
+    token = _spotify_token(session)
+
+    batches = [
+        records[start : start + SPOTIFY_BATCH]
+        for start in range(0, len(records), SPOTIFY_BATCH)
+    ]
+    print(f"{len(records):,} tracks in {len(batches):,} requests of "
+          f"up to {SPOTIFY_BATCH}")
+    print()
+
+    answered = found = throttled_streak = 0
+    try:
+        for index, batch in enumerate(batches):
+            track_ids = [str(record.source_id) for record in batch]
+            result = _spotify_artwork(session, token, track_ids)
+
+            if result is THROTTLED:
+                throttled_streak += 1
+                if throttled_streak >= THROTTLE_GIVE_UP:
+                    print(f"Stopping: {throttled_streak} refusals in a row.")
+                    print("None of those were cached, so a re-run resumes here.")
+                    break
+                # A 401 usually means the hour-long token expired mid-run.
+                token = _spotify_token(session)
+                time.sleep(min(2 ** throttled_streak, 60))
+                continue
+
+            throttled_streak = 0
+            for record in batch:
+                url = result.get(str(record.source_id), "")
+                cache[str(record.global_id)] = url
+                answered += 1
+                if url:
+                    found += 1
+
+            if (index + 1) % 20 == 0:
+                save_cache(cache)
+                print(f"  {answered:,}/{len(records):,} processed, {found:,} found",
+                      flush=True)
+    except KeyboardInterrupt:
+        print("interrupted")
+
+    save_cache(cache)
+    print()
+    print(f"wrote {CACHE_PATH}")
+    print(f"  answered {answered:,}, found {found:,} "
+          f"({found / max(answered, 1) * 100:.0f}%)")
+    print()
+    print("Rebuild to apply:")
+    print("  python -m preprocessing.build_content_catalog")
+    print("  python -m embeddings.build_qdrant_collection")
+
+
 def load_cache() -> dict[str, str]:
     if not CACHE_PATH.exists():
         return {}
@@ -172,7 +339,7 @@ def purge_unanswered() -> int:
     return removed
 
 
-def backfill(content_type: str, limit: int, rate: int) -> None:
+def backfill(content_type: str, limit: int, rate: int, provider: str = "itunes") -> None:
     if not CATALOG_PATH.exists():
         raise SystemExit(
             f"No catalogue at {CATALOG_PATH}." + NEWLINE
@@ -193,6 +360,11 @@ def backfill(content_type: str, limit: int, rate: int) -> None:
     print(f"{content_type}: {len(rows):,} rows, {len(cache):,} cached, "
           f"{len(todo):,} to look up")
     if todo.empty:
+        return
+
+    if content_type == "music" and provider == "spotify":
+        # Batched and id-exact, so it does not share the paced per-row loop below.
+        _backfill_music_via_spotify(list(todo.itertuples(index=False)), cache)
         return
 
     api_key = os.getenv("TMDB_API_KEY", "").strip()
@@ -272,6 +444,13 @@ def main() -> None:
     parser.add_argument("--rate", type=int, default=20,
                         help="Requests per minute. iTunes tolerates roughly 20; going "
                              "faster gets the address refused (default 20)")
+    parser.add_argument("--provider", choices=["itunes", "spotify"], default="itunes",
+                        help="Music artwork source. 'spotify' matches on the track id "
+                             "the catalogue already carries and fetches 50 per request, "
+                             "so the whole catalogue is ~570 requests instead of 28,352 "
+                             "paced lookups; needs SPOTIFY_CLIENT_ID/SECRET in .env. "
+                             "'itunes' (default) needs no credentials but is title/artist "
+                             "matched and capped near 20/min.")
     parser.add_argument("--purge-unanswered", action="store_true",
                         help="Drop cached blanks so throttled rows are retried, then exit.")
     args = parser.parse_args()
@@ -283,7 +462,10 @@ def main() -> None:
     if not args.content_type:
         parser.error("--content-type is required unless --purge-unanswered is given")
 
-    backfill(args.content_type, args.limit, args.rate)
+    if args.provider == "spotify" and args.content_type != "music":
+        parser.error("--provider spotify only applies to --content-type music")
+
+    backfill(args.content_type, args.limit, args.rate, args.provider)
 
 
 if __name__ == "__main__":
