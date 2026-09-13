@@ -13,7 +13,21 @@ import {
 import InteractionButtons from './InteractionButtons';
 import MaturityBadge from './MaturityBadge';
 import ScoreBreakdown from './ScoreBreakdown';
+
 import { coverFor, imageFor, monogram } from '../utils/cover';
+
+/**
+ * Retrieval provenance, shown only when it was not the vector search.
+ *
+ * Retrieval is hybrid - an exact title, a cast or director name, and a keyword
+ * are each found by a different path from the semantic one - and saying which
+ * fired turns "why is this first" into a fact rather than an inference.
+ */
+const MATCH_LABELS = {
+  creator: 'Creator match',
+  title: 'Title match',
+  keyword: 'Keyword match',
+};
 
 const TYPE_META = {
   movie:      { label: 'Movie',      icon: Film,       color: 'var(--type-movie)' },
@@ -61,6 +75,11 @@ export default function RecommendationCard({
   const imageUrl = imageFor(result);
   // Movies carry a 16:9 still; nothing else does. See MEDIA_COLUMNS.
   const backdropUrl = String(result.backdrop_url || '').trim();
+  // How this row was retrieved. Absent means the vector search found it, which
+  // is the default and needs no badge; the lexical paths are the interesting
+  // case, because "why is this here" has a precise answer for them.
+  const matchKind = String(result.match_kind || '').trim();
+  const matchLabel = MATCH_LABELS[matchKind] || null;
   const categories = splitCategories(result.categories);
   const creator = leadCreator(result.creators);
   const year = result.release_date ? String(result.release_date).slice(0, 4) : null;
@@ -129,8 +148,20 @@ export default function RecommendationCard({
             glass panels, tied to a pointer rather than a timer. */}
         <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/12 to-transparent transition-transform duration-[900ms] ease-out group-hover:translate-x-full" />
 
-        <span className="num absolute left-3 top-3 rounded-lg bg-black/55 px-2 py-0.5 text-[11px] font-bold tabular-nums text-white/95 backdrop-blur-sm">
-          #{index + 1}
+        <span className="absolute left-3 top-3 flex items-center gap-2">
+          <span className="num rounded-lg bg-black/55 px-2 py-0.5 text-[11px] font-bold tabular-nums text-white/95 backdrop-blur-sm">
+            #{index + 1}
+          </span>
+          {/* Only when retrieval was lexical. A semantic hit is the default and
+              a badge on every card would say nothing. */}
+          {matchLabel && (
+            <span
+              className="rounded-lg px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.08em] text-white backdrop-blur-sm"
+              style={{ background: 'color-mix(in oklab, var(--accent) 68%, transparent)' }}
+            >
+              {matchLabel}
+            </span>
+          )}
         </span>
 
         <span

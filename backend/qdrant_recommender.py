@@ -236,9 +236,16 @@ class QdrantRecommender:
         # match tiers below are substring tests on one string. The delimiter is
         # safe: _normalize_lookup_text collapses all whitespace via
         # " ".join(str.split()), so a normalized name cannot contain a newline.
-        exact = haystack.str.contains(f"\n{q_norm}\n", regex=False, na=False)
-        prefix = haystack.str.contains(f"\n{q_norm}", regex=False, na=False)
-        substring = haystack.str.contains(q_norm, regex=False, na=False)
+        # Matched against the padded haystack above, so every tier lands on a
+        # whole word: the full name, a name beginning with the query, or the
+        # query appearing as a complete word within a name ("nolan" in
+        # "christopher nolan", but not "inception" inside "skinception").
+        q_tokens = _tokenize_lookup_text(q_norm)
+        if not q_tokens:
+            return []
+        exact = haystack.str.contains(f"\n {q_tokens} \n", regex=False, na=False)
+        prefix = haystack.str.contains(f"\n {q_tokens} ", regex=False, na=False)
+        substring = haystack.str.contains(f" {q_tokens} ", regex=False, na=False)
 
         ranks = pd.Series(3, index=catalog.index)
         ranks = ranks.mask(substring, 2)
@@ -261,6 +268,7 @@ class QdrantRecommender:
             rating = _safe_float(row.get("rating"), 0.0)
             item["score"] = 1.2 - (match_rank * 0.1) + min(popularity, 250.0) / 10000.0
             item["semantic_score"] = None
+            item["match_kind"] = "creator"
             rows.append((
                 int(match_rank),
                 -(popularity + rating),
@@ -282,11 +290,18 @@ class QdrantRecommender:
         if cached is not None and len(cached) == len(self.catalog):
             return cached
 
+        # Each name is newline-delimited *and* space-padded: "\n john sturges \n".
+        # The newlines anchor a whole-name match, the spaces anchor a whole-word
+        # one. Without the spaces a bare substring test matched "inception"
+        # inside the brand "Skinception", which then ranked a scar cream as a
+        # creator hit for the film Inception.
         haystack = self.catalog["creators"].map(
             lambda value: (
-                "\n" + "\n".join(
-                    _normalize_lookup_text(name) for name in _split_creators(value)
-                ) + "\n"
+                "\n"
+                + "\n".join(
+                    f" {_tokenize_lookup_text(name)} " for name in _split_creators(value)
+                )
+                + "\n"
             )
             if _split_creators(value)
             else ""

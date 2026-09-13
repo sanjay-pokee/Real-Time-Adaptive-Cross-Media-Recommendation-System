@@ -94,6 +94,11 @@ class RecommendationItem(BaseModel):
     audience_min_age: int | str = ""
     risk_tier: int | str = ""
     score: float
+    # How this row was retrieved, when it was not the vector search: "creator"
+    # for a cast/director hit, "title" for an exact or contained title, and
+    # "keyword" for a token or phrase match. Absent on a purely semantic result.
+    # Declared here or Pydantic drops it before the client ever sees it.
+    match_kind: str | None = None
     semantic_score: float | None = None
     graph_score: float | None = None
     ema_score: float | None = None
