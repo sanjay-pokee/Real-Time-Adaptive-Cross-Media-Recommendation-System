@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertCircle,
   Factory,
@@ -192,6 +192,10 @@ export default function Home({ authenticatedUser, onLogout }) {
         count: counts.get(entry.name),
       }));
   }, [results, domainCatalog.domains]);
+
+  // The hero's pitch collapses as soon as a search has been run, so the results
+  // — the actual product — start near the top of the page instead of below it.
+  const heroCollapsed = searched;
 
   // The content types offered by the current scope: the selected domain's own
   // types, or every known type when no domain is chosen.
@@ -398,43 +402,49 @@ export default function Home({ authenticatedUser, onLogout }) {
         {/* lg-refract: the hero is the one surface large enough for the
             displacement lensing to read, and cheap enough to do it on once.
             See the .lg-refract rule in globals.css. */}
-        <GlassPanel variant="strong" className="lg-refract relative z-20 mb-5 p-6 sm:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-2xl">
-              <span className="chip mb-4" style={{ color: 'var(--accent)', borderColor: 'color-mix(in oklab, var(--accent) 30%, transparent)' }}>
-                <Sparkles size={11} />
-                Hybrid retrieval + graph re-ranking
-              </span>
-              <h1 className="display text-[2rem] font-extrabold leading-[1.08] text-ink sm:text-[2.6rem]">
-                Search anything
-                <br />
-                <span className="text-irid">by meaning, not keyword.</span>
-              </h1>
-              <p className="mt-3 max-w-lg text-[13.5px] leading-relaxed text-ink-muted">
-                One engine across {domainCount} domains. Every result shows the
-                signals that ranked it, and every result is checked against the
-                viewer before it is scored.
-              </p>
-            </div>
-
-            {/* Live counts, one tile per domain actually present in the
-                results. Previously a fixed Movies/Books/Music trio, which
-                showed three zeroes the moment you searched a health or
-                finance query. */}
-            <div className="flex flex-wrap gap-2">
-              {domainTallies.map(({ name, label, count, tint, icon: Icon }) => (
-                <div key={name} className="panel-flat min-w-[86px] px-3 py-2.5 text-center">
-                  <Icon size={14} className="mx-auto" style={{ color: tint }} />
-                  <p className="num display mt-1.5 text-xl font-bold tabular-nums text-ink">
-                    {count}
+        <GlassPanel
+          variant="strong"
+          className={`lg-refract relative z-20 mb-5 transition-[padding] duration-500 ${
+            heroCollapsed ? 'p-4 sm:p-5' : 'p-6 sm:p-8'
+          }`}
+        >
+          {/* The pitch is worth a full screen exactly once. After a search has
+              run it is dead weight: it held ~300px permanently and pushed the
+              first result card 1,932px down the page - two and a half screens
+              of scrolling before a reviewer sees a single recommendation, on a
+              product whose entire point is the recommendations. It collapses
+              into the search row instead, and the tallies come with it. */}
+          <AnimatePresence initial={false}>
+            {!heroCollapsed && (
+              <motion.div
+                key="hero-pitch"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="max-w-2xl pb-6">
+                  <span className="chip mb-4" style={{ color: 'var(--accent)', borderColor: 'color-mix(in oklab, var(--accent) 30%, transparent)' }}>
+                    <Sparkles size={11} />
+                    Hybrid retrieval + graph re-ranking
+                  </span>
+                  <h1 className="display text-[2rem] font-extrabold leading-[1.08] text-ink sm:text-[2.6rem]">
+                    Search anything
+                    <br />
+                    <span className="text-irid">by meaning, not keyword.</span>
+                  </h1>
+                  <p className="mt-3 max-w-lg text-[13.5px] leading-relaxed text-ink-muted">
+                    One engine across {domainCount} domains. Every result shows the
+                    signals that ranked it, and every result is checked against the
+                    viewer before it is scored.
                   </p>
-                  <p className="text-[10px] font-medium text-ink-faint">{label}</p>
                 </div>
-              ))}
-            </div>
-          </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          <div className="mt-6">
+          <div className={heroCollapsed ? '' : 'mt-0'}>
             <SearchBar
               value={query}
               onChange={setQuery}
@@ -443,12 +453,42 @@ export default function Home({ authenticatedUser, onLogout }) {
               disabled={backendStatus === 'offline'}
             />
           </div>
+
+          {/* Live counts, one tile per domain actually present in the results.
+              Previously a fixed Movies/Books/Music trio, which showed three
+              zeroes the moment you searched a health or finance query. Sits
+              under the search row once collapsed so it stays visible without
+              costing a band of its own. */}
+          {domainTallies.length > 0 && (
+            <motion.div layout className="mt-3 flex flex-wrap gap-2">
+              {domainTallies.map(({ name, label, count, tint, icon: Icon }) => (
+                <motion.div
+                  key={name}
+                  layout
+                  className={`panel-flat flex items-center gap-2 ${
+                    heroCollapsed ? 'px-2.5 py-1.5' : 'min-w-[86px] px-3 py-2.5'
+                  }`}
+                >
+                  <Icon size={13} style={{ color: tint }} />
+                  <p className="num display text-[15px] font-bold tabular-nums text-ink">
+                    {count}
+                  </p>
+                  <p className="text-[10px] font-medium text-ink-faint">{label}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
         </GlassPanel>
 
         {/* ================= body ================= */}
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[264px_1fr]">
+        {/* Two columns from `lg` (1024px), not `xl` (1280px). Below the split
+            the filter rail stacks *above* the results, so at 1024-1279px — an
+            ordinary laptop, and the width this gets demoed at — every filter
+            panel came before the first recommendation. The rail is sticky, so
+            the filters stay reachable without scrolling back up. */}
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[248px_1fr] xl:grid-cols-[264px_1fr]">
           {/* ---------- sidebar ---------- */}
-          <aside className="flex flex-col gap-3 xl:sticky xl:top-[76px] xl:self-start">
+          <aside className="flex flex-col gap-3 lg:sticky lg:top-[76px] lg:self-start lg:max-h-[calc(100vh-92px)] lg:overflow-y-auto lg:pr-1">
             <GlassPanel className="p-4">
               <p className="label mb-2.5">Profile</p>
               <UserSelector value={userId} onChange={setUserId} users={availableUsers} />
@@ -568,7 +608,7 @@ export default function Home({ authenticatedUser, onLogout }) {
             )}
 
             {loading && (
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3">
                 {Array.from({ length: Math.min(topK, 6) }).map((_, index) => (
                   <SkeletonCard key={index} />
                 ))}
@@ -599,7 +639,7 @@ export default function Home({ authenticatedUser, onLogout }) {
             )}
 
             {!loading && results.length > 0 && (
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3">
                 {results.map((result, index) => (
                   <RecommendationCard
                     key={result.global_id}
