@@ -99,9 +99,14 @@ class QdrantRecommender:
             content_type=content_type,
             audience=audience,
         )
+        # Lexical takes at most half the page. A keyword can match hundreds of
+        # rows, and letting it fill every slot buries the semantic side that
+        # answers a *topic*: "racing" has plenty of exact title hits, but the
+        # racing films a person actually means - F1, Rush, Ford v Ferrari - are
+        # found by meaning, not by the word. Both halves earn their place.
         lexical_results = self._search_lexical_matches(
             query,
-            top_k=min(8, top_k),
+            top_k=max(3, top_k // 2),
             content_type=content_type,
             audience=audience,
         )
@@ -328,6 +333,48 @@ class QdrantRecommender:
         self._keyword_haystack_cache = haystack
         return haystack
 
+    def _fulltext_haystack(self) -> pd.Series:
+        """Title, categories and description, for topical keyword queries.
+
+        Title and categories alone cannot answer "racing". It is not a TMDb
+        genre, so it appears in no category, and the racing films whose titles
+        omit the word - F1, Rush, Ford v Ferrari, Gran Turismo - were
+        unreachable by keyword. Their descriptions say it plainly: F1's opens
+        "Racing legend Sonny Hayes is coaxed out of retirement". Indexing the
+        description is what turns a topic word into a usable query.
+
+        Built with vectorised pandas string operations rather than a per-row
+        Python function: descriptions total 58 million characters and one
+        Amazon row runs to 83,711, so a per-character loop is not viable. This
+        way it is ~2 s at startup and 57 MB resident.
+
+        Descriptions are truncated to 1,000 characters. The topic of an item is
+        established in its opening lines; the tail of an Amazon listing is
+        specifications and boilerplate, and indexing all 58 million characters
+        would cost memory to make matches *worse*.
+        """
+        cached = getattr(self, "_fulltext_haystack_cache", None)
+        if cached is not None and len(cached) == len(self.catalog):
+            return cached
+
+        def column(name: str) -> pd.Series:
+            return (
+                self.catalog.get(name, pd.Series("", index=self.catalog.index))
+                .fillna("")
+                .astype(str)
+            )
+
+        combined = (
+            column("title") + " " + column("categories") + " "
+            + column("description").str.slice(0, 1000)
+        ).str.lower()
+        combined = combined.str.normalize("NFKD").str.replace(
+            r"[^a-z0-9]+", " ", regex=True
+        )
+        haystack = " " + combined.str.strip() + " "
+        self._fulltext_haystack_cache = haystack
+        return haystack
+
     def _popularity_rank(self) -> pd.Series:
         """Within-content-type popularity percentile, built once.
 
@@ -387,6 +434,7 @@ class QdrantRecommender:
 
         titles = self._title_haystack()
         keywords = self._keyword_haystack()
+        fulltext = self._fulltext_haystack()
         popularity_rank = self._popularity_rank()
         catalog = self.catalog
 
@@ -395,6 +443,7 @@ class QdrantRecommender:
             catalog = catalog[type_mask]
             titles = titles[type_mask]
             keywords = keywords[type_mask]
+            fulltext = fulltext[type_mask]
             popularity_rank = popularity_rank[type_mask]
 
         # Whole words throughout, via the space-padded tokenized haystack. A bare
@@ -415,16 +464,31 @@ class QdrantRecommender:
         # short title like "1" or "F1" is reachable there.
         tokens = [token for token in _tokenize_lookup_text(q_norm).split() if len(token) > 1]
         if tokens:
-            all_tokens = pd.Series(True, index=catalog.index)
+            # Space-padded, so a token matches a whole word rather than any
+            # occurrence of the characters inside a longer one.
+            in_keywords = pd.Series(True, index=catalog.index)
             for token in tokens:
-                # Space-padded, so this matches a whole word rather than any
-                # occurrence of the characters inside a longer one.
-                all_tokens &= keywords.str.contains(f" {token} ", regex=False, na=False)
+                in_keywords &= keywords.str.contains(f" {token} ", regex=False, na=False)
+
+            # Prose needs the whole phrase, not the tokens scattered through it.
+            # Requiring each token independently anywhere in 1,000 characters of
+            # description matched a CPAP hose for "time travel", because its
+            # listing happens to contain both "travel" and "time". A title or a
+            # genre is a handful of words, so independent tokens are safe there;
+            # a synopsis is not.
+            in_fulltext = fulltext.str.contains(
+                f" {q_tokens} ", regex=False, na=False
+            )
         else:
-            all_tokens = pd.Series(False, index=catalog.index)
+            in_keywords = pd.Series(False, index=catalog.index)
+            in_fulltext = pd.Series(False, index=catalog.index)
 
         ranks = pd.Series(9, index=catalog.index)
-        ranks = ranks.mask(all_tokens, 3)
+        # Tier 4 before tier 3, so the stronger signal overwrites it: a word in
+        # the title or the genre says more about an item than the same word
+        # buried in its synopsis.
+        ranks = ranks.mask(in_fulltext, 4)
+        ranks = ranks.mask(in_keywords, 3)
         ranks = ranks.mask(contains, 2)
         ranks = ranks.mask(prefix, 1)
         ranks = ranks.mask(exact, 0)
@@ -437,9 +501,23 @@ class QdrantRecommender:
         candidates = catalog[matched]
         candidate_ranks = ranks[matched]
         candidate_pop = popularity_rank[matched]
+
+        # Tiers 2-4 order together, by popularity, rather than strictly by tier.
+        #
+        # Strict tier order let any title containing the word beat every
+        # description match, however weak: searching "racing" returned Racing
+        # Extinction - a documentary about species loss - above F1, Rush and
+        # Ford v Ferrari, because those three do not have the word in the
+        # title. Exact and prefix hits stay ahead of everything, since someone
+        # typing a full title wants that title; below them, "the word appears
+        # somewhere" is one band and prominence decides the order.
         order = pd.DataFrame(
-            {"rank": candidate_ranks, "pop": candidate_pop}
-        ).sort_values(["rank", "pop"], ascending=[True, False])
+            {
+                "band": candidate_ranks.clip(upper=2),
+                "rank": candidate_ranks,
+                "pop": candidate_pop,
+            }
+        ).sort_values(["band", "pop"], ascending=[True, False])
         order = order.head(max(top_k * 6, 60))
 
         rows: list[dict[str, Any]] = []
@@ -458,6 +536,7 @@ class QdrantRecommender:
             item["score"] = 1.30 - (match_rank * 0.06)
             item["semantic_score"] = None
             item["match_kind"] = "title" if match_rank <= 2 else "keyword"
+            item["match_tier"] = match_rank
             rows.append(item)
             if len(rows) >= top_k:
                 break
