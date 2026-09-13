@@ -495,7 +495,15 @@ export default function Home({ authenticatedUser, onLogout }) {
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[248px_1fr] xl:grid-cols-[264px_1fr]">
           {/* ---------- sidebar ---------- */}
           <aside className="order-2 flex flex-col gap-3 lg:order-1 lg:sticky lg:top-[76px] lg:self-start lg:max-h-[calc(100vh-92px)] lg:overflow-y-auto lg:pr-1">
-            <GlassPanel className="p-4">
+            {/* One rail, not six floating cards.
+                Each control used to be its own GlassPanel, so the sidebar was
+                six stacked glass boxes with six rims, six blurs and six
+                shadows - visual repetition that read as clutter, and six of the
+                page's backdrop-filter layers spent on chrome rather than
+                content. It is now a single glass surface with hairline-divided
+                sections, which is both quieter and cheaper. */}
+            <GlassPanel variant="strong" className="divide-y divide-line p-0">
+              <section className="p-4">
               <p className="label mb-2.5">Profile</p>
               <UserSelector value={userId} onChange={setUserId} users={availableUsers} />
 
@@ -513,18 +521,18 @@ export default function Home({ authenticatedUser, onLogout }) {
                   </p>
                 </div>
               </div>
-            </GlassPanel>
+              </section>
 
-            <GlassPanel variant="strong" className="p-4">
+              <section className="p-4">
               <p className="label mb-2.5">Domain</p>
               <DomainSelector
                 domains={domainCatalog.domains || []}
                 value={domain}
                 onChange={setDomain}
               />
-            </GlassPanel>
+              </section>
 
-            <GlassPanel variant="strong" className="p-4">
+              <section className="p-4">
               <p className="label mb-3">Audience</p>
               <AudienceControls
                 age={age}
@@ -532,9 +540,9 @@ export default function Home({ authenticatedUser, onLogout }) {
                 safeMode={safeMode}
                 onSafeModeChange={setSafeMode}
               />
-            </GlassPanel>
+              </section>
 
-            <GlassPanel className="p-4">
+              <section className="p-4">
               <div className="mb-2.5 flex items-baseline justify-between">
                 <p className="label">Results</p>
                 <span className="num text-[11px] font-semibold tabular-nums text-accent">{topK}</span>
@@ -556,11 +564,12 @@ export default function Home({ authenticatedUser, onLogout }) {
                 onChange={setContentType}
                 contentTypes={offeredContentTypes}
               />
-            </GlassPanel>
+              </section>
 
-            <GlassPanel className="p-4">
+              <section className="p-4">
               <p className="label mb-2">Try a query</p>
               <QueryChips onSelect={handleChipSelect} />
+              </section>
             </GlassPanel>
 
             <AISignalsPanel topResult={results[0] ?? null} />
@@ -664,9 +673,32 @@ export default function Home({ authenticatedUser, onLogout }) {
               <div className="panel px-6 py-20 text-center">
                 <Search size={28} className="mx-auto text-ink-faint" />
                 <h2 className="display mt-4 text-xl font-bold text-ink">Start with a search</h2>
-                <p className="mx-auto mt-2 max-w-sm text-[13px] text-ink-muted">
-                  Describe a mood, genre, scene, or artist style — not just a keyword.
+                {/* This used to read "not just a keyword", which stopped being
+                    true when retrieval became hybrid: a title, a person and a
+                    keyword are each matched directly now, alongside the
+                    semantic search. Telling someone their query type is not
+                    supported, when it is, costs results. */}
+                <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-ink-muted">
+                  A title, a person, a keyword, or a description — all four work.
                 </p>
+                <div className="mx-auto mt-4 flex max-w-md flex-wrap justify-center gap-1.5">
+                  {[
+                    ['Title', 'Inception'],
+                    ['Person', 'Christopher Nolan'],
+                    ['Keyword', 'time travel'],
+                    ['Description', 'space adventure with aliens'],
+                  ].map(([kind, example]) => (
+                    <button
+                      key={kind}
+                      type="button"
+                      onClick={() => handleSearch(example)}
+                      className="chip transition-colors hover:border-accent hover:text-accent"
+                    >
+                      <span className="font-bold opacity-60">{kind}</span>
+                      {example}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -742,9 +774,37 @@ export default function Home({ authenticatedUser, onLogout }) {
                 ) : (
                   <>
                     <h3 className="display text-lg font-bold text-ink">No results found</h3>
-                    <p className="mt-2 text-[13px] text-ink-muted">
-                      Try a different query or clear the content-type filter.
+                    {/* Name the constraints that are actually on. "Clear the
+                        content-type filter" is unhelpful when the filter is not
+                        set and the domain is - the reader is told to undo
+                        something they never did, while the thing that bound
+                        goes unmentioned. */}
+                    <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-ink-muted">
+                      Nothing matched <span className="font-semibold text-ink">{resultQuery}</span>
+                      {contentType || activeDomain ? ' within the current scope.' : '.'}
                     </p>
+                    {(contentType || activeDomain) && (
+                      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                        {activeDomain && (
+                          <button
+                            type="button"
+                            onClick={() => setDomain(null)}
+                            className="btn btn-ghost px-3 py-1.5 text-[12px]"
+                          >
+                            Clear domain: {activeDomain.label}
+                          </button>
+                        )}
+                        {contentType && (
+                          <button
+                            type="button"
+                            onClick={() => setContentType(null)}
+                            className="btn btn-ghost px-3 py-1.5 text-[12px]"
+                          >
+                            Clear type: {contentType}
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
               </div>
