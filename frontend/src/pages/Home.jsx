@@ -93,6 +93,11 @@ export default function Home({ authenticatedUser, onLogout }) {
   const [toasts, setToasts] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [elapsed, setElapsed] = useState(null);
+  // The query the *displayed* results came from, which is not the same as
+  // `query`: that tracks the input and changes on every keystroke, so the
+  // results heading claimed to describe results it had nothing to do with
+  // the moment someone typed without pressing Search.
+  const [resultQuery, setResultQuery] = useState('');
   const [drawer, setDrawer] = useState({
     open: false,
     title: '',
@@ -283,6 +288,7 @@ export default function Home({ authenticatedUser, onLogout }) {
       // backend decides whether this particular result set needs one.
       setAdvisory(data.advisory || null);
       setElapsed(Math.round(performance.now() - startedAt));
+      setResultQuery(cleanQuery);
       // Silent when the audience filter is the cause: the empty state already
       // explains that case in full, and a toast on top of it just nags.
       if (nextResults.length === 0 && !audienceBlocked) {
@@ -606,7 +612,7 @@ export default function Home({ authenticatedUser, onLogout }) {
                     {results.length} results
                     {elapsed !== null && <span className="ml-2 normal-case">· {elapsed} ms</span>}
                   </p>
-                  <h2 className="display mt-1 truncate text-xl font-bold text-ink">{query}</h2>
+                  <h2 className="display mt-1 truncate text-xl font-bold text-ink">{resultQuery}</h2>
                 </div>
               </div>
             )}
