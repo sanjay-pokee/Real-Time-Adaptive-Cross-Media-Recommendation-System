@@ -7,6 +7,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from backend.audience import AudienceContext, is_eligible
+from preprocessing import build_content_catalog
 from preprocessing.audience_tagging import (
     annotate_audience,
     audience_summary,
@@ -23,7 +24,11 @@ def test_catalog_schema_extends_rather_than_replaces_the_base():
 @pytest.mark.parametrize(
     "content_type, categories, expected",
     [
-        ("movie", "Family, Animation, Comedy", "all_ages"),
+        # Movies declare maturity_source: certification, so a genre may restrict
+        # but never relax - this holds at the `teen` default rather than reading
+        # "Animation" as an audience. A G rating from
+        # scripts.fetch_tmdb_certifications is what makes it all_ages.
+        ("movie", "Family, Animation, Comedy", "teen"),
         ("movie", "Horror, Thriller", "adult"),
         ("book", "Juvenile Fiction", "all_ages"),
         ("book", "Young Adult Fiction", "teen"),
@@ -113,8 +118,12 @@ def test_tagged_rows_are_directly_usable_by_the_constraint_layer():
     """The build output and the filter must speak the same vocabulary."""
     catalog = pd.DataFrame(
         [
-            {"global_id": "m:1", "content_type": "movie", "title": "Minions", "categories": "Family, Animation"},
-            {"global_id": "m:2", "content_type": "movie", "title": "The Conjuring", "categories": "Horror"},
+            # Carries the maturity a G certification resolves to, the way a
+            # catalogue row does once apply_certification_ratings has run.
+            {"global_id": "m:1", "content_type": "movie", "title": "Minions",
+             "categories": "Family, Animation", "maturity": "all_ages"},
+            {"global_id": "m:2", "content_type": "movie", "title": "The Conjuring",
+             "categories": "Horror", "maturity": ""},
         ]
     )
 
@@ -155,8 +164,9 @@ def test_summary_rejects_an_untagged_catalog():
         ("book", "Child care, mystery thriller", "teen"),
         ("music", "rap, gangster rap", "adult"),
         ("music", "rap, southern hip hop Murder After Midnight", "adult"),
-        # Genuinely child-oriented rows must still come back all_ages.
-        ("movie", "Animation, Family", "all_ages"),
+        # A board-rated type holds at its default instead of being relaxed by a
+        # genre; a type whose ratings only ever come from category text still is.
+        ("movie", "Animation, Family", "teen"),
         ("book", "Juvenile Fiction, picture book", "all_ages"),
     ],
 )
@@ -205,7 +215,148 @@ def test_a_regulated_domain_can_still_be_escalated_by_a_keyword():
     assert maturity_for_row("health", "Health & Household, adults only") == "restricted"
 
 
-def test_an_unregulated_domain_keeps_plain_keyword_promotion():
-    """Entertainment is risk_tier 0, so a child-oriented film still relaxes."""
-    assert maturity_for_row("movie", "Animation, Family") == "all_ages"
+def test_a_type_without_a_rating_board_still_relaxes_on_keywords():
+    """Books have no certification source, so category text is the best signal.
+
+    Entertainment is risk_tier 0, so nothing else blocks the relaxation.
+    """
     assert maturity_for_row("book", "Juvenile Fiction, picture book") == "all_ages"
+
+
+def test_a_board_rated_type_is_never_relaxed_by_its_genre():
+    """A genre is a production technique, not an audience.
+
+    "Animation" matched the all-ages rule and relaxed Akira, Heavy Metal, Grave
+    of the Fireflies and Waltz with Bashir - adult war and science-fiction films
+    - from the movie default of `teen` to `all_ages`, where an 8-year-old was
+    served them. Movies declare maturity_source: certification, so the rating
+    from scripts.fetch_tmdb_certifications is the only thing that may relax one.
+    """
+    for genre_text in (
+        "Animation, Science Fiction, Action",           # Akira
+        "Animation, Science Fiction, Adventure, Music",  # Heavy Metal
+        "Animation, Drama, War",                         # Grave of the Fireflies
+        "Animation, Documentary, Drama, War",            # Waltz with Bashir
+        "Family, Animation, Adventure, Comedy, War",     # Valiant
+    ):
+        assert maturity_for_row("movie", genre_text) == "teen"
+
+
+def test_a_board_rated_type_can_still_be_escalated_by_its_genre():
+    """Restrict-only blocks relaxation, not escalation - an unrated slasher
+    must still be kept out of a child's results."""
+    assert maturity_for_row("movie", "Animation, Horror") == "adult"
+    assert maturity_for_row("movie", "Animation, Thriller") == "teen"
+
+
+# ---------------------------------------------------------------------------
+# Board certifications
+# ---------------------------------------------------------------------------
+
+def _certification_catalog(tmp_path, monkeypatch, rows):
+    """Point apply_certification_ratings at a synthetic certification file."""
+    path = tmp_path / "tmdb_certifications.csv"
+    pd.DataFrame(rows, columns=["movie_id", "title", "certification"]).to_csv(
+        path, index=False
+    )
+    monkeypatch.setattr(build_content_catalog, "CERTIFICATION_PATH", path)
+
+    catalog = pd.DataFrame(
+        [
+            # Would derive all_ages from "Animation" under the old rules.
+            {"global_id": "movie:tmdb_api:1", "content_type": "movie", "source": "tmdb_api",
+             "source_id": "1", "title": "Rated G Cartoon", "categories": "Animation, Family"},
+            {"global_id": "movie:tmdb_api:2", "content_type": "movie", "source": "tmdb_api",
+             "source_id": "2", "title": "Akira", "categories": "Animation, Science Fiction, Action"},
+            {"global_id": "movie:tmdb_api:3", "content_type": "movie", "source": "tmdb_api",
+             "source_id": "3", "title": "Unrated Cartoon", "categories": "Animation, Family"},
+            {"global_id": "book:g:4", "content_type": "book", "source": "g",
+             "source_id": "4", "title": "A Picture Book", "categories": "Juvenile Fiction"},
+        ]
+    )
+    return build_content_catalog.apply_certification_ratings(catalog)
+
+
+@pytest.mark.parametrize(
+    "certification, expected_maturity, expected_min_age",
+    [
+        ("G", "all_ages", 0),
+        ("PG", "child", 7),
+        ("PG-13", "teen", 13),
+        ("R", "adult", 18),
+        ("NC-17", "restricted", 21),
+    ],
+)
+def test_a_board_rating_sets_the_maturity(
+    tmp_path, monkeypatch, certification, expected_maturity, expected_min_age
+):
+    rated = _certification_catalog(
+        tmp_path, monkeypatch, [{"movie_id": "1", "title": "x", "certification": certification}]
+    )
+    annotated = annotate_audience(rated).set_index("global_id")
+
+    assert annotated.loc["movie:tmdb_api:1", "maturity"] == expected_maturity
+    assert annotated.loc["movie:tmdb_api:1", "audience_min_age"] == expected_min_age
+
+
+@pytest.mark.parametrize("certification", ["NR", "Unrated", "", "??"])
+def test_an_absent_or_meaningless_rating_holds_at_the_default(
+    tmp_path, monkeypatch, certification
+):
+    """NR says no board rated the title, not that it is harmless.
+
+    Mapping it to anything permissive would reopen the hole the rating closes, so
+    it falls through to the keyword heuristic - which, for a board-rated type, may
+    only restrict.
+    """
+    rated = _certification_catalog(
+        tmp_path, monkeypatch, [{"movie_id": "1", "title": "x", "certification": certification}]
+    )
+    annotated = annotate_audience(rated).set_index("global_id")
+
+    assert annotated.loc["movie:tmdb_api:1", "maturity"] == "teen"
+    assert annotated.loc["movie:tmdb_api:1", "audience_min_age"] == 13
+
+
+def test_an_r_rating_keeps_an_animated_film_away_from_a_child(tmp_path, monkeypatch):
+    """The case that started this: Akira is animated, and rated R."""
+    rated = _certification_catalog(
+        tmp_path, monkeypatch, [{"movie_id": "2", "title": "Akira", "certification": "R"}]
+    )
+    rows = annotate_audience(rated).to_dict("records")
+
+    child = AudienceContext(age=8)
+    eligible = [row["title"] for row in rows if is_eligible(row, child)]
+
+    assert "Akira" not in eligible
+    # The genuinely child-oriented book in the same catalogue is unaffected.
+    assert "A Picture Book" in eligible
+
+
+def test_only_movies_are_matched_against_the_certification_file(tmp_path, monkeypatch):
+    """source_id collides across datasets, so a book must not take a movie rating."""
+    rated = _certification_catalog(
+        tmp_path, monkeypatch, [{"movie_id": "4", "title": "x", "certification": "R"}]
+    )
+    annotated = annotate_audience(rated).set_index("global_id")
+
+    # The book keeps its own keyword-derived label, not the movie id 4 rating.
+    assert annotated.loc["book:g:4", "maturity"] == "all_ages"
+
+
+def test_a_missing_certification_file_is_a_warning_not_a_failure(
+    tmp_path, monkeypatch, capsys
+):
+    monkeypatch.setattr(
+        build_content_catalog, "CERTIFICATION_PATH", tmp_path / "absent.csv"
+    )
+    catalog = pd.DataFrame(
+        [{"global_id": "movie:tmdb_api:1", "content_type": "movie", "source": "tmdb_api",
+          "source_id": "1", "title": "X", "categories": "Animation, Family"}]
+    )
+
+    result = build_content_catalog.apply_certification_ratings(catalog)
+
+    assert "WARNING" in capsys.readouterr().out
+    # Still fails closed: the genre cannot relax a board-rated type.
+    assert annotate_audience(result).iloc[0]["maturity"] == "teen"

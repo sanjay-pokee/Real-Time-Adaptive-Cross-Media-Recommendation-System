@@ -23,6 +23,29 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "data" / "processed" / "content_catalog.csv"
 # Written by scripts.backfill_cover_art for the datasets that ship no artwork.
 COVER_ART_CACHE_PATH = PROJECT_ROOT / "data" / "processed" / "cover_art_cache.csv"
+# Written by scripts.fetch_tmdb_certifications: the real US rating per movie.
+CERTIFICATION_PATH = PROJECT_ROOT / "datasets" / "tmdb" / "tmdb_certifications.csv"
+
+# Board ratings mapped onto the maturity levels in config/domains.yaml.
+#
+# "NR" and "UNRATED" are deliberately absent. They assert that no board rated
+# the title, which is not a statement that it is harmless - mapping them to
+# anything permissive would reintroduce exactly the hole this table closes. They
+# fall through to the keyword heuristic, which for movies may now only restrict.
+CERTIFICATION_MATURITY = {
+    "G": "all_ages",
+    "TV-Y": "all_ages",
+    "TV-G": "all_ages",
+    "PG": "child",
+    "TV-Y7": "child",
+    "TV-PG": "child",
+    "PG-13": "teen",
+    "TV-14": "teen",
+    "R": "adult",
+    "TV-MA": "adult",
+    "NC-17": "restricted",
+    "X": "restricted",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -54,10 +77,71 @@ def build_content_catalog(config_path: Path = DEFAULT_CONFIG_PATH) -> pd.DataFra
     # once a row has been normalized.
     catalog = apply_cover_art_cache(catalog)
 
+    # Attach real board ratings before the heuristic runs. annotate_audience
+    # preserves a maturity value that is already set and only fills the gaps, so
+    # a rated title keeps its rating and an unrated one falls back to keywords.
+    catalog = apply_certification_ratings(catalog[CONTENT_COLUMNS])
+
     # Derive the audience metadata the constraint layer filters on. Runs once
     # on the combined catalog so every dataset is tagged by the same rules.
-    catalog = annotate_audience(catalog[CONTENT_COLUMNS])
+    catalog = annotate_audience(catalog)
     return catalog[CATALOG_COLUMNS].reset_index(drop=True)
+
+
+def apply_certification_ratings(catalog: pd.DataFrame) -> pd.DataFrame:
+    """Set ``maturity`` from the fetched US content rating, where there is one.
+
+    Only movies carry a certification file today, and the cache is keyed by TMDb
+    id, so rows are matched on ``source_id`` within the movie content type. A
+    title TMDb has no US rating for - or one rated NR/Unrated, which says a board
+    did not rate it rather than that it is harmless - is left empty for
+    :func:`annotate_audience` to fall back on.
+
+    Missing cache is not an error: the build still works, movies just revert to
+    the heuristic. The count is printed so a silently absent file is visible in
+    the build log rather than discovered by a reviewer.
+    """
+    catalog = catalog.copy()
+    if "maturity" not in catalog.columns:
+        catalog["maturity"] = ""
+
+    if not CERTIFICATION_PATH.exists():
+        print(f"  [WARNING] No certification file at {CERTIFICATION_PATH.name}; "
+              "movie maturity falls back to category keywords. "
+              "Run: python -m scripts.fetch_tmdb_certifications")
+        return catalog
+
+    # dtype=str on the id: inferred as int64 it stringifies back to "100", but a
+    # single missing value makes the column float64 and the same id becomes
+    # "100.0", which matches no catalogue source_id. That failure is silent - every
+    # movie simply reverts to the heuristic - so the id is read as text outright.
+    frame = pd.read_csv(CERTIFICATION_PATH, dtype={"movie_id": str})
+    lookup = {
+        str(row.movie_id).strip(): CERTIFICATION_MATURITY.get(
+            str(row.certification).strip().upper(), ""
+        )
+        for row in frame.itertuples(index=False)
+        if not pd.isna(row.certification)
+    }
+    if not lookup:
+        return catalog
+
+    is_movie = catalog["content_type"].astype(str).str.strip().str.lower().eq("movie")
+    existing = catalog["maturity"].fillna("").astype(str)
+    resolved = [
+        lookup.get(str(source_id).strip(), "") if movie else ""
+        for movie, source_id in zip(is_movie, catalog["source_id"])
+    ]
+    catalog["maturity"] = [
+        was if was.strip() else now
+        for was, now in zip(existing, resolved)
+    ]
+
+    rated = sum(1 for value in resolved if value)
+    unrated = int(is_movie.sum()) - rated
+    print(f"  Certifications: {rated:,} movies rated by a board, "
+          f"{unrated:,} fall back to keywords")
+    return catalog
 
 
 def apply_cover_art_cache(catalog: pd.DataFrame) -> pd.DataFrame:

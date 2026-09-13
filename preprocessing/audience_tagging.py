@@ -124,30 +124,46 @@ def maturity_for_row(
         if haystack:
             for maturity, pattern in _COMPILED_RULES:
                 if pattern.search(haystack):
-                    return _restrict_only_when_regulated(maturity, spec, registry)
+                    return _restrict_only(maturity, spec, registry)
 
     return spec.default_maturity
 
 
-def _restrict_only_when_regulated(
+def _restrict_only(
     derived: str,
     spec: ContentTypeSpec,
     registry: DomainRegistry,
 ) -> str:
-    """In a regulated domain a keyword may restrict an item, never relax it.
+    """Where a keyword is a poor substitute for a rating, it may only restrict.
 
-    Health content types default to ``adult``. Letting a single loose category
-    word demote an item below that default is how an iron supplement, a
-    peppermint pesticide and a "Sexual Wellness, Bondage Gear" eye mask were
-    all tagged ``all_ages``: their category text merely happened to contain a
-    word from the all-ages rule.
+    Two cases, both of which produced items rated safe for children that were
+    plainly not:
 
-    Escalation is unaffected - a keyword can still push a regulated item up to
-    ``adult`` or ``restricted``. Unregulated domains keep the plain rule, so a
-    genuinely child-oriented film still resolves to ``all_ages``.
+    *Regulated domains.* Health content types default to ``adult``. Letting a
+    single loose category word demote an item below that default is how an iron
+    supplement, a peppermint pesticide and a "Sexual Wellness, Bondage Gear" eye
+    mask were all tagged ``all_ages``: their category text merely happened to
+    contain a word from the all-ages rule.
+
+    *Types rated by a board.* A content type declaring
+    ``maturity_source: certification`` has a real rating available, so a genre is
+    never the better authority. "Animation" is a production technique, not an
+    audience: it matched the all-ages rule and relaxed Akira, Heavy Metal,
+    Grave of the Fireflies and Waltz with Bashir - adult war and science-fiction
+    films - from the movie default of ``teen`` down to ``all_ages``, where an
+    eight-year-old was served them. The certification from
+    ``scripts.fetch_tmdb_certifications`` is applied before this runs and is
+    preserved by :func:`annotate_audience`, so this path is reached only by
+    titles no board rated, and those now hold at the default instead of being
+    relaxed by their genre.
+
+    Escalation is unaffected in both cases - a keyword can still push an item up
+    to ``adult`` or ``restricted``, which is what keeps an unrated slasher out of
+    a child's results.
     """
     domain = registry.domains.get(spec.domain)
-    if domain is None or not domain.is_regulated:
+    is_regulated = domain is not None and domain.is_regulated
+    if not is_regulated and spec.maturity_source != "certification":
         return derived
     if registry.minimum_age(derived) < registry.minimum_age(spec.default_maturity):
         return spec.default_maturity
@@ -192,7 +208,10 @@ def annotate_audience(
     )
 
     if "maturity" in annotated.columns:
-        existing = annotated["maturity"].astype(str).str.strip()
+        # fillna before astype(str): a missing value stringifies to "nan", which
+        # is not empty, so it survived as the row's maturity and then resolved to
+        # a minimum age of 0 - every unrated row rated safe for any age.
+        existing = annotated["maturity"].fillna("").astype(str).str.strip()
         annotated["maturity"] = existing.where(existing != "", derived_maturity)
     else:
         annotated["maturity"] = derived_maturity

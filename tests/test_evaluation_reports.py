@@ -131,8 +131,12 @@ def test_load_reports_names_the_file_that_is_bad_json(tmp_path):
 def _tagged_catalog():
     catalog = pd.DataFrame(
         [
+            # Carries the maturity a G certification resolves to, the way a
+            # catalogue row does once apply_certification_ratings has run. A
+            # movie genre alone can no longer relax a row to all_ages.
             {"global_id": "m:1", "content_type": "movie", "title": "Minions",
-             "categories": "Family, Animation", "popularity": 100},
+             "categories": "Family, Animation", "popularity": 100,
+             "maturity": "all_ages"},
             {"global_id": "m:2", "content_type": "movie", "title": "The Conjuring",
              "categories": "Horror", "popularity": 90},
             {"global_id": "m:3", "content_type": "movie", "title": "Interstellar",

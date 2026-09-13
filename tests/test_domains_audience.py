@@ -159,6 +159,34 @@ def test_risk_tier_falls_back_to_the_domain():
     assert item_risk_tier({"content_type": "movie", "risk_tier": 2}) == 2
 
 
+def test_an_absent_maturity_expresses_no_constraint():
+    registry = get_registry()
+
+    assert registry.minimum_age(None) == 0
+    assert registry.minimum_age("") == 0
+    assert registry.minimum_age("   ") == 0
+
+
+@pytest.mark.parametrize("label", ["nan", "PG-13", "unrated", "not a level"])
+def test_an_unrecognised_maturity_label_fails_closed(label):
+    """Corrupt data must not resolve to "safe for a newborn".
+
+    A NaN maturity read back from a CSV stringifies to "nan", which is not empty,
+    so it survived as the row's maturity and mapped to a minimum age of 0. That
+    waved every such row through the age filter.
+    """
+    registry = get_registry()
+    most_restrictive = max(registry.maturity_levels.values())
+
+    assert registry.minimum_age(label) == most_restrictive
+
+
+def test_a_garbled_maturity_on_a_row_does_not_unlock_it():
+    child = AudienceContext(age=8)
+
+    assert not is_eligible({"content_type": "movie", "maturity": "nan"}, child)
+
+
 # ---------------------------------------------------------------------------
 # Eligibility
 # ---------------------------------------------------------------------------

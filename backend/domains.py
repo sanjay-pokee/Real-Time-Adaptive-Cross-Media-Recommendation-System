@@ -119,10 +119,24 @@ class DomainRegistry:
 
     # -- maturity ---------------------------------------------------------
     def minimum_age(self, maturity: str | None) -> int:
-        """Minimum viewer age for a maturity level; unknown levels are permissive."""
+        """Minimum viewer age for a maturity level.
+
+        Absent (``None``/empty) means no constraint was expressed, which is 0 -
+        callers decide what to substitute. A label that is *present but not
+        recognised* is a different thing: it is corrupt data, and resolving it to
+        0 rates it safe for a newborn. A ``NaN`` maturity read back from a CSV
+        stringifies to ``"nan"`` and did exactly that, waving a whole catalogue
+        through the age filter. Unrecognised labels now take the most restrictive
+        configured level, so bad data fails closed like everything else here.
+        """
         if maturity is None:
             return 0
-        return self.maturity_levels.get(str(maturity).strip().lower(), 0)
+        label = str(maturity).strip().lower()
+        if not label:
+            return 0
+        if label in self.maturity_levels:
+            return self.maturity_levels[label]
+        return max(self.maturity_levels.values(), default=0)
 
     def maturity_at_or_below(self, age: int) -> tuple[str, ...]:
         return tuple(
