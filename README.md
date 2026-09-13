@@ -75,12 +75,21 @@ in `.env` (the v3 API key, not the v4 Read Access Token), then:
 ```powershell
 python -m scripts.fetch_tmdb_movies --min-votes 100 --from-year 1960
 python -m scripts.fetch_tmdb_credits
+python -m scripts.fetch_tmdb_certifications
 ```
 
 `fetch_tmdb_movies` pulls from `/discover/movie`, which returns the overview and the poster
 path together. It slices requests by release year because `/discover` caps pagination at 500
 pages, and `--min-votes` drops the long tail of shorts and unreleased entries, which embed to
 noise. `fetch_tmdb_credits` then adds cast and director, which `/discover` does not return.
+
+`fetch_tmdb_certifications` reads `/movie/{id}/release_dates` for the real US board rating
+(G / PG / PG-13 / R / NC-17), which is what drives movie maturity — see
+[Audience eligibility](#audience-eligibility). Certification is only exposed per country and
+per release window, so it needs its own lookup. All three scripts cache incrementally by movie
+id, so an interrupted run resumes and a re-run only fetches what is missing; the certification
+fetch is concurrent (`--workers`, default 8) because serial throughput is bounded by round-trip
+latency and a 22k backlog takes hours at one request in flight.
 
 `backend/api_ingestion.py` contains unused TMDb, Open Library and MusicBrainz clients. Nothing
 imports it; it is scaffolding from an earlier approach and is not part of the pipeline.
@@ -205,10 +214,27 @@ Policy, all of which fails closed:
 - A request with **no age** is not treated as an adult; it is capped at the teen ceiling.
 - `safe_mode: true` caps below a real adult age, so an adult can ask for family-appropriate results.
 - A catalog row with no audience metadata falls back to its content type's default, not to unrestricted.
+- A maturity label that is **present but unrecognised** — a `NaN` read back from a CSV stringifies to `"nan"` — resolves to the *most* restrictive level, not to 0. Corrupt data fails closed like everything else here.
 
 Requests that declare no audience (no `age`, `safe_mode` or `domain`) behave exactly as before.
 
-Audience metadata (`domain`, `maturity`, `audience_min_age`, `risk_tier`) is derived in `preprocessing/audience_tagging.py` after normalization. These are **keyword heuristics, not certified ratings**; an explicit rating already present on a row is preserved. Rebuild the catalog and collection after pulling this:
+Audience metadata (`domain`, `maturity`, `audience_min_age`, `risk_tier`) is derived in `preprocessing/audience_tagging.py` after normalization.
+
+**Where the maturity comes from depends on the content type.** Movies declare
+`maturity_source: certification` in `config/domains.yaml` and take the real TMDb US board rating
+fetched by `scripts.fetch_tmdb_certifications`, mapped G → `all_ages`, PG → `child`,
+PG-13 → `teen`, R → `adult`, NC-17 → `restricted`. `NR`/`Unrated` means *no board rated the
+title*, not that it is harmless, so those fall through to the keyword heuristic.
+
+For a content type whose ratings come from a board, a category keyword may **restrict** a row but
+never **relax** one. Genre-only inference rated *Akira*, *Heavy Metal*, *Grave of the Fireflies*
+and *Waltz with Bashir* as `all_ages`, because `Animation` matched the child-friendly rule — a
+production technique read as an audience. Books and music have no certification source, so their
+category text is still the best available signal and may relax a row.
+
+Everything outside a real certification remains a **heuristic, not a certified rating**; an
+explicit rating already present on a row is always preserved. Rebuild the catalog and collection
+after pulling this:
 
 ```powershell
 python -m preprocessing.build_content_catalog

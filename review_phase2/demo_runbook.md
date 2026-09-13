@@ -32,15 +32,15 @@ then `Stop-Process -Id <pid> -Force`.
 
 ## Row-by-row proof
 
-### Data pipeline — 106,332 items, 18 columns
+### Data pipeline — 106,332 items, 19 columns
 ```powershell
 python -c "import pandas as pd; d=pd.read_csv('data/processed/content_catalog.csv'); print(f'{len(d):,} rows x {len(d.columns)} cols'); print(d.content_type.value_counts())"
 ```
-Expect `106,332 rows x 18 cols` and music 28,352 / movie 22,116 / health 20,000 /
+Expect `106,332 rows x 19 cols` and music 28,352 / movie 22,116 / health 20,000 /
 industrial 20,000 / book 15,139 / finance 725. **Verified.**
 
-The four extra columns over the original schema are `image_url` plus the audience
-trio `domain`, `maturity`, `audience_min_age`, `risk_tier`.
+The five extra columns over the original 14-column schema are `image_url` plus the
+audience quartet `domain`, `maturity`, `audience_min_age`, `risk_tier`.
 
 ### Embeddings — 106,332 x 384
 ```powershell
@@ -119,6 +119,31 @@ Command-line proof, if the UI is unavailable:
 Expect `PASS: zero violations@20 across all 9 profiles`. Exits non-zero if any
 ineligible item reaches a viewer. **Verified.**
 
+**If they push on how the ages were assigned, this is now a strong answer, not a weak
+one.** Movies take the real TMDb US board certification per title, fetched by
+`scripts.fetch_tmdb_certifications`. Before that, maturity was inferred from genre text,
+and `Animation` matched the child-friendly rule — so *Akira*, *Heavy Metal*, *Grave of
+the Fireflies* and *Waltz with Bashir* were all rated `all_ages` and served to an
+8-year-old. A genre is a production technique, not an audience. For any content type
+rated by a board, a keyword may now restrict a title but never relax one, and `NR` is
+treated as "no board rated this" rather than as harmless.
+
+Be precise about the limit: books and music have no certification source, so their
+maturity is still keyword-derived, and that is a heuristic. Say so if asked — the
+policy is that every unknown fails closed, not that every label is certified.
+
+### Personalization in the new verticals
+The three vertical personas in the user selector have seeded history in their own
+domain, so the graph and EMA signals are live there rather than falling back to pure
+semantic search:
+
+- **Health Caregiver** — health products + health books
+- **Industrial Engineer** — industrial supplies + technical books
+- **Finance Planner** — finance software + finance books
+
+Pick Finance Planner and search "budgeting" versus the same query as Sci-Fi Explorer.
+The point is that personalization is not an entertainment-only feature. **Verified.**
+
 ### Explainability — counterfactual ranking
 Open any result and look at "Why this ranked here". Beyond the score breakdown it
 re-ranks with each signal removed, which answers a question the bar chart cannot:
@@ -128,11 +153,11 @@ For Interstellar at #1, semantic is 66% of the score but removing it leaves it a
 #1, while removing the graph signal - far fewer points - drops it to #4. The
 largest contributor is not the decisive one. **Verified.**
 
-### Quality gate — 175/175 green
+### Quality gate — 195/195 green
 ```powershell
 pytest tests/ -q
 ```
-Expect `175 passed`. Takes about 5 s. **Verified.**
+Expect `195 passed`. Takes about 5 s. **Verified.**
 
 Note `pytest` is not on PATH; run it through the venv interpreter:
 `.\.venv\Scripts\python.exe -m pytest tests/ -q`
@@ -145,24 +170,32 @@ Add `-v` if they want to see individual test names.
 
 Rehearse these answers. Do not let them be discovered.
 
-### 1. The LightGCN artifact is trained on 11 users
+### 1. The LightGCN artifact is trained on 13 users
 
 `models/graph/artifacts/lightgcn_embeddings.json` says:
 
 ```
-num_users: 11, num_items: 251, num_positive_interactions: 644
+num_users: 13, num_items: 347, num_positive_interactions: 792
 ```
 
 The code is real and the config is real, but the shipped artifact is synthetic.
 If a faculty member opens that JSON while you are claiming "Graph CF — Done",
 it looks bad.
 
+It is at least *current* now, and covers all six content types including health,
+industrial and finance. Before the reseed it held 251 items of which 58 were
+`tmdb_5000_movies` ids that no longer exist, so `graph_score` came back `null` on
+every single result — the rerank was silently contributing nothing at all. If they
+ask whether the graph signal is actually firing, it is, and you can show
+`graph_score` populated in the score breakdown. Pick **Finance Planner** and search
+"budgeting software": 4 of the top 10 carry a graph score.
+
 **Say this first, before they find it:**
 > "The LightGCN implementation is complete and tested — BPR loss, 3 layers,
 > d=64. The artifact currently loaded is a synthetic smoke-test set, because
 > our own platform has no real user base yet. That is exactly why we are
-> training on Amazon Reviews 2023 — a 40k-user run already beats the
-> popularity baseline by 58% on Recall@20 - and it holds on an unrelated
+> training on Amazon Reviews 2023 — a 50k-user run already beats the
+> popularity baseline by 59% on Recall@20 - and it holds on an unrelated
 > vertical, beating it by 24% on Industrial & Scientific."
 
 That turns the weakness into the reason the benchmark work exists. The measured
@@ -202,15 +235,18 @@ The "564 nodes / 845 edges" figure is hardcoded in `kg_visualizer.html`
 
 Honest, and it matches the "Remaining 40%: Neo4j KG" row you already have.
 
-**Safest fix if you have time before the review:** change the table row from
-"Knowledge graph — 564 nodes / 845 edges — Done" to
-"KG scoring — entity overlap, lambda_k = 0.08 — Done" and move the node/edge
-figure into the Review-3 planned row. Then nothing on the slide overstates.
+**This is now fixed in the deck.** The progress table row reads "KG scoring — entity
+overlap between query terms and item title / description / creators / categories,
+lambda_k = 0.08", and the KG frame's left panel is split into "Shipping today:
+entity-overlap scoring" and "Target typed schema (`kg_visualizer.html`)", with the
+564/845 figure explicitly labelled as the visualizer's worked example and the Neo4j
+migration named as the Review-3 deliverable. Nothing on the slides claims a runtime
+graph any more, so you can answer the question directly instead of deflecting.
 
 ---
 
 ## If the backend dies mid-demo
 
-`.\.venv\Scripts\python.exe -m pytest tests/ -q` needs no server and proves 175/175 in
+`.\.venv\Scripts\python.exe -m pytest tests/ -q` needs no server and proves 195/195 in
 about 5 s. The frontend
 also renders its offline state cleanly rather than crashing.
