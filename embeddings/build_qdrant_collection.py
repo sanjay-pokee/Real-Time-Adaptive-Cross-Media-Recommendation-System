@@ -114,6 +114,9 @@ def build_qdrant_collection(
             # Cover art, where the source dataset carries one. Empty for movies
             # and music; the frontend falls back to a generated gradient.
             "image_url": _clean(row.get("image_url", "")),
+            # The wide 16:9 still behind a detail view. Movies only; every other
+            # source ships no landscape artwork, and those fall back to the cover.
+            "backdrop_url": _clean(row.get("backdrop_url", "")),
         }
         # Audience metadata is queried as a Qdrant filter, not just displayed, so
         # these must be real numbers: a Range condition skips any point where the

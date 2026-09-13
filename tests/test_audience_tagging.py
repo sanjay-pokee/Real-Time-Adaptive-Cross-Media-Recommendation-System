@@ -13,12 +13,27 @@ from preprocessing.audience_tagging import (
     audience_summary,
     maturity_for_row,
 )
-from preprocessing.content_schema import AUDIENCE_COLUMNS, CATALOG_COLUMNS, CONTENT_COLUMNS
+from preprocessing.content_schema import (
+    AUDIENCE_COLUMNS,
+    CATALOG_COLUMNS,
+    CONTENT_COLUMNS,
+    MEDIA_COLUMNS,
+)
 
 
 def test_catalog_schema_extends_rather_than_replaces_the_base():
+    """The base schema stays intact and the derived passes append to it.
+
+    Order matters beyond tidiness: build_content_catalog returns
+    `catalog[CATALOG_COLUMNS]`, so a column appended here must be produced by a
+    pass that has already run by that point.
+    """
     assert CATALOG_COLUMNS[: len(CONTENT_COLUMNS)] == CONTENT_COLUMNS
-    assert CATALOG_COLUMNS[len(CONTENT_COLUMNS) :] == AUDIENCE_COLUMNS
+    assert (
+        CATALOG_COLUMNS[len(CONTENT_COLUMNS) :] == AUDIENCE_COLUMNS + MEDIA_COLUMNS
+    )
+    # No column is declared twice across the three groups.
+    assert len(set(CATALOG_COLUMNS)) == len(CATALOG_COLUMNS)
 
 
 @pytest.mark.parametrize(

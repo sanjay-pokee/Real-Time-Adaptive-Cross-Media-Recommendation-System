@@ -60,6 +60,11 @@ export default function ItemDetailModal({
   const Icon = meta.icon;
   const cover = coverFor(item);
   const imageUrl = imageFor(item);
+  // The wide 16:9 still, where the source has one — movies do, nothing else
+  // does. It is a different photograph from the portrait cover rather than a
+  // crop of it, so a banner can use its real aspect ratio instead of blurring
+  // and over-scaling a poster to fill the strip.
+  const backdropUrl = String(item.backdrop_url || '').trim();
   const categories = String(item.categories || '')
     .split(/[,|;]+/)
     .map((entry) => entry.trim())
@@ -93,10 +98,29 @@ export default function ItemDetailModal({
               one, blurred and over-scaled so any aspect ratio fills the strip
               without distorting, with the sharp copy composited on top. */}
           <div
-            className="relative h-40 shrink-0 overflow-hidden"
+            className={`relative shrink-0 overflow-hidden ${backdropUrl ? 'h-56' : 'h-40'}`}
             style={{ background: cover.background }}
           >
-            {imageUrl ? (
+            {backdropUrl ? (
+              /* A real landscape still: it already matches the strip's aspect
+                 ratio, so it fills edge to edge at full sharpness. Scaled a
+                 touch and eased in, so opening the modal has some motion to it
+                 rather than the image snapping into place. */
+              <motion.img
+                key={backdropUrl}
+                src={backdropUrl}
+                alt=""
+                aria-hidden="true"
+                initial={{ scale: 1.08, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute inset-0 h-full w-full object-cover"
+                onError={(event) => { event.currentTarget.style.display = 'none'; }}
+              />
+            ) : imageUrl ? (
+              /* No landscape art for this source, so the portrait cover stands
+                 in: one copy blurred and over-scaled to fill the strip, the
+                 sharp copy composited on top at its own ratio. */
               <>
                 <img
                   src={imageUrl}

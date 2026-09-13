@@ -28,8 +28,18 @@ CONTENT_COLUMNS = [
 # of it: they emit the base schema, the audience pass appends these.
 AUDIENCE_COLUMNS = ["domain", "maturity", "audience_min_age", "risk_tier"]
 
+# Artwork attached after normalization, for the same reason as the audience
+# columns: it is keyed by ids that only exist once a row has been normalized.
+#
+# `image_url` in CONTENT_COLUMNS is the portrait cover - a 2:3 movie poster, an
+# album sleeve, a book jacket. `backdrop_url` is the landscape still, which is a
+# different picture and not a crop of the first, so a detail view can show a wide
+# banner without stretching a poster to fit. Only movies have one; every other
+# source ships nothing equivalent, and those rows carry an empty string.
+MEDIA_COLUMNS = ["backdrop_url"]
+
 # The full on-disk catalog schema.
-CATALOG_COLUMNS = CONTENT_COLUMNS + AUDIENCE_COLUMNS
+CATALOG_COLUMNS = CONTENT_COLUMNS + AUDIENCE_COLUMNS + MEDIA_COLUMNS
 
 # Columns that must always be present and non-empty for a valid row.
 REQUIRED_NON_EMPTY = ["global_id", "title", "embedding_text", "text_hash"]

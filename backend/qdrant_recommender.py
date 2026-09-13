@@ -43,6 +43,8 @@ RESULT_COLUMNS = [
     # Cover art where the source dataset carries one. Empty for movies and
     # music, whose datasets ship no artwork column.
     "image_url",
+    # The wide 16:9 still, for the detail view's banner. Movies only.
+    "backdrop_url",
     # Audience metadata: carried through so a client can show why an item
     # qualified, and so the constraint evaluation can re-check the filter.
     "domain",

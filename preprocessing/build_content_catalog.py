@@ -25,6 +25,8 @@ DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "data" / "processed" / "content_catalog.csv
 COVER_ART_CACHE_PATH = PROJECT_ROOT / "data" / "processed" / "cover_art_cache.csv"
 # Written by scripts.fetch_tmdb_certifications: the real US rating per movie.
 CERTIFICATION_PATH = PROJECT_ROOT / "datasets" / "tmdb" / "tmdb_certifications.csv"
+# Written by scripts.fetch_tmdb_backdrops: the wide 16:9 still per movie.
+BACKDROP_PATH = PROJECT_ROOT / "datasets" / "tmdb" / "tmdb_backdrops.csv"
 
 # Board ratings mapped onto the maturity levels in config/domains.yaml.
 #
@@ -85,7 +87,56 @@ def build_content_catalog(config_path: Path = DEFAULT_CONFIG_PATH) -> pd.DataFra
     # Derive the audience metadata the constraint layer filters on. Runs once
     # on the combined catalog so every dataset is tagged by the same rules.
     catalog = annotate_audience(catalog)
+
+    # Wide artwork for the detail view, after the audience pass so the column
+    # order matches CATALOG_COLUMNS.
+    catalog = apply_backdrops(catalog)
     return catalog[CATALOG_COLUMNS].reset_index(drop=True)
+
+
+def apply_backdrops(catalog: pd.DataFrame) -> pd.DataFrame:
+    """Add ``backdrop_url`` from the fetched TMDb stills.
+
+    Matched on ``source_id`` within the movie content type, the same way the
+    certifications are: the cache is keyed by TMDb id. Every other content type
+    gets an empty string - Amazon, Google Books and Spotify ship no landscape
+    artwork, and inventing one by stretching the cover would look worse than the
+    gradient the UI already falls back to.
+
+    A missing cache is not an error; the detail view simply keeps using the
+    portrait cover. The count is printed so an absent file shows up in the build
+    log rather than as a silently plain UI.
+    """
+    catalog = catalog.copy()
+    catalog["backdrop_url"] = ""
+
+    if not BACKDROP_PATH.exists():
+        print(f"  [WARNING] No backdrop file at {BACKDROP_PATH.name}; detail views "
+              "fall back to the portrait cover. "
+              "Run: python -m scripts.fetch_tmdb_backdrops")
+        return catalog
+
+    # dtype=str for the id, for the same reason as the certification join: an
+    # int64 column stringifies to "100" but one missing value makes it float64
+    # and the same id becomes "100.0", matching no source_id and failing silently.
+    frame = pd.read_csv(BACKDROP_PATH, dtype={"movie_id": str})
+    lookup = {
+        str(row.movie_id).strip(): str(row.backdrop_url).strip()
+        for row in frame.itertuples(index=False)
+        if not pd.isna(row.backdrop_url)
+    }
+    if not lookup:
+        return catalog
+
+    is_movie = catalog["content_type"].astype(str).str.strip().str.lower().eq("movie")
+    catalog["backdrop_url"] = [
+        lookup.get(str(source_id).strip(), "") if movie else ""
+        for movie, source_id in zip(is_movie, catalog["source_id"])
+    ]
+
+    filled = int((catalog["backdrop_url"].str.strip() != "").sum())
+    print(f"  Backdrops: {filled:,} of {int(is_movie.sum()):,} movies have one")
+    return catalog
 
 
 def apply_certification_ratings(catalog: pd.DataFrame) -> pd.DataFrame:
