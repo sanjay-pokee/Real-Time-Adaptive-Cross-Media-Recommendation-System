@@ -21,6 +21,24 @@ const VERTICALS = [
   { label: 'Finance', tint: 'var(--dom-finance)' },
 ];
 
+// Six profiles fit the login card, and this screen is where the four verticals
+// have to be reachable - `USERS.slice(0, 6)` took the first six, which are all
+// entertainment, so the health, industry and finance personas could only be
+// found after logging in as someone else. Spread deliberately instead: three
+// entertainment tastes, then one persona per new vertical.
+const FEATURED_USER_IDS = [
+  'user_scifi',
+  'user_family',
+  'user_music_pop',
+  'user_health_caregiver',
+  'user_industry_engineer',
+  'user_finance_planner',
+];
+
+const FEATURED_USERS = FEATURED_USER_IDS
+  .map((id) => USERS.find((user) => user.id === id))
+  .filter(Boolean);
+
 function initialsFromName(name) {
   return (
     name
@@ -215,7 +233,7 @@ export default function AuthPage({ onAuth }) {
                   <div className="space-y-2">
                     <span className="label">Demo profile</span>
                     <div className="grid gap-1.5">
-                      {USERS.slice(0, 6).map((user) => {
+                      {FEATURED_USERS.map((user) => {
                         const active = selectedUserId === user.id;
                         return (
                           <button

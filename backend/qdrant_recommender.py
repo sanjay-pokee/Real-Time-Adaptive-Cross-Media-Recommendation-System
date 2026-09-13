@@ -193,24 +193,38 @@ class QdrantRecommender:
         if len(q_norm) < 2 or "creators" not in self.catalog.columns:
             return []
 
+        haystack = self._creator_haystack()
         catalog = self.catalog
         if normalized_content_type is not None:
-            catalog = catalog[catalog["content_type"] == normalized_content_type]
+            type_mask = catalog["content_type"] == normalized_content_type
+            catalog = catalog[type_mask]
+            haystack = haystack[type_mask]
+
+        # Vectorised, because this runs on every /recommend call before the
+        # vector search does. Row-by-row iteration over the catalogue cost 15-49 s
+        # per request at 106,332 rows - past the frontend's 15 s timeout, so a live
+        # search failed outright. It was merely slow at the old 48,294.
+        #
+        # Each row's names are pre-joined as "\nname1\nname2\n", so the three
+        # match tiers below are substring tests on one string. The delimiter is
+        # safe: _normalize_lookup_text collapses all whitespace via
+        # " ".join(str.split()), so a normalized name cannot contain a newline.
+        exact = haystack.str.contains(f"\n{q_norm}\n", regex=False, na=False)
+        prefix = haystack.str.contains(f"\n{q_norm}", regex=False, na=False)
+        substring = haystack.str.contains(q_norm, regex=False, na=False)
+
+        ranks = pd.Series(3, index=catalog.index)
+        ranks = ranks.mask(substring, 2)
+        ranks = ranks.mask(prefix, 1)
+        ranks = ranks.mask(exact, 0)
+        matched = ranks < 3
+        if not matched.any():
+            return []
 
         rows: list[tuple[int, float, str, dict[str, Any]]] = []
-        for _, row in catalog.iterrows():
-            creator_names = _split_creators(row.get("creators"))
-            normalized_names = [_normalize_lookup_text(name) for name in creator_names]
-
-            if q_norm in normalized_names:
-                match_rank = 0
-            elif any(name.startswith(q_norm) for name in normalized_names):
-                match_rank = 1
-            elif any(q_norm in name for name in normalized_names):
-                match_rank = 2
-            else:
-                continue
-
+        for row, match_rank in zip(
+            catalog[matched].to_dict("records"), ranks[matched]
+        ):
             item = {column: _clean_value(row.get(column, "")) for column in RESULT_COLUMNS}
             # This path reads the catalog directly instead of going through
             # Qdrant, so the eligibility gate has to be applied here too.
@@ -220,10 +234,38 @@ class QdrantRecommender:
             rating = _safe_float(row.get("rating"), 0.0)
             item["score"] = 1.2 - (match_rank * 0.1) + min(popularity, 250.0) / 10000.0
             item["semantic_score"] = None
-            rows.append((match_rank, -(popularity + rating), str(item.get("title", "")).casefold(), item))
+            rows.append((
+                int(match_rank),
+                -(popularity + rating),
+                str(item.get("title", "")).casefold(),
+                item,
+            ))
 
         rows.sort(key=lambda row: (row[0], row[1], row[2]))
         return [item for _, _, _, item in rows[:top_k]]
+
+    def _creator_haystack(self) -> pd.Series:
+        """Normalized creator names per row, newline-delimited, built once.
+
+        The catalogue is loaded at startup and not mutated, so this is computed on
+        first use and reused for the life of the process rather than being
+        recomputed per request.
+        """
+        cached = getattr(self, "_creator_haystack_cache", None)
+        if cached is not None and len(cached) == len(self.catalog):
+            return cached
+
+        haystack = self.catalog["creators"].map(
+            lambda value: (
+                "\n" + "\n".join(
+                    _normalize_lookup_text(name) for name in _split_creators(value)
+                ) + "\n"
+            )
+            if _split_creators(value)
+            else ""
+        )
+        self._creator_haystack_cache = haystack
+        return haystack
 
     def _personalize_results(
         self,
