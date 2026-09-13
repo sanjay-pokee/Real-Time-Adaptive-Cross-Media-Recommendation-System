@@ -85,24 +85,44 @@ class QdrantRecommender:
         if top_k <= 0:
             raise ValueError("top_k must be greater than zero.")
 
+        # Retrieval is hybrid: lexical first, then semantic fills the rest.
+        #
+        # A pure vector search cannot find a title. "F1" embeds to a vector with
+        # essentially no intent in it, so its nearest neighbours were a Punjabi
+        # song and an aromatherapy necklace while the film sat in the catalogue.
+        # Exact and keyword matches are found directly and placed above the
+        # semantic band, which is also what a user typing a title expects: the
+        # thing they named, not something that reads like it.
         person_results = self._search_person_matches(
             query,
             top_k=min(5, top_k),
             content_type=content_type,
             audience=audience,
         )
+        lexical_results = self._search_lexical_matches(
+            query,
+            top_k=min(8, top_k),
+            content_type=content_type,
+            audience=audience,
+        )
+        # A creator hit and a title hit can be the same row; the creator match is
+        # the more specific claim, so it wins.
         person_ids = {item["global_id"] for item in person_results}
+        lexical_results = [
+            item for item in lexical_results if item["global_id"] not in person_ids
+        ]
+        exact_ids = person_ids | {item["global_id"] for item in lexical_results}
 
         query_vector = self.model.encode(
             [query],
             convert_to_numpy=True,
             normalize_embeddings=True,
         ).astype(np.float32)[0]
-        search_k = max(top_k * 5 if user_id else top_k, top_k + len(person_results))
+        search_k = max(top_k * 5 if user_id else top_k, top_k + len(exact_ids))
         results = self._search_vector(query_vector, search_k, content_type, audience)
-        if person_ids:
-            results = [item for item in results if item["global_id"] not in person_ids]
-            results = person_results + results
+        if exact_ids:
+            results = [item for item in results if item["global_id"] not in exact_ids]
+            results = person_results + lexical_results + results
         results = self._personalize_results(results, search_k, user_id)
         results = self._graph_rerank(results, user_id)
         results = self._ema_rerank(results, user_id)
@@ -268,6 +288,163 @@ class QdrantRecommender:
         )
         self._creator_haystack_cache = haystack
         return haystack
+
+    def _title_haystack(self) -> pd.Series:
+        """Normalized title per row, newline-delimited, built once.
+
+        Same shape and the same reasoning as :meth:`_creator_haystack`: one
+        pass over the catalogue at first use, reused for the life of the process.
+        """
+        cached = getattr(self, "_title_haystack_cache", None)
+        if cached is not None and len(cached) == len(self.catalog):
+            return cached
+
+        haystack = self.catalog["title"].map(
+            lambda value: f"\n{_normalize_lookup_text(value)}\n"
+        )
+        self._title_haystack_cache = haystack
+        return haystack
+
+    def _keyword_haystack(self) -> pd.Series:
+        """Title plus categories, for token matching on a descriptive query."""
+        cached = getattr(self, "_keyword_haystack_cache", None)
+        if cached is not None and len(cached) == len(self.catalog):
+            return cached
+
+        titles = self.catalog["title"].fillna("").astype(str)
+        categories = self.catalog.get(
+            "categories", pd.Series("", index=self.catalog.index)
+        ).fillna("").astype(str)
+        haystack = (titles + " " + categories).map(
+            lambda value: f" {_normalize_lookup_text(value)} "
+        )
+        self._keyword_haystack_cache = haystack
+        return haystack
+
+    def _popularity_rank(self) -> pd.Series:
+        """Within-content-type popularity percentile, built once.
+
+        `popularity` means a different quantity per source: Amazon ships review
+        counts that peak near 294,000, TMDb a float that peaks near 800, Spotify
+        a 0-100 index. Ordering a mixed set of lexical hits by the raw number
+        therefore returns Amazon rows for every query regardless of relevance.
+        A within-type percentile is comparable across sources; the raw value is
+        not.
+        """
+        cached = getattr(self, "_popularity_rank_cache", None)
+        if cached is not None and len(cached) == len(self.catalog):
+            return cached
+
+        numeric = pd.to_numeric(
+            self.catalog.get("popularity", 0), errors="coerce"
+        ).fillna(0)
+        ranked = numeric.groupby(
+            self.catalog["content_type"].astype(str)
+        ).rank(pct=True).fillna(0.0)
+        self._popularity_rank_cache = ranked
+        return ranked
+
+    def _search_lexical_matches(
+        self,
+        query: str,
+        top_k: int,
+        content_type: str | None,
+        audience: AudienceContext | None = None,
+    ) -> list[dict[str, Any]]:
+        """Title and keyword matches, which semantic retrieval alone cannot find.
+
+        Retrieval used to be purely a cosine search over SBERT embeddings, with
+        one lexical escape hatch that matched the `creators` column only. Titles
+        were never matched at all, so "Christopher Nolan" worked and "F1" did
+        not: a two-character query carries almost no semantic signal, and its
+        nearest vectors are effectively arbitrary. Searching "F1" returned a
+        Punjabi song, a 3D-printer pad and an aromatherapy necklace, while the
+        2025 film *F1* sat in the catalogue the whole time.
+
+        Four tiers, most exact first, so an exact title always outranks a title
+        that merely contains the words:
+
+          0  the whole query is the title
+          1  the title starts with the query
+          2  the title contains the query
+          3  every token of the query appears in the title or its categories
+
+        Tier 3 is what makes a descriptive keyword query work - "space
+        adventure" matches an item whose categories carry both words - without
+        letting a single common token drag in the whole catalogue.
+        """
+        normalized_content_type = normalize_content_type(content_type)
+        q_norm = _normalize_lookup_text(query)
+        if len(q_norm) < 1:
+            return []
+
+        titles = self._title_haystack()
+        keywords = self._keyword_haystack()
+        popularity_rank = self._popularity_rank()
+        catalog = self.catalog
+
+        if normalized_content_type is not None:
+            type_mask = catalog["content_type"] == normalized_content_type
+            catalog = catalog[type_mask]
+            titles = titles[type_mask]
+            keywords = keywords[type_mask]
+            popularity_rank = popularity_rank[type_mask]
+
+        exact = titles.eq(f"\n{q_norm}\n")
+        prefix = titles.str.startswith(f"\n{q_norm}", na=False)
+        contains = titles.str.contains(q_norm, regex=False, na=False)
+
+        # Tier 3: every meaningful token present. Tokens of one character are
+        # dropped - they match almost everything and carry no intent - but the
+        # whole query is still matched verbatim by tiers 0-2, so a genuinely
+        # short title like "1" or "F1" is reachable there.
+        tokens = [token for token in q_norm.split() if len(token) > 1]
+        if tokens:
+            all_tokens = pd.Series(True, index=catalog.index)
+            for token in tokens:
+                all_tokens &= keywords.str.contains(token, regex=False, na=False)
+        else:
+            all_tokens = pd.Series(False, index=catalog.index)
+
+        ranks = pd.Series(9, index=catalog.index)
+        ranks = ranks.mask(all_tokens, 3)
+        ranks = ranks.mask(contains, 2)
+        ranks = ranks.mask(prefix, 1)
+        ranks = ranks.mask(exact, 0)
+        matched = ranks < 9
+        if not matched.any():
+            return []
+
+        # Cap the scan: a common token can match tens of thousands of rows, and
+        # only the strongest handful ever reach the caller.
+        candidates = catalog[matched]
+        candidate_ranks = ranks[matched]
+        candidate_pop = popularity_rank[matched]
+        order = pd.DataFrame(
+            {"rank": candidate_ranks, "pop": candidate_pop}
+        ).sort_values(["rank", "pop"], ascending=[True, False])
+        order = order.head(max(top_k * 6, 60))
+
+        rows: list[dict[str, Any]] = []
+        for index in order.index:
+            row = candidates.loc[index]
+            item = {column: _clean_value(row.get(column, "")) for column in RESULT_COLUMNS}
+            # Read straight from the catalogue rather than through Qdrant, so the
+            # eligibility gate has to be applied here the same way the creator
+            # path applies it.
+            if audience is not None and not is_eligible(item, audience):
+                continue
+            match_rank = int(order.loc[index, "rank"])
+            # Above the semantic band (cosine tops out near 1.0) so an exact
+            # title wins, but tiered so a weaker lexical match does not outrank
+            # a strong one.
+            item["score"] = 1.30 - (match_rank * 0.06)
+            item["semantic_score"] = None
+            item["match_kind"] = "title" if match_rank <= 2 else "keyword"
+            rows.append(item)
+            if len(rows) >= top_k:
+                break
+        return rows
 
     def _personalize_results(
         self,
