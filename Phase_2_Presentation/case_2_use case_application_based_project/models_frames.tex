@@ -59,25 +59,9 @@ head must degrade the ranking, never break it.}
 \begin{frame}[shrink=15]{2. Model 1 --- SBERT Semantic Encoder}
 \framesubtitle{Algorithm $\cdot$ equation $\cdot$ measured result}
 \vspace{1mm}
-\resizebox{\linewidth}{!}{%
-\begin{tikzpicture}[
-  bx/.style={rounded corners=2pt, draw=amritaSlate!80, fill=amritaSlate!8,
-             align=center, minimum height=10mm, minimum width=3.0cm, font=\large},
-  tr/.style={rounded corners=2pt, draw=amritaMaroon!80, fill=amritaMaroon!10,
-             align=center, minimum height=10mm, minimum width=3.4cm, font=\large},
-  ot/.style={rounded corners=2pt, draw=amritaTeal!85, fill=amritaTeal!12,
-             align=center, minimum height=10mm, minimum width=3.0cm, font=\large},
-  a/.style={-{Latex[length=2.6mm]}, draw=amritaSlate, line width=0.8pt}
-]
-\node[bx] (t)  at (0,0)    {\texttt{embedding\_text}};
-\node[bx] (tk) at (4.2,0)  {WordPiece\\tokenise};
-\node[tr] (mx) at (8.7,0)  {MiniLM-L6\\6 layers, 384 hidden};
-\node[bx] (mp) at (13.3,0) {mean-pool};
-\node[ot] (nm) at (17.4,0) {$L_2$ normalise};
-\node[ot] (v)  at (21.6,0) {$\mathbf{e}_i \in \mathbb{R}^{384}$};
-\draw[a] (t) -- (tk); \draw[a] (tk) -- (mx); \draw[a] (mx) -- (mp);
-\draw[a] (mp) -- (nm); \draw[a] (nm) -- (v);
-\end{tikzpicture}}
+\begin{center}
+  \includegraphics[width=\linewidth,height=3.4cm,keepaspectratio]{sbert}
+\end{center}
 \vspace{2mm}
 \begin{columns}[T]
 \column{0.485\textwidth}
@@ -178,27 +162,9 @@ The MLP tower models \textbf{non-linear} interaction --- which our inner product
 
 \column{0.495\textwidth}
 \vspace{-2mm}
-\resizebox{0.94\linewidth}{!}{%
-\begin{tikzpicture}[
-  emb/.style={rounded corners=2pt, draw=amritaSlate!80, fill=amritaSlate!10,
-              align=center, minimum height=9mm, minimum width=2.4cm, font=\large},
-  gmf/.style={rounded corners=2pt, draw=amritaTeal!85, fill=amritaTeal!12,
-              align=center, minimum height=9mm, minimum width=3.4cm, font=\large},
-  mlp/.style={rounded corners=2pt, draw=amritaMaroon!80, fill=amritaMaroon!10,
-              align=center, minimum height=9mm, minimum width=3.4cm, font=\large},
-  out/.style={rounded corners=2pt, draw=amritaMaroon, fill=amritaMaroon!20,
-              align=center, minimum height=9mm, minimum width=3.0cm, font=\large},
-  a/.style={-{Latex[length=2.6mm]}, draw=amritaSlate, line width=0.8pt}
-]
-\node[emb] (u) at (0,4.4)   {user $u$};
-\node[emb] (i) at (0,0.4)   {item $i$};
-\node[gmf] (g) at (4.6,3.4) {GMF: $\mathbf{p}_u \odot \mathbf{q}_i$};
-\node[mlp] (m) at (4.6,1.4) {MLP: concat, dense};
-\draw[a] (u) -- (g); \draw[a] (i) -- (g);
-\draw[a] (u) -- (m); \draw[a] (i) -- (m);
-\node[out] (f) at (9.4,2.4) {fuse, $\sigma \to \hat y_{ui}$};
-\draw[a] (g) -- (f); \draw[a] (m) -- (f);
-\end{tikzpicture}}
+\begin{center}
+  \includegraphics[width=\linewidth,height=4.9cm,keepaspectratio]{ncf}
+\end{center}
 \vspace{1mm}
 
 \blk{Our position, and the plan}
@@ -234,18 +200,9 @@ $v$ maps to $(v-3)/2$. Then with $\alpha = 0.25$:
 
 \column{0.46\textwidth}
 \vspace{-3mm}
-\resizebox{0.78\linewidth}{!}{%
-\begin{tikzpicture}[
-  v/.style={-{Latex[length=2.8mm]}, line width=1.1pt}, lb/.style={font=\small}
-]
-\draw[draw=amritaSlate!30, line width=0.7pt] (0,0) circle (3.2cm);
-\draw[->, draw=amritaSlate!60] (-3.8,0) -- (4.0,0);
-\draw[->, draw=amritaSlate!60] (0,-0.7) -- (0,3.9);
-\draw[v, draw=amritaSlate]  (0,0) -- (72:3.2cm) node[lb, above left, text=amritaSlate] {$\mathbf{u}_t$};
-\draw[v, draw=amritaTeal]   (0,0) -- (16:3.2cm) node[lb, right, text=amritaTeal] {$\mathbf{e}_i$};
-\draw[v, draw=amritaMaroon] (0,0) -- (58:3.2cm) node[lb, above right, text=amritaMaroon] {$\mathbf{u}_{t+1}$};
-\draw[v, draw=amritaAmber, dashed] (0,0) -- (152:3.2cm) node[lb, above left, text=amritaAmber] {a \emph{skip}};
-\end{tikzpicture}}
+\begin{center}
+  \includegraphics[width=\linewidth,height=5.5cm,keepaspectratio]{ema}
+\end{center}
 \vspace{1mm}
 
 \blk{Measured}
@@ -281,36 +238,9 @@ The $\max(3,\cdot)$ floor stops a one-word query scoring 1.0 on one incidental m
 
 \column{0.50\textwidth}
 \vspace{-3mm}
-\resizebox{0.92\linewidth}{!}{%
-\begin{tikzpicture}[
-  usr/.style={circle, draw=amritaMaroon, fill=amritaMaroon!15,
-              minimum size=12mm, align=center, font=\small\bfseries},
-  ent/.style={rounded corners=8pt, draw=amritaAmber!85, fill=amritaAmber!12,
-              align=center, minimum height=8mm, minimum width=2.4cm, font=\small},
-  itm/.style={rounded corners=2pt, draw=amritaTeal!80, fill=amritaTeal!10,
-              align=center, minimum height=8mm, minimum width=2.2cm, font=\small},
-  e/.style={-{Latex[length=2mm]}, draw=amritaSlate!80, line width=0.5pt},
-  hot/.style={-{Latex[length=2.2mm]}, draw=amritaMaroon, line width=1.3pt},
-  el/.style={font=\scriptsize, text=amritaSlate, inner sep=1.2pt, fill=white}
-]
-\node[usr] (u)  at (0,2.9)   {User};
-\node[ent] (cr) at (3.5,4.9) {Creator};
-\node[ent] (gn) at (3.5,2.9) {Genre};
-\node[ent] (pf) at (3.5,0.9) {Profession};
-\node[itm] (m1) at (7.4,5.5) {Movie};
-\node[itm] (m2) at (7.4,3.9) {Movie};
-\node[itm] (b1) at (7.4,2.3) {Book};
-\node[itm] (s1) at (7.4,0.6) {Song};
-\draw[e]   (u) -- (cr) node[el, pos=0.55] {liked};
-\draw[hot] (u) -- (gn) node[el, pos=0.55] {affinity};
-\draw[e]   (u) -- (pf);
-\draw[e]   (cr) -- (m1) node[el, pos=0.58] {directed};
-\draw[e]   (cr) -- (m2);
-\draw[e]   (gn) -- (m2) node[el, pos=0.58] {genre};
-\draw[hot] (gn) -- (b1) node[el, pos=0.58] {genre};
-\draw[e]   (pf) -- (b1);
-\draw[e]   (pf) -- (s1) node[el, pos=0.58] {suits};
-\end{tikzpicture}}
+\begin{center}
+  \includegraphics[width=\linewidth,height=5.7cm,keepaspectratio]{kg}
+\end{center}
 \vspace{1mm}
 
 {\scriptsize\textcolor{amritaMaroon}{\textbf{Bold path:}} a \emph{movie} preference reaches a
@@ -325,55 +255,37 @@ The $\max(3,\cdot)$ floor stops a one-word query scoring 1.0 on one incidental m
 \framesubtitle{Algorithm $\cdot$ equation $\cdot$ measured result}
 \vspace{1mm}
 \begin{columns}[T]
-\column{0.525\textwidth}
+\column{0.53\textwidth}
 \blk{Profile head --- a score}
-{\scriptsize A \textbf{weighted term matcher} against the declared profile; avoid-terms subtract at
-nearly twice the weight of a positive match.
+{\footnotesize A \textbf{weighted term matcher} against the declared profile; avoid-terms subtract
+at nearly twice the weight of a positive match.
 \[ S_{\mathit{profile}} = \operatorname{clip}\big(0.16|P\cap i| - 0.25|A\cap i| + 0.15\cdot\mathbf{1}[\tau_i \in \Pi]\big) \]}
 \vspace{-3mm}
-{\tiny $P$ = interests $\cup$ likes $\cup$ skills $\cup$ role $\cup$ age terms; \ $A$ = avoid terms;
-\ $\Pi$ = preferred types; clipped to $[-1,1]$.}
-\vspace{2mm}
+{\scriptsize $P$ = interests $\cup$ likes $\cup$ skills $\cup$ role $\cup$ age terms; \ $A$ = avoid
+terms; \ $\Pi$ = preferred types; clipped to $[-1,1]$.}
+\vspace{3mm}
 
 \blk{Eligibility --- a predicate, not a score}
-{\scriptsize
+{\footnotesize
 \[ \mathrm{elig}(i\,|\,c) = \mathbf{1}\big[a_{\mathit{eff}} \geq \mathrm{minage}(i)\big] \wedge \mathbf{1}\big[\tau_i \in \mathcal{T}(d)\big] \]
 Compiled \emph{into} the Qdrant query, so an ineligible item is never retrieved, never scored, and
 cannot be promoted back by any head.}
 \vspace{2mm}
 
+{\footnotesize\textbf{Fail-closed.} No age supplied caps at teen, not adult. Unknown metadata falls
+back to the content-type default, never to unrestricted. Health and finance are \textbf{discovery
+only, never advice}.}
+
+\column{0.445\textwidth}
+\vspace{-2mm}
+\begin{center}
+  \includegraphics[width=\linewidth,height=5.9cm,keepaspectratio]{gate}
+\end{center}
+\vspace{2mm}
 \blk{Measured}
 \begin{tight}
   \item Mean \textbf{profile@5 $=$ 0.957}; \textbf{8 of 8} scenarios fully profile-positive.
-  \item Violations \textbf{0.000} on, \textbf{1.000} off, across \textbf{9} profiles.
+  \item Violations \textbf{0.000} on, \textbf{1.000} off, across \textbf{9} viewer profiles.
 \end{tight}
-
-\column{0.45\textwidth}
-\vspace{-3mm}
-\resizebox{0.74\linewidth}{!}{%
-\begin{tikzpicture}[
-  pool/.style={rounded corners=2pt, draw=amritaSlate!80, fill=amritaSlate!8,
-               align=center, minimum height=12mm, minimum width=4.4cm, font=\large},
-  gate/.style={rounded corners=2pt, draw=amritaMaroon, fill=amritaMaroon!20,
-               align=center, minimum height=12mm, minimum width=4.4cm, font=\large},
-  rank/.style={rounded corners=2pt, draw=amritaTeal!85, fill=amritaTeal!12,
-               align=center, minimum height=12mm, minimum width=4.4cm, font=\large},
-  a/.style={-{Latex[length=3mm]}, draw=amritaSlate, line width=1.0pt}
-]
-\node[pool] (all)  at (0,0)    {catalog: 120{,}747};
-\node[gate] (gt)   at (0,-2.3) {\textbf{1: eligibility}};
-\node[pool] (elig) at (0,-4.6) {eligible pool\\4{,}987 at age 8};
-\node[rank] (rk)   at (0,-6.9) {\textbf{2: relevance}\\five additive heads};
-\node[rank] (out)  at (0,-9.2) {top-$K$};
-\draw[a] (all) -- (gt); \draw[a] (gt) -- (elig);
-\draw[a] (elig) -- (rk); \draw[a] (rk) -- (out);
-\draw[draw=amritaMaroon, line width=1.1pt, -{Latex[length=3mm]}] (2.3,-2.3) -- (4.0,-2.3);
-\node[font=\large, text=amritaMaroon, anchor=west] at (4.2,-2.3) {never scored};
-\end{tikzpicture}}
-\vspace{1mm}
-
-{\scriptsize\textbf{Fail-closed.} No age supplied caps at teen, not adult. Unknown metadata falls
-back to the content-type default, never to unrestricted. Health and finance are
-\textbf{discovery only, never advice}.}
 \end{columns}
 \end{frame}

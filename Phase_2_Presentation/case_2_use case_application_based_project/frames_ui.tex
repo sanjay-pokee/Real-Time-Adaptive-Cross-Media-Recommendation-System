@@ -17,14 +17,14 @@
 \framesubtitle{Every ranked card exposes the sub-scores that produced it}
 \vspace{-1mm}
 \begin{center}
-\shot{search}{width=0.88\linewidth,height=4.3cm,keepaspectratio}%
+\shot{search}{width=0.88\linewidth,height=5.7cm,keepaspectratio}%
 {Search results with one card's score breakdown expanded.}
 \end{center}
 \vspace{-1.5mm}
 \begin{columns}[T]
 \column{0.485\textwidth}
 \blk{What is on screen}
-\begin{itemize}\tiny\setlength{\itemsep}{2.5pt}
+\begin{itemize}\scriptsize\setlength{\itemsep}{2.5pt}
   \item Query \texttt{"space adventure with aliens"} under the \texttt{Sci-Fi Explorer} profile ---
         \textbf{10 results in 3973\,ms}, spanning \textbf{movies and shows}.
   \item \textbf{\#1 Aliens in the Attic, 0.912.} The bars are the score, not decoration.
@@ -34,7 +34,7 @@
 
 \column{0.485\textwidth}
 \blk{The sub-scores sum to the printed total}
-\begin{itemize}\tiny\setlength{\itemsep}{2.5pt}
+\begin{itemize}\scriptsize\setlength{\itemsep}{2.5pt}
   \item $0.681_{\mathit{sem}} + 0.100_{\mathit{profile}} + 0.090_{\mathit{ema}}
         + 0.040_{\mathit{kg}} = \mathbf{0.911}$, against a printed \textbf{0.912} --- the
         difference is rounding, and it is checkable on screen.
@@ -53,13 +53,13 @@
 \column{0.45\textwidth}
 \vspace{-1mm}
 \begin{center}
-\shot{similar}{width=\linewidth,height=5.0cm,keepaspectratio}%
+\shot{similar}{width=\linewidth,height=6.4cm,keepaspectratio}%
 {The Find-similar drawer, anchored on a result card.}
 \end{center}
 
 \column{0.525\textwidth}
 \blk{Same five heads, a different anchor}
-\begin{itemize}\tiny\setlength{\itemsep}{2.5pt}
+\begin{itemize}\scriptsize\setlength{\itemsep}{2.5pt}
   \item The drawer calls \texttt{POST /recommend/item}: the query vector \emph{is} the anchor
         item's own 384-d embedding, so nothing is typed.
   \item \textbf{\#1 Minions \& Monsters, 0.847}
@@ -72,7 +72,7 @@
 \end{itemize}
 \vspace{1mm}
 \blk{Closing the loop}
-\begin{itemize}\tiny\setlength{\itemsep}{2.5pt}
+\begin{itemize}\scriptsize\setlength{\itemsep}{2.5pt}
   \item Any card's like / skip / rate $\rightarrow$ \texttt{POST /interactions} $\rightarrow$ MySQL
         $\rightarrow$ EMA update ($\alpha = 0.25$, \textbf{39\,$\mu$s}).
   \item The next query ranks from the updated vector --- one vector write, never a retrain.

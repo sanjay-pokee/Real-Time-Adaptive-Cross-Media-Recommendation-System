@@ -88,10 +88,10 @@
 \hyphenpenalty=2000
 \tolerance=1500
 
-\newcommand{\blk}[1]{{\scriptsize\textbf{#1}}\par\vspace{0.9mm}}
+\newcommand{\blk}[1]{{\footnotesize\textbf{#1}}\par\vspace{0.9mm}}
 
 % --- Bulleted list with room to breathe ---
-\newenvironment{tight}{\begin{itemize}\scriptsize\setlength{\itemsep}{3.2pt}}{\end{itemize}}
+\newenvironment{tight}{\begin{itemize}\footnotesize\setlength{\itemsep}{3.2pt}}{\end{itemize}}
 
 % --- Screenshot macro: degrades to a labelled capture instruction -----
 %  #1 = file base name (NO UNDERSCORES -- it is typeset in the fallback
@@ -287,20 +287,20 @@ Remaining 25\%  & LightGCN at catalog scale, Neo4j KG, Docker and CI, latency st
 % =====================================================================
 \section{Architecture \& Module Design}
 
-\begin{frame}{1. Software Architecture \& Module Design}
+\begin{frame}[shrink=15]{1. Software Architecture \& Module Design}
 \framesubtitle{Rubric: Architecture, Module Interaction, APIs, DB Schema \& Deployment (5 Marks)}
-\vspace{-1mm}
+\vspace{0.5mm}
 \begin{center}
-  \includegraphics[width=\linewidth]{architecture}
+  \includegraphics[width=\linewidth,height=6.3cm,keepaspectratio]{architecture}
 \end{center}
-
-\vspace{-1mm}
-{\scriptsize\textbf{Stack:} React 19 $\rightarrow$ FastAPI + Pydantic v2 (8 endpoints) $\rightarrow$
-SBERT + Qdrant + MySQL 8 + PyTorch. Solid arrows = request time; dashed = training time.\\[1mm]
-\textbf{Two stages, in this order:} \textcolor{amritaMaroon}{\textbf{eligibility}} decides what may be
-retrieved at all, then \textcolor{amritaTeal}{\textbf{relevance}} ranks what survived ---
+\vspace{1mm}
+{\scriptsize\textbf{The ordering is the design.}
+\textcolor{amritaMaroon}{\textbf{Stage 1}} is a hard predicate --- it decides what may be retrieved
+\emph{at all}, and is compiled into the vector query, so an ineligible item is never scored and no
+head can promote it back. \textcolor{amritaTeal}{\textbf{Stage 2}} then ranks only what survived:
 $S = S_{sem} + \lambda_g S_{graph} + \lambda_e S_{ema} + \lambda_k S_{kg} + \lambda_p S_{profile}$,
-with every sub-score returned to the UI.}
+with every sub-score returned to the UI. The single dashed edge is the only thing that crosses from
+training to serving --- one \texttt{.npz} file --- which is why the API stays CPU-only.}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -415,26 +415,26 @@ Only the artwork URL is read; it reaches no model.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}[shrink=15]{2. Retrieval --- Hybrid Lexical and Semantic}
+\begin{frame}{2. Retrieval --- Hybrid Lexical and Semantic}
 \framesubtitle{Candidate generation: dense vectors for meaning, a lexical path for exact names}
-\vspace{1mm}
+\vspace{2mm}
 \begin{columns}[T]
 \column{0.485\textwidth}
 \blk{Why one path was not enough}
-\begin{tight}
+\begin{itemize}\small\setlength{\itemsep}{5pt}
   \item Dense retrieval \emph{smears} exact names: the vector for "James Cameron" sits near every
         other director, so a name query returned topically similar films rather than his.
   \item The lexical path was restored \emph{beside} the vector path --- three tiers in order:
         \textbf{creator}, \textbf{title}, \textbf{keyword}.
-  \item Lexical hits are capped at half the page, so an exact match never crowds out the
-        semantic result set.
+  \item Lexical hits are capped at half the page, so an exact match never crowds out the semantic
+        result set.
   \item Every result carries \texttt{match\_kind} and \texttt{match\_tier}, so the UI can show
         \emph{which field} matched.
-\end{tight}
+\end{itemize}
 
 \column{0.485\textwidth}
 \blk{Trade-offs}
-\begin{tight}
+\begin{itemize}\small\setlength{\itemsep}{5pt}
   \item \textbf{Qdrant over FAISS.} Payload filtering happens \emph{inside} the ANN search. With
         FAISS the audience filter would have been a post-filter --- a correctness problem, not
         merely a slower path.
@@ -443,12 +443,14 @@ Only the artwork URL is read; it reaches no model.}
   \item \textbf{Reserved ranking slots.} Creator and title matches score above the cosine range
         ($1.2-0.1r$ and $1.30-0.06r$) so an exact name always wins. These are ranking slots by
         construction, not calibrated scores.
-\end{tight}
+\end{itemize}
 \end{columns}
-\vspace{2mm}
-{\scriptsize $S_{\mathit{sem}} = \cos(\mathbf{e}_i, \mathbf{q})$ over one shared 384-d space for
-queries, items and user vectors --- so cosine applies with no projection layer. The limit of this
-head: semantic similarity cannot express \emph{behaviour}, which is what the graph model adds.}
+\vfill
+{\footnotesize $S_{\mathit{sem}} = \cos(\mathbf{e}_i, \mathbf{q})$ over one shared 384-d space for
+queries, items and user vectors --- so cosine applies with no projection layer. \textbf{The limit of
+this head:} semantic similarity cannot express \emph{behaviour}, which is exactly what the graph
+model adds.}
+\vfill
 \end{frame}
 
 % --- UI evidence (search.png / similar.png) --------------------------
@@ -462,55 +464,9 @@ head: semantic similarity cannot express \emph{behaviour}, which is what the gra
 \begin{frame}{2. Model Design --- Multi-Signal Ranking Pipeline}
 \framesubtitle{One query becomes an explainable ranked list spanning four domains}
 \vspace{1mm}
-\resizebox{\linewidth}{!}{%
-\begin{tikzpicture}[
-  inp/.style={rounded corners=9pt, draw=amritaSlate!80, fill=amritaSlate!10,
-              align=center, minimum height=9mm, minimum width=2.6cm, font=\large},
-  proc/.style={rounded corners=2pt, draw=amritaMaroon!75, fill=amritaMaroon!8,
-              align=center, minimum height=10mm, minimum width=3.0cm, font=\large},
-  gate/.style={rounded corners=2pt, draw=amritaMaroon, fill=amritaMaroon!22,
-              align=center, minimum height=10mm, minimum width=3.0cm, font=\large},
-  head/.style={rounded corners=2pt, draw=amritaTeal!80, fill=amritaTeal!7,
-              align=center, minimum height=9mm, minimum width=4.9cm, font=\large},
-  sum/.style={circle, draw=amritaMaroon, fill=amritaMaroon!15, minimum size=11mm, font=\LARGE},
-  outp/.style={rounded corners=2pt, draw=amritaMaroon, fill=amritaMaroon!15,
-              align=center, minimum height=10mm, minimum width=3.0cm, font=\large},
-  fl/.style={-{Latex[length=2.6mm]}, draw=amritaSlate, line width=0.8pt},
-  fw/.style={-{Latex[length=2.4mm]}, draw=amritaTeal!85, line width=0.7pt},
-  fb/.style={-{Latex[length=2.6mm]}, draw=amritaAmber, line width=0.8pt, dashed},
-  tag/.style={font=\normalsize\itshape, text=amritaAmber, anchor=west}
-]
-\node[inp] (q)  at (0,4.55) {query $q$};
-\node[inp] (u)  at (0,3.40) {user $u$, age};
-\node[inp] (kk) at (0,2.25) {$K$, domain};
-
-\node[proc] (val) at (3.60,3.40) {Pydantic\\validation};
-\draw[fl] (q) -- (val); \draw[fl] (u) -- (val); \draw[fl] (kk) -- (val);
-
-\node[gate] (gate) at (7.40,3.40) {eligibility\\filter};
-\draw[fl] (val) -- (gate);
-
-\node[proc] (enc) at (11.20,4.65) {SBERT encode};
-\node[proc] (cre) at (11.20,2.15) {lexical match};
-\draw[fl] (gate) -- (enc); \draw[fl] (gate) -- (cre);
-\node[proc, minimum width=3.2cm] (cand) at (15.00,3.40) {Qdrant ANN\\+ dedup};
-\draw[fl] (enc) -- (cand); \draw[fl] (cre) -- (cand);
-
-\node[head] (h1) at (20.50,5.65) {$S_{\mathit{sem}}=\cos(\mathbf{e}_i,\mathbf{q})$ \ \ $\times\,1.00$};
-\node[head] (h2) at (20.50,4.53) {$S_{\mathit{graph}}=\mathbf{e}_u^{\top}\mathbf{e}_i$ \ \ $\times\,0.20$};
-\node[head] (h3) at (20.50,3.41) {$S_{\mathit{ema}}=\cos(\mathbf{e}_i,\mathbf{u}_t)$ \ \ $\times\,0.15$};
-\node[head] (h4) at (20.50,2.29) {$S_{\mathit{kg}}$ token overlap \ \ $\times\,0.08$};
-\node[head] (h5) at (20.50,1.17) {$S_{\mathit{profile}}$ age / job \ \ $\times\,0.10$};
-\foreach \h in {h1,h2,h3,h4,h5}{\draw[fw] (cand.east) -- (\h.west);}
-
-\node[sum]  (sig) at (25.00,3.41) {$\Sigma$};
-\foreach \h in {h1,h2,h3,h4,h5}{\draw[fw] (\h.east) -- (sig);}
-\node[outp] (out) at (25.00,1.17) {sort $\rightarrow$ top-$K$};
-\draw[fl] (sig) -- (out);
-
-\draw[fb] (out.south) -- (25.00,0.30) -- (3.60,0.30) -- (val.south);
-\node[tag] at (9.20,0.62) {real-time EMA feedback loop};
-\end{tikzpicture}}
+\begin{center}
+  \includegraphics[width=\linewidth,height=5.4cm,keepaspectratio]{pipeline}
+\end{center}
 
 \vspace{2mm}
 {\scriptsize\textbf{Reading the diagram.} The \textcolor{amritaMaroon}{\textbf{eligibility gate}} runs \emph{before} any head, so an ineligible item is never scored. The five heads then
@@ -591,7 +547,7 @@ too --- a child profile sees 4.1\% of the catalog.}
 \begin{columns}[T]
 \column{0.485\textwidth}
 \begin{center}
-\shot{age-child}{width=\linewidth,height=4.5cm,keepaspectratio}%
+\shot{age-child}{width=\linewidth,height=5.4cm,keepaspectratio}%
 {Refine drawer open, age set to 8.}
 \end{center}
 \vspace{-1mm}
@@ -599,7 +555,7 @@ too --- a child profile sees 4.1\% of the catalog.}
 
 \column{0.485\textwidth}
 \begin{center}
-\shot{age-adult}{width=\linewidth,height=4.5cm,keepaspectratio}%
+\shot{age-adult}{width=\linewidth,height=5.4cm,keepaspectratio}%
 {Refine drawer open, age set to 25.}
 \end{center}
 \vspace{-1mm}
