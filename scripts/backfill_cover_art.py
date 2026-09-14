@@ -30,6 +30,14 @@ has to cover the two that do not:
            asks for attribution when their content is displayed; revisit this if
            the project is ever published or commercialised.
 
+           `lastfm`: title/artist matched on Last.fm's track.getInfo. Needs a
+           free LASTFM_API_KEY in .env, instant to obtain. Roughly 5 requests a
+           second against iTunes' ~20 a minute, so it clears a 15k backlog in
+           about an hour rather than a day - but it answers for fewer tracks:
+           55% of the most popular uncovered rows against iTunes' 92%, because
+           Last.fm matches on artist and title and its album database is thinner
+           for obscure releases. Use it for volume, iTunes for coverage.
+
            `itunes` (default): title/artist matched on the iTunes Search API.
            Free, no key, no OAuth, but capped near 20 lookups/minute.
 * movie  - TMDB's 5000-movie export has only a homepage column. Needs a TMDb
@@ -45,6 +53,7 @@ iTunes refused all but the first few dozen: 6,000 lookups produced 53 covers,
 where the first 40 alone had produced 40.
 
 Usage:
+    python -m scripts.backfill_cover_art --content-type music --provider lastfm --limit 20000
     python -m scripts.backfill_cover_art --content-type music --provider spotify --limit 30000
     python -m scripts.backfill_cover_art --content-type music --limit 1200
     python -m scripts.backfill_cover_art --content-type movie --limit 4803
@@ -78,6 +87,10 @@ CATALOG_PATH = PROJECT_ROOT / "data" / "processed" / "content_catalog.csv"
 CACHE_PATH = PROJECT_ROOT / "data" / "processed" / "cover_art_cache.csv"
 
 ITUNES_SEARCH = "https://itunes.apple.com/search"
+LASTFM_API = "https://ws.audioscrobbler.com/2.0/"
+# Last.fm returns this image rather than omitting the field when it has no
+# art for a track. It is a grey star, identical for every miss.
+LASTFM_PLACEHOLDER = "2a96cbd8b46e442fc41c2b86b821562f"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
@@ -148,6 +161,62 @@ def _itunes_artwork(session: requests.Session, title: str, artist: str):
     art = str(results[0].get("artworkUrl100") or "")
     # The 100px thumbnail URL upgrades to any size by substitution.
     return art.replace("100x100bb", "400x400bb") if art else ""
+
+
+def _lastfm_artwork(session: requests.Session, title: str, artist: str, api_key: str):
+    """Album art for one track, via Last.fm's track.getInfo.
+
+    Same contract as the iTunes lookup: a URL, "" for a genuine miss, or
+    THROTTLED when the request was refused, so a non-answer is never cached.
+
+    Last.fm allows roughly 5 requests a second against one key, where iTunes
+    tolerates about 20 a minute, so this is the provider that can finish the
+    catalogue in an hour rather than a day.
+    """
+    artist = (artist or "").split(",")[0].strip()
+    if not artist or not title:
+        return ""
+    try:
+        response = session.get(
+            LASTFM_API,
+            params={
+                "method": "track.getInfo",
+                "api_key": api_key,
+                "artist": artist,
+                "track": title,
+                "autocorrect": 1,
+                "format": "json",
+            },
+            timeout=15,
+        )
+        if response.status_code in (403, 429, 503):
+            return THROTTLED
+        response.raise_for_status()
+        payload = response.json()
+    except (requests.RequestException, ValueError):
+        return THROTTLED
+
+    # Last.fm reports a bad key or a rate limit as a 200 with an error body.
+    if "error" in payload:
+        code = payload.get("error")
+        if code in (8, 11, 16, 29):      # transient / rate-limited
+            return THROTTLED
+        if code in (10, 26):             # invalid or suspended key: not retryable
+            raise SystemExit(
+                f"Last.fm rejected the API key ({payload.get('message')}). "
+                "Check LASTFM_API_KEY in .env."
+            )
+        return ""
+
+    images = ((payload.get("track") or {}).get("album") or {}).get("image") or []
+    by_size = {img.get("size"): str(img.get("#text") or "") for img in images}
+    url = by_size.get("extralarge") or by_size.get("large") or by_size.get("medium") or ""
+    # Last.fm serves a grey star placeholder rather than omitting the field when
+    # it has no art. Caching that would fill the UI with identical placeholders,
+    # which is worse than the gradient it would be replacing.
+    if not url or LASTFM_PLACEHOLDER in url:
+        return ""
+    return url
 
 
 def _tmdb_poster(session: requests.Session, source_id: str, api_key: str):
@@ -367,6 +436,13 @@ def backfill(content_type: str, limit: int, rate: int, provider: str = "itunes")
         _backfill_music_via_spotify(list(todo.itertuples(index=False)), cache)
         return
 
+    lastfm_key = os.getenv("LASTFM_API_KEY", "").strip()
+    if provider == "lastfm" and not lastfm_key:
+        raise SystemExit(
+            "Last.fm needs LASTFM_API_KEY in .env." + NEWLINE
+            + "Create one at https://www.last.fm/api/account/create - free, instant."
+        )
+
     api_key = os.getenv("TMDB_API_KEY", "").strip()
     if content_type == "movie" and not api_key:
         raise SystemExit(
@@ -391,6 +467,11 @@ def backfill(content_type: str, limit: int, rate: int, provider: str = "itunes")
 
             if content_type == "movie":
                 result = _tmdb_poster(session, str(record.source_id), api_key)
+            elif provider == "lastfm":
+                result = _lastfm_artwork(
+                    session, str(record.title or ""), str(record.creators or ""),
+                    lastfm_key,
+                )
             else:
                 result = _itunes_artwork(
                     session, str(record.title or ""), str(record.creators or "")
@@ -444,7 +525,7 @@ def main() -> None:
     parser.add_argument("--rate", type=int, default=20,
                         help="Requests per minute. iTunes tolerates roughly 20; going "
                              "faster gets the address refused (default 20)")
-    parser.add_argument("--provider", choices=["itunes", "spotify"], default="itunes",
+    parser.add_argument("--provider", choices=["itunes", "spotify", "lastfm"], default="itunes",
                         help="Music artwork source. 'spotify' matches on the track id "
                              "the catalogue already carries and fetches 50 per request, "
                              "so the whole catalogue is ~570 requests instead of 28,352 "
@@ -462,8 +543,13 @@ def main() -> None:
     if not args.content_type:
         parser.error("--content-type is required unless --purge-unanswered is given")
 
-    if args.provider == "spotify" and args.content_type != "music":
-        parser.error("--provider spotify only applies to --content-type music")
+    if args.provider in ("spotify", "lastfm") and args.content_type != "music":
+        parser.error(f"--provider {args.provider} only applies to --content-type music")
+
+    # Last.fm tolerates roughly 5 requests a second, against iTunes' ~20 a
+    # minute, so leaving the iTunes default in place would throw that away.
+    if args.provider == "lastfm" and args.rate == parser.get_default("rate"):
+        args.rate = 240
 
     backfill(args.content_type, args.limit, args.rate, args.provider)
 
