@@ -1,0 +1,78 @@
+% =====================================================================
+%  UI EVIDENCE FRAMES  --  \input{frames_ui} from the main .tex,
+%  directly AFTER the "2. Implementation Progress" frame.
+%
+%  Images expected beside the main file: search.png, similar.png
+%  (the \screenshot macro also accepts .jpg and degrades to a labelled
+%   placeholder box when the file has not been uploaded yet, so the deck
+%   always compiles).
+%
+%  Preamble requirement -- add this macro next to the status shorthands:
+%
+%  \newcommand{\screenshot}[2]{%
+%    \IfFileExists{#1.png}{\includegraphics[#2]{#1}}{%
+%    \IfFileExists{#1.jpg}{\includegraphics[#2]{#1}}{%
+%    \fbox{\parbox[c][3.0cm][c]{0.55\linewidth}{\centering\scriptsize
+%      \textit{Upload \texttt{#1.png}}}}}}}
+%
+%  HEIGHT BUDGET: a 16:9 frame gives ~7.2cm of body. The screenshot
+%  heights below (4.2cm / 5.0cm) are what keeps the bullets on the slide
+%  -- if you enlarge an image, delete a bullet to pay for it.
+% =====================================================================
+
+% ---------------------------------------------------------------------
+\begin{frame}{2. System in Action -- Search and the Score Breakdown}
+\framesubtitle{Every ranked card exposes the five sub-scores that produced it}
+\vspace{-1.5mm}
+\begin{center}
+\screenshot{search}{width=0.86\linewidth,height=4.2cm,keepaspectratio}
+\end{center}
+\vspace{-3mm}
+\begin{columns}[T]
+\column{0.485\textwidth}
+{\scriptsize\textbf{What is on screen}}
+\begin{itemize}\tiny
+\setlength{\itemsep}{2pt}
+  \item Typeahead from \texttt{GET /search/suggest}; the \texttt{Title} badge names \emph{which} field matched.
+  \item One result set, three domains --- \textbf{9 Movies / 1 Book / 0 Music}; profile \texttt{Action Fan}, $K=10$, average \textbf{0.67}.
+  \item The $K$ slider and type filter travel as payload filters, applied \emph{inside} the Qdrant search.
+\end{itemize}
+
+\column{0.485\textwidth}
+{\scriptsize\textbf{The bars are the score, not decoration}}
+\begin{itemize}\tiny
+\setlength{\itemsep}{2pt}
+  \item \textbf{\#1 The Avengers, 0.861} $=0.661+0.063+0.061+0.053+0.022$ --- the five heads \emph{sum} to the printed total.
+  \item \textbf{\#3 Age of Ultron:} \emph{Graph} is greyed out --- no LightGCN embedding, so $0.559+0.063+0.053+0.021=0.696$ still ranks it. Graceful degradation, live.
+\end{itemize}
+\end{columns}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{2. System in Action -- Find Similar and the Feedback Loop}
+\framesubtitle{Item-to-item retrieval through \texttt{POST /recommend/item} --- same heads, different anchor}
+\vspace{0.5mm}
+\begin{columns}[T]
+\column{0.45\textwidth}
+\vspace{-1mm}
+\begin{center}
+\screenshot{similar}{width=\linewidth,height=5.0cm,keepaspectratio}
+\end{center}
+
+\column{0.525\textwidth}
+{\scriptsize\textbf{Same five heads, a different anchor}}
+\begin{itemize}\tiny
+\setlength{\itemsep}{2pt}
+  \item The drawer calls \texttt{POST /recommend/item}: the query vector \emph{is} the anchor item's own 384-d embedding, so nothing is typed.
+  \item \textbf{Captain America: Civil War, 0.913} $=0.681+0.126+0.063+0.021+0.021$.
+  \item The same film was \textbf{\#2 at 0.852} in the text search. \textbf{Graph is $+0.126$ in both} --- it is a $(\mathit{user},\mathit{item})$ property, independent of the query. \textbf{Semantic moves $0.588\rightarrow0.681$} because the anchor changed from the typed string to the item vector.
+\end{itemize}
+\vspace{1mm}
+{\scriptsize\textbf{Closing the loop}}
+\begin{itemize}\tiny
+\setlength{\itemsep}{2pt}
+  \item Any card's like / skip / rate $\rightarrow$ \texttt{POST /interactions} $\rightarrow$ MySQL $\rightarrow$ EMA update ($\alpha=0.25$).
+  \item The next query ranks from the updated vector --- adaptation is \textbf{one vector write}, never a retrain.
+\end{itemize}
+\end{columns}
+\end{frame}

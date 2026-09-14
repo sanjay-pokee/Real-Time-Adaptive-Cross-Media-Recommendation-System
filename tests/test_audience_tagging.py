@@ -476,3 +476,29 @@ class TestMusicKeywordsMayOnlyRestrict:
         # Movies were already covered: "animation" is a production technique,
         # not an audience, and must not relax a film below the teen default.
         assert maturity_for_row("movie", "Animation, Science Fiction") == "teen"
+
+
+class TestShowsAreGuardedLikeFilms:
+    """Television declares `maturity_source: certification` even though no TV
+    board rating is fetched. The label is what activates _restrict_only: under
+    it a genre may only restrict a show, never relax one. Without it
+    "Animation" would drop adult series to all_ages, the same way it once
+    relaxed Akira and Grave of the Fireflies on the film side."""
+
+    def test_animation_cannot_relax_a_show_below_teen(self):
+        assert maturity_for_row("show", "Animation, Family") == "teen"
+
+    def test_kids_genres_cannot_relax_a_show(self):
+        assert maturity_for_row("show", "Kids, Animation") == "teen"
+
+    def test_a_show_can_still_escalate(self):
+        assert maturity_for_row("show", "Horror, Thriller") == "adult"
+
+    def test_an_unremarkable_show_takes_the_teen_default(self):
+        assert maturity_for_row("show", "Drama, Crime") == "teen"
+
+    def test_show_is_registered_in_entertainment(self):
+        from backend.domains import get_registry
+        registry = get_registry()
+        assert "show" in registry.content_types_for_domain("entertainment")
+        assert registry.content_type("show").domain == "entertainment"

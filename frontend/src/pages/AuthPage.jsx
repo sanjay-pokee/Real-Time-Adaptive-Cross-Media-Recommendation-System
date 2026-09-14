@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Lock, Mail, Sparkles, UserPlus } from 'lucide-react';
 import { USERS } from '../components/UserSelector';
@@ -57,14 +57,11 @@ export default function AuthPage({ onAuth }) {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
 
-  // The auth screen is always dark - it is the product's first impression.
-  useEffect(() => {
-    const previous = document.documentElement.getAttribute('data-theme');
-    document.documentElement.setAttribute('data-theme', 'dark');
-    return () => {
-      if (previous) document.documentElement.setAttribute('data-theme', previous);
-    };
-  }, []);
+  // The auth screen used to force `dark` regardless of preference, on the
+  // reasoning that it is the product's first impression. Under the editorial
+  // light surface that inverts the intent: the first impression became a dark
+  // page that flipped to paper the moment anyone signed in. It now follows the
+  // saved preference like every other screen, so the entrance is continuous.
 
   const selectedUser = useMemo(
     () => USERS.find((user) => user.id === selectedUserId) || USERS[0],

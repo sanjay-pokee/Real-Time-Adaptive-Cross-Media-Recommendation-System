@@ -50,7 +50,7 @@ def test_a_domain_scopes_the_query_to_its_content_types():
         eligibility_conditions(AudienceContext(age=30, domain="entertainment"))
     )
 
-    assert set(conditions["content_type"].match.any) == {"movie", "book", "music"}
+    assert set(conditions["content_type"].match.any) == {"movie", "show", "book", "music"}
 
 
 def test_an_explicit_content_type_narrows_further_than_its_domain():

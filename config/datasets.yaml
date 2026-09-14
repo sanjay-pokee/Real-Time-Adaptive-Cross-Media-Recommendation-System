@@ -27,6 +27,36 @@ datasets:
       - overview
     credits_top_cast: 5
 
+  # Television, from TMDb's /discover/tv. The catalogue had films but no shows,
+  # so "Breaking Bad" returned a documentary about it and nothing else.
+  #   python -m scripts.fetch_tmdb_shows
+  #
+  # Same column names as tmdb_movies.csv, so `normalize_movies` reads it
+  # unchanged - TMDb's `name` and `first_air_date` are renamed on the way out
+  # of the fetcher. No credits_path: /discover/tv carries no cast, and
+  # _load_credits returns blanks when the key is absent.
+  #
+  # vote_count >= 25, not the movie fetcher's 100: television accrues far
+  # fewer TMDb votes, and 100 leaves only a few hundred series in all of TMDb.
+  shows:
+    content_type: show
+    normalizer: movies
+    source: tmdb_tv_api
+    path: datasets/tmdb/tmdb_shows.csv
+    id_column: id
+    title_column: title
+    description_column: overview
+    category_columns:
+      - genres
+    creator_columns: []
+    release_date_column: release_date
+    popularity_column: popularity
+    rating_column: vote_average
+    metadata_columns:
+      - title
+      - genres
+      - overview
+
   books:
     content_type: book
     # Was a Google Books scrape on Kaggle: 15,147 rows from 149 keyword

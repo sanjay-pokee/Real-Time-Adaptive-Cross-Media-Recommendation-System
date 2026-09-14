@@ -30,6 +30,7 @@ domains:
     advisory: null
     content_types:
       - movie
+      - show
       - book
       - music
 
@@ -72,6 +73,20 @@ content_types:
     label: Movie
     aliases: [movie, movies, film, films]
     default_maturity: teen
+    maturity_source: certification
+
+  show:
+    domain: entertainment
+    label: TV Show
+    aliases: [show, shows, tv, series, tv show, television, sitcom]
+    default_maturity: teen
+    # `certification` rather than `category`, even though no TV board rating is
+    # fetched yet. The label is what drives _restrict_only in
+    # preprocessing/audience_tagging.py: under it a genre keyword may only
+    # restrict a show, never relax one. Without that, "Animation" would drop
+    # adult series to all_ages - the same defect that once relaxed Akira and
+    # Grave of the Fireflies on the film side. So an unrated show sits at the
+    # `teen` default and only escalates.
     maturity_source: certification
 
   book:

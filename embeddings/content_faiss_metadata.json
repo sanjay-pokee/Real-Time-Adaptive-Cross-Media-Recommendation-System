@@ -1,8 +1,8 @@
 {
-  "created_at": "2026-09-14T08:33:17.328670+00:00",
+  "created_at": "2026-09-14T09:18:02.371104+00:00",
   "index_type": "IndexFlatIP",
   "metric": "inner_product",
-  "embedding_rows": 110130,
+  "embedding_rows": 120747,
   "embedding_dimension": 384,
   "source_embeddings": "D:\\COLLEGE\\Course\\Data science and Data analytics\\product\\embeddings\\content_embeddings.npy",
   "source_index": "D:\\COLLEGE\\Course\\Data science and Data analytics\\product\\embeddings\\content_embedding_index.csv"

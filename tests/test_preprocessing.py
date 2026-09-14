@@ -312,3 +312,65 @@ class TestCatalogueReadsAreChunkSafe:
         frame.to_csv(path, index=False)
         back = pd.read_csv(path, low_memory=False)
         assert not any(isinstance(v, float) for v in back.release_date)
+
+
+class TestFranchiseMerge:
+    """Franchise and keyword tags must land in `categories`.
+
+    backend/qdrant_recommender indexes title plus categories and nothing else,
+    so a collection name stored anywhere else is invisible to lexical search -
+    which was the original defect: "avengers" reached only titles containing
+    the word, leaving Iron Man and Black Panther unreachable in the catalogue.
+    """
+
+    def _franchise_csv(self, tmp_path, rows):
+        import pandas as pd
+        path = tmp_path / "tmdb_franchises.csv"
+        pd.DataFrame(rows, columns=["media_id", "media", "collection", "keywords"]).to_csv(
+            path, index=False
+        )
+        return path
+
+    def test_collection_and_keywords_align_to_the_ids(self, tmp_path, monkeypatch):
+        import pandas as pd
+        from preprocessing import build_content_catalog as bcc
+
+        path = self._franchise_csv(tmp_path, [
+            ("1726", "movie", "Iron Man Collection", "superhero, based on comic"),
+            ("299534", "movie", "The Avengers Collection", "superhero, time travel"),
+        ])
+        monkeypatch.setattr(bcc, "FRANCHISE_PATH", path)
+
+        collections, keywords = bcc._load_franchises(
+            "movie", pd.Series(["299534", "1726", "999999"])
+        )
+        assert list(collections) == ["The Avengers Collection", "Iron Man Collection", ""]
+        assert list(keywords)[2] == ""
+
+    def test_a_film_and_a_show_sharing_an_id_do_not_cross(self, tmp_path, monkeypatch):
+        import pandas as pd
+        from preprocessing import build_content_catalog as bcc
+
+        # Films and shows are separate id spaces on TMDb, so the same number can
+        # be both. Joining on the id alone would attach a film's franchise to a
+        # show.
+        path = self._franchise_csv(tmp_path, [
+            ("1396", "movie", "A Film Collection", "film keyword"),
+            ("1396", "show", "", "breaking bad, drugs"),
+        ])
+        monkeypatch.setattr(bcc, "FRANCHISE_PATH", path)
+
+        film_collection, _ = bcc._load_franchises("movie", pd.Series(["1396"]))
+        show_collection, show_keywords = bcc._load_franchises("show", pd.Series(["1396"]))
+        assert list(film_collection) == ["A Film Collection"]
+        assert list(show_collection) == [""]
+        assert list(show_keywords) == ["breaking bad, drugs"]
+
+    def test_a_missing_franchise_file_is_not_an_error(self, tmp_path, monkeypatch):
+        import pandas as pd
+        from preprocessing import build_content_catalog as bcc
+
+        monkeypatch.setattr(bcc, "FRANCHISE_PATH", tmp_path / "absent.csv")
+        collections, keywords = bcc._load_franchises("movie", pd.Series(["1", "2"]))
+        assert list(collections) == ["", ""]
+        assert list(keywords) == ["", ""]

@@ -1,0 +1,185 @@
+\documentclass[aspectratio=169, 11pt]{beamer}
+
+% --- Packages & Setup ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{xcolor}
+\usepackage{booktabs} 
+\usepackage{graphicx}
+\usepackage{tikz} % Required for the corner box
+\usetikzlibrary{calc}
+
+\graphicspath{{../}{./}}
+
+% Try loading Open Sans; fallback if missing
+\IfFileExists{opensans.sty}{\usepackage[default,scale=0.95]{opensans}}{}
+
+% --- Branding Colors ---
+\definecolor{amritaMaroon}{HTML}{A4123F} 
+
+% --- Theme Setup ---
+\usetheme{Madrid}
+\usecolortheme[named=amritaMaroon]{structure}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+
+\begin{document}
+
+% --- CUSTOM TITLE SLIDE (Software) ---
+\begin{frame}
+    % Corner Box Indicator
+    \begin{tikzpicture}[remember picture,overlay]
+        \node[fill=amritaMaroon, text=white, font=\bfseries\footnotesize, anchor=north east, rounded corners=2pt, inner sep=5pt] 
+        at ($(current page.north east) + (-0.2cm,-0.2cm)$) 
+        {Type 3: Software Project};
+    \end{tikzpicture}
+
+    \centering
+    \includegraphics[width=2.8cm]{logo.png} 
+    \vspace{0.1cm}
+    
+    {\large \textbf{\textcolor{amritaMaroon}{SOFTWARE PROJECT TITLE}}} \\
+    \vspace{0.05cm}
+    {\footnotesize \textbf{23CSE498 -- Project Phase 2 (Panel Review 1)} \quad | \quad \textbf{Team Number: [XX]}} \\ 
+    \vspace{0.15cm}
+
+    % Student Table
+    \begin{table}
+        \centering
+        \footnotesize 
+        \renewcommand{\arraystretch}{1.05}
+        \begin{tabular}{|c|c|l|}
+            \hline
+            \textbf{S.No} & \textbf{Register Number} & \textbf{Student Name} \\
+            \hline
+            1 & CB.EN.U4CSE23XXX & Student Name 1 \\
+            \hline
+            2 & CB.EN.U4CSE23XXX & Student Name 2 \\
+            \hline
+            3 & CB.EN.U4CSE23XXX & Student Name 3 \\
+            \hline
+            4 & CB.EN.U4CSE23XXX & Student Name 4 \\
+            \hline
+        \end{tabular}
+    \end{table}
+    \vspace{0.1cm}
+    
+    {\footnotesize Guide: \textbf{Guide Name}, Designation, Department of CSE} \\
+    \vspace{0.1cm}
+    {\scriptsize \today}
+\end{frame}
+
+% --- SLIDE 1: SOFTWARE ARCHITECTURE & MODULE DESIGN (Rubric: 5 Marks) ---
+\section{Architecture \& Module Design}
+\begin{frame}{1. Software Architecture \& Module Design}
+    \framesubtitle{Rubric: UML Diagrams, DB Schema, APIs, Module Interaction \& Deployment (5 Marks)}
+    \begin{columns}
+        \column{0.48\textwidth}
+        \textbf{Modular Decomposition \& Contracts:}
+        \begin{itemize}
+            \item \textbf{Module Breakdown:} Auth, Data Layer, Business Engine, API Gateway.
+            \item \textbf{Core API Specifications:}
+            \begin{itemize}
+                \item \texttt{POST /api/v1/auth/login}
+                \item \texttt{GET  /api/v1/resource/query}
+            \end{itemize}
+            \item \textbf{Database Schema:} Entity models, relations, indices.
+            \item \textbf{Deployment Architecture:} Containers (Docker), CI/CD pipeline, environment config.
+        \end{itemize}
+
+        \column{0.52\textwidth}
+        \centering
+        \fbox{\begin{minipage}{7.2cm}
+            \centering
+            \vspace{0.8cm}
+            \textbf{[Insert Software Architecture / UML Diagram]} \\
+            \scriptsize (Show: Frontend $\leftrightarrow$ Backend Services $\leftrightarrow$ Database/Cache)
+            \vspace{0.8cm}
+        \end{minipage}}
+    \end{columns}
+\end{frame}
+
+% --- SLIDE 2: IMPLEMENTATION PROGRESS (~60%) (Rubric: 8 Marks) ---
+\section{Implementation Progress}
+\begin{frame}{2. Implementation Progress ($\approx$60\%) \& Module Functionality}
+    \framesubtitle{Rubric: Backend, Frontend, Database \& Core Modules Functional (8 Marks)}
+    \begin{itemize}
+        \item \textbf{Software Implementation Status ($\approx$60\% Completed):}
+        \begin{table}
+            \centering
+            \footnotesize
+            \renewcommand{\arraystretch}{1.1}
+            \begin{tabular}{p{3.5cm} p{4.5cm} c}
+                \toprule
+                \textbf{Subsystem / Layer} & \textbf{Current Implementation State} & \textbf{Status} \\
+                \midrule
+                Frontend UI & Responsive views, API client, router setup & Functional \\
+                Backend Server \& APIs & Core controllers, middleware, CRUD logic & Functional \\
+                Database Layer & Schema migrations, ORM entities, queries & Integrated \\
+                System Integration & Frontend-to-backend API connectivity & Integrated \\
+                \bottomrule
+            \end{tabular}
+        \end{table}
+        \item \textbf{System Demonstration Evidence:} Working feature walkthrough, API test results (Postman/cURL), GitHub repository commits.
+    \end{itemize}
+\end{frame}
+
+% --- SLIDE 3: TECHNICAL KNOWLEDGE & DESIGN CHOICES (Rubric: 5 Marks) ---
+\section{Technical Knowledge}
+\begin{frame}{3. Technical Knowledge \& Engineering Decisions}
+    \framesubtitle{Rubric: Software Architecture, Implementation, Integration \& Tech Stack (5 Marks)}
+    \begin{itemize}
+        \item \textbf{Architectural Patterns:} Clean Architecture / Layered / Microservices pattern justification.
+        \item \textbf{Design Patterns \& Code Structure:} Factory, Singleton, Dependency Injection, Repository pattern.
+        \item \textbf{Data Integrity \& Concurrency:} ACID transactions, thread-safety, connection pooling, indexing.
+        \item \textbf{Error Handling \& Logging:} Structured logging, exception hierarchies, graceful failure handling.
+        \item \textbf{Preliminary Testing:} Unit testing baseline, integration tests, and performance benchmarks.
+    \end{itemize}
+\end{frame}
+
+% --- SLIDE 4: TECHNICAL ENRICHMENT ACTIVITY CHOICES ---
+\section{Technical Enrichment}
+\begin{frame}{4. Technical Enrichment Activity Choices}
+    \framesubtitle{Professional Online Certification Details (Individual Mandatory: 10--20 Hours)}
+    \begin{itemize}
+        \item \textbf{Individual MOOC / Online Certification Selection:}
+    \end{itemize}
+    \vspace{-0.1cm}
+    \begin{table}
+        \centering
+        \footnotesize
+        \renewcommand{\arraystretch}{1.15}
+        \begin{tabular}{|c|p{2.8cm}|p{5.0cm}|p{2.3cm}|c|}
+            \hline
+            \textbf{S.No} & \textbf{Student Name} & \textbf{Chosen MOOC / Course Title} & \textbf{Platform} & \textbf{Hours} \\
+            \hline
+            1 & Student Name 1 & [Course Title relevant to Project] & Coursera & 15 Hrs \\
+            \hline
+            2 & Student Name 2 & [Course Title relevant to Project] & NPTEL & 20 Hrs \\
+            \hline
+            3 & Student Name 3 & [Course Title relevant to Project] & edX / Coursera & 12 Hrs \\
+            \hline
+            4 & Student Name 4 & [Course Title relevant to Project] & AWS / Google & 16 Hrs \\
+            \hline
+        \end{tabular}
+    \end{table}
+    \vspace{0.15cm}
+    \begin{itemize}
+        \item {\scriptsize \textbf{Requirement:} Each student must complete one approved 10--20 hour online certification from a recognized platform (Coursera, NPTEL, edX, etc.) relevant to the project.}
+    \end{itemize}
+\end{frame}
+
+% --- REFERENCES ---
+\section{References}
+\begin{frame}[allowframebreaks]{References}
+    \bibliographystyle{IEEEtran}
+    \bibliography{ref} 
+\end{frame}
+
+% --- THANK YOU ---
+\begin{frame}
+    \centering    
+    {\Huge \textbf{\textcolor{amritaMaroon}{Thank You}}}
+\end{frame}
+
+\end{document}

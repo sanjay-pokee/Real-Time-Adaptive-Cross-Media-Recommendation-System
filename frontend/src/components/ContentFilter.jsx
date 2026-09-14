@@ -6,6 +6,7 @@ import {
   HeartPulse,
   LayoutGrid,
   Music,
+  Tv,
   Landmark,
 } from 'lucide-react';
 
@@ -19,6 +20,7 @@ import {
  */
 const TYPE_STYLE = {
   movie:      { label: 'Movies',     icon: Film,       tint: 'var(--type-movie)' },
+  show:       { label: 'Shows',      icon: Tv,         tint: 'var(--type-show)' },
   book:       { label: 'Books',      icon: BookOpen,   tint: 'var(--type-book)' },
   music:      { label: 'Music',      icon: Music,      tint: 'var(--type-music)' },
   health:     { label: 'Health',     icon: HeartPulse, tint: 'var(--type-health)' },

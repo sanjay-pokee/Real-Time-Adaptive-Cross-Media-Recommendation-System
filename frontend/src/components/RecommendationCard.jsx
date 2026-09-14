@@ -9,6 +9,7 @@ import {
   Music,
   Package,
   Star,
+  Tv,
 } from 'lucide-react';
 import InteractionButtons from './InteractionButtons';
 import MaturityBadge from './MaturityBadge';
@@ -31,6 +32,7 @@ const MATCH_LABELS = {
 
 const TYPE_META = {
   movie:      { label: 'Movie',      icon: Film,       color: 'var(--type-movie)' },
+  show:       { label: 'Show',       icon: Tv,         color: 'var(--type-show)' },
   book:       { label: 'Book',       icon: BookOpen,   color: 'var(--type-book)' },
   music:      { label: 'Music',      icon: Music,      color: 'var(--type-music)' },
   health:     { label: 'Health',     icon: HeartPulse, color: 'var(--type-health)' },
@@ -63,12 +65,17 @@ function leadCreator(value) {
 export default function RecommendationCard({
   result,
   index,
+  variant = 'grid',
   userId,
   query,
   onSimilar,
   onView,
   onToast,
 }) {
+  // The lead is the same component rearranged, not a second card. A parallel
+  // render path for the top result is how the two drift apart: a badge added
+  // to one and forgotten on the other.
+  const isLead = variant === 'lead';
   const meta = TYPE_META[result.content_type] || FALLBACK_META;
   const Icon = meta.icon;
   const cover = coverFor(result);
@@ -85,12 +92,48 @@ export default function RecommendationCard({
   const year = result.release_date ? String(result.release_date).slice(0, 4) : null;
   const rating = result.rating != null && result.rating !== '' ? Number(result.rating) : null;
 
+  /* Pointer-driven 3D tilt.
+     The two angles are written as custom properties rather than as a style
+     transform, because `--tilt-x` / `--tilt-y` are registered as <angle> in
+     globals.css - so when the pointer leaves and they reset to 0deg, the
+     browser interpolates them and the card eases back to rest instead of
+     snapping. Capped at 5deg: past that the poster visibly skews. */
+  function handleTilt(event) {
+    const box = event.currentTarget.getBoundingClientRect();
+    const px = (event.clientX - box.left) / box.width - 0.5;
+    const py = (event.clientY - box.top) / box.height - 0.5;
+    event.currentTarget.style.setProperty('--tilt-y', `${px * 10}deg`);
+    event.currentTarget.style.setProperty('--tilt-x', `${-py * 10}deg`);
+  }
+
+  function resetTilt(event) {
+    event.currentTarget.style.setProperty('--tilt-y', '0deg');
+    event.currentTarget.style.setProperty('--tilt-x', '0deg');
+  }
+
   return (
     <motion.article
-      initial={{ opacity: 0, y: 14 }}
-      animate={{ opacity: 1, y: 0 }}
+      /* Opacity only. This element's `transform` belongs to CSS - `.tilt`
+         writes the pointer rotation and `.lg-hover` the hover lift, both with
+         transitions on it. Animating transform here too meant framer-motion
+         rewrote the inline transform every frame while those transitions were
+         mid-flight; the two interrupted each other continuously and the card
+         never settled, so it sat at `opacity: 0` and never appeared. */
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ delay: Math.min(index, 8) * 0.035, duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
-      className="card group flex flex-col overflow-hidden"
+      onPointerMove={handleTilt}
+      onPointerLeave={resetTilt}
+      /* No `reveal` here. The scroll-driven reveal keyframes start at
+         opacity 0 and hold it via fill-mode, and this list scrolls inside a
+         container rather than the document - so the view timeline never
+         advanced and 8 of 10 cards stayed permanently invisible. The mount
+         animation above already staggers entry and cannot strand a card. */
+      className={`card group tilt lg-hover overflow-hidden ${
+        isLead
+          ? 'sm:grid sm:grid-cols-[1.15fr_1fr] sm:items-stretch'
+          : 'flex flex-col'
+      }`}
     >
       {/* ---------- media header ----------
           Leads with the picture. Movies carry a landscape still, which fills
@@ -103,7 +146,9 @@ export default function RecommendationCard({
         type="button"
         onClick={() => onView?.(result)}
         aria-label={`Open ${result.title}`}
-        className="relative block h-36 w-full shrink-0 overflow-hidden text-left"
+        className={`relative block w-full shrink-0 overflow-hidden text-left ${
+          isLead ? 'h-60 sm:h-full sm:min-h-[380px]' : 'h-52'
+        }`}
         style={{ background: cover.background }}
       >
         <span className="absolute inset-0 flex items-center justify-center display text-4xl font-extrabold text-white/20">
@@ -116,7 +161,7 @@ export default function RecommendationCard({
             alt=""
             loading="lazy"
             decoding="async"
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-[700ms] ease-out group-hover:scale-[1.06]"
+            className="parallax-media absolute inset-0 h-full w-full scale-105 object-cover transition-transform duration-[700ms] ease-out group-hover:scale-[1.12]"
             onError={(event) => { event.currentTarget.style.display = 'none'; }}
           />
         ) : imageUrl ? (
@@ -173,7 +218,9 @@ export default function RecommendationCard({
         </span>
 
         <span className="absolute inset-x-3 bottom-2.5 block">
-          <h3 className="display clamp-2 text-[16px] font-bold leading-snug text-white drop-shadow-[0_2px_6px_rgba(0,0,0,.9)]">
+          <h3 className={`display clamp-2 leading-tight text-white drop-shadow-[0_2px_6px_rgba(0,0,0,.9)] ${
+            isLead ? 'text-[30px] sm:text-[38px]' : 'text-[19px]'
+          }`}>
             {result.title}
           </h3>
         </span>
@@ -182,7 +229,7 @@ export default function RecommendationCard({
       {/* ---------- identity ---------- */}
       {/* flex-1 so the score block below can still be pushed to the bottom with
           mt-auto and every card in a row lines its actions up. */}
-      <div className="flex flex-1 flex-col p-4">
+      <div className={`flex flex-1 flex-col ${isLead ? 'p-6 sm:p-7' : 'p-4'}`}>
         <div className="flex min-w-0 flex-col">
           {result.source && (
             <span className="mb-1 truncate text-[10px] font-medium text-ink-faint">

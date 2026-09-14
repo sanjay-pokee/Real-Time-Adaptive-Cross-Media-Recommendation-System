@@ -1,0 +1,185 @@
+\documentclass[aspectratio=169, 11pt]{beamer}
+
+% --- Packages & Setup ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{xcolor}
+\usepackage{booktabs} 
+\usepackage{graphicx}
+\usepackage{tikz} % Required for the corner box
+\usetikzlibrary{calc}
+
+\graphicspath{{../}{./}}
+
+% Try loading Open Sans; fallback if missing
+\IfFileExists{opensans.sty}{\usepackage[default,scale=0.95]{opensans}}{}
+
+% --- Branding Colors ---
+\definecolor{amritaMaroon}{HTML}{A4123F} 
+
+% --- Theme Setup ---
+\usetheme{Madrid}
+\usecolortheme[named=amritaMaroon]{structure}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+
+\begin{document}
+
+% --- CUSTOM TITLE SLIDE (Research) ---
+\begin{frame}
+    % Corner Box Indicator
+    \begin{tikzpicture}[remember picture,overlay]
+        \node[fill=amritaMaroon, text=white, font=\bfseries\footnotesize, anchor=north east, rounded corners=2pt, inner sep=5pt] 
+        at ($(current page.north east) + (-0.2cm,-0.2cm)$) 
+        {Type 1: Research Project};
+    \end{tikzpicture}
+
+    \centering
+    \includegraphics[width=2.8cm]{logo.png} 
+    \vspace{0.1cm}
+    
+    {\large \textbf{\textcolor{amritaMaroon}{RESEARCH PROJECT TITLE}}} \\
+    \vspace{0.05cm}
+    {\footnotesize \textbf{23CSE498 -- Project Phase 2 (Panel Review 1)} \quad | \quad \textbf{Team Number: [XX]}} \\ 
+    \vspace{0.15cm}
+
+    % Student Table
+    \begin{table}
+        \centering
+        \footnotesize 
+        \renewcommand{\arraystretch}{1.05}
+        \begin{tabular}{|c|c|l|}
+            \hline
+            \textbf{S.No} & \textbf{Register Number} & \textbf{Student Name} \\
+            \hline
+            1 & CB.EN.U4CSE23XXX & Student Name 1 \\
+            \hline
+            2 & CB.EN.U4CSE23XXX & Student Name 2 \\
+            \hline
+            3 & CB.EN.U4CSE23XXX & Student Name 3 \\
+            \hline
+            4 & CB.EN.U4CSE23XXX & Student Name 4 \\
+            \hline
+        \end{tabular}
+    \end{table}
+    \vspace{0.1cm}
+    
+    {\footnotesize Guide: \textbf{Guide Name}, Designation, Department of CSE} \\
+    \vspace{0.1cm}
+    {\scriptsize \today}
+\end{frame}
+
+% --- SLIDE 1: METHODOLOGY & SOLUTION DESIGN (Rubric: 5 Marks) ---
+\section{Methodology \& Solution Design}
+\begin{frame}{1. Methodology \& Solution Design}
+    \framesubtitle{Rubric: Workflow, Architecture, Algorithms/Mathematical Model \& Evaluation Metrics (5 Marks)}
+    \begin{columns}
+        \column{0.5\textwidth}
+        \textbf{Methodological Framework:}
+        \begin{itemize}
+            \item \textbf{Theoretical Foundation:} Mathematical model / formulation.
+            \item \textbf{Core Algorithms:} (e.g., Transformer, GNN, Optimization).
+            \item \textbf{Datasets \& Preprocessing:} Benchmark datasets, splits, preprocessing pipeline.
+            \item \textbf{Evaluation Metrics:} Accuracy, F1-Score, MSE, Latency, etc.
+        \end{itemize}
+
+        \column{0.5\textwidth}
+        \centering
+        \fbox{\begin{minipage}{6.8cm}
+            \centering
+            \vspace{0.8cm}
+            \textbf{[Insert Methodology / Algorithmic Workflow Diagram]} \\
+            \scriptsize (Show: Input Data $\to$ Feature Extraction $\to$ Model $\to$ Evaluation)
+            \vspace{0.8cm}
+        \end{minipage}}
+    \end{columns}
+\end{frame}
+
+% --- SLIDE 2: IMPLEMENTATION PROGRESS (~60%) (Rubric: 8 Marks) ---
+\section{Implementation Progress}
+\begin{frame}{2. Implementation Progress ($\approx$60\%) \& Module Functionality}
+    \framesubtitle{Rubric: Core Modules Implemented, Functional \& Integrated (8 Marks)}
+    \begin{itemize}
+        \item \textbf{Implementation Status Overview ($\approx$60\% Completed):}
+        \begin{table}
+            \centering
+            \footnotesize
+            \renewcommand{\arraystretch}{1.1}
+            \begin{tabular}{p{3.5cm} p{4.5cm} c}
+                \toprule
+                \textbf{Module / Component} & \textbf{Current Implementation State} & \textbf{Status} \\
+                \midrule
+                Data Ingestion \& Pipeline & Preprocessing, tokenization, train-val split & Functional \\
+                Core Model Architecture & Baseline \& proposed architecture implemented & Functional \\
+                Training \& Optimization & Loss formulation, backprop, optimizer loop & In Progress \\
+                Module Integration & Data loader integrated with core model & Integrated \\
+                \bottomrule
+            \end{tabular}
+        \end{table}
+        \item \textbf{Core Functionality Demonstration:} Live execution / preliminary experimental verification / GitHub repository commits.
+    \end{itemize}
+\end{frame}
+
+% --- SLIDE 3: TECHNICAL KNOWLEDGE & DESIGN CHOICES (Rubric: 5 Marks) ---
+\section{Technical Knowledge}
+\begin{frame}{3. Technical Knowledge \& Design Decisions}
+    \framesubtitle{Rubric: Understanding of Methodology, Implementation \& Design Choices (5 Marks)}
+    \begin{itemize}
+        \item \textbf{Algorithmic Justification:} Why the chosen model/algorithm suits the underlying data distribution and problem constraints.
+        \item \textbf{Mathematical Formulation:} Key equations (e.g., loss function $\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{task}} + \lambda \mathcal{L}_{\text{reg}}$, optimization objective).
+        \item \textbf{Design Choices \& Trade-offs:}
+        \begin{itemize}
+            \item Complexity vs. Convergence speed.
+            \item Hyperparameter rationale (learning rate schedule, batch size, regularization).
+            \item Handling edge cases, data sparsity, or class imbalance.
+        \end{itemize}
+        \item \textbf{Preliminary Observations:} Initial validation results demonstrating expected behavior.
+    \end{itemize}
+\end{frame}
+
+% --- SLIDE 4: TECHNICAL ENRICHMENT ACTIVITY CHOICES ---
+\section{Technical Enrichment}
+\begin{frame}{4. Technical Enrichment Activity Choices}
+    \framesubtitle{Professional Online Certification Details (Individual Mandatory: 10--20 Hours)}
+    \begin{itemize}
+        \item \textbf{Individual MOOC / Online Certification Selection:}
+    \end{itemize}
+    \vspace{-0.1cm}
+    \begin{table}
+        \centering
+        \footnotesize
+        \renewcommand{\arraystretch}{1.15}
+        \begin{tabular}{|c|p{2.8cm}|p{5.0cm}|p{2.3cm}|c|}
+            \hline
+            \textbf{S.No} & \textbf{Student Name} & \textbf{Chosen MOOC / Course Title} & \textbf{Platform} & \textbf{Hours} \\
+            \hline
+            1 & Student Name 1 & [Course Title relevant to Project] & Coursera & 15 Hrs \\
+            \hline
+            2 & Student Name 2 & [Course Title relevant to Project] & NPTEL & 20 Hrs \\
+            \hline
+            3 & Student Name 3 & [Course Title relevant to Project] & edX / Coursera & 12 Hrs \\
+            \hline
+            4 & Student Name 4 & [Course Title relevant to Project] & AWS / Google & 16 Hrs \\
+            \hline
+        \end{tabular}
+    \end{table}
+    \vspace{0.15cm}
+    \begin{itemize}
+        \item {\scriptsize \textbf{Requirement:} Each student must complete one approved 10--20 hour online certification from a recognized platform (Coursera, NPTEL, edX, etc.) relevant to the project.}
+    \end{itemize}
+\end{frame}
+
+% --- REFERENCES ---
+\section{References}
+\begin{frame}[allowframebreaks]{References}
+    \bibliographystyle{IEEEtran}
+    \bibliography{ref} 
+\end{frame}
+
+% --- THANK YOU ---
+\begin{frame}
+    \centering    
+    {\Huge \textbf{\textcolor{amritaMaroon}{Thank You}}}
+\end{frame}
+
+\end{document}

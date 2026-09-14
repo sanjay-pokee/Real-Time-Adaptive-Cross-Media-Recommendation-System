@@ -8,7 +8,25 @@
     <title>Nexus - AI Recommendation Suite</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+    <!-- Declared here rather than via @import in globals.css: an @import inside
+         a stylesheet cannot start downloading until that stylesheet has itself
+         been fetched and parsed, which serialises two round trips before any
+         text can paint in its real face. -->
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script>
+      /* Applied before first paint, so the page never flashes the wrong ground.
+         The key is versioned: the surface is light-first now, and a browser
+         holding the previous "dark" preference would otherwise open the
+         redesign in the variant it was not designed around. */
+      (function () {
+        try {
+          var saved = localStorage.getItem('nexus-theme-v2') || 'light';
+          document.documentElement.setAttribute('data-theme', saved);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

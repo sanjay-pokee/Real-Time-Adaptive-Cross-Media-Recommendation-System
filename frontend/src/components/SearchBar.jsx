@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Loader2, Film, BookOpen, Music, User, Tag } from 'lucide-react';
+import { Search, Loader2, Film, BookOpen, Music, Tv, User, Tag } from 'lucide-react';
 import { getSuggestions } from '../api/client';
 
 function SuggestionIcon({ kind, hint }) {
@@ -8,6 +8,7 @@ function SuggestionIcon({ kind, hint }) {
   if (kind === 'category') return <Tag size={14} style={{ color: 'var(--warn)' }} className="shrink-0" />;
   // title — derive from hint string e.g. "Movie · Action"
   const h = (hint || '').toLowerCase();
+  if (h.startsWith('show') || h.startsWith('tv') || h.startsWith('series')) return <Tv size={14} style={{ color: 'var(--type-movie)' }} className="shrink-0" />;
   if (h.startsWith('movie') || h.startsWith('film')) return <Film size={14} style={{ color: 'var(--type-movie)' }} className="shrink-0" />;
   if (h.startsWith('book')) return <BookOpen size={14} style={{ color: 'var(--type-book)' }} className="shrink-0" />;
   if (h.startsWith('music') || h.startsWith('song') || h.startsWith('track')) return <Music size={14} style={{ color: 'var(--type-music)' }} className="shrink-0" />;

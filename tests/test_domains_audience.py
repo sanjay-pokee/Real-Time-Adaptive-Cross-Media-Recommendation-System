@@ -24,6 +24,7 @@ def test_registry_declares_the_shipped_content_types():
 
     assert set(registry.content_type_names()) == {
         "movie",
+        "show",
         "book",
         "music",
         "industrial",
@@ -72,6 +73,7 @@ def test_domain_grouping_round_trips():
     assert registry.domain_of("industrial").name == "industry"
     assert set(registry.content_types_for_domain("entertainment")) == {
         "movie",
+        "show",
         "book",
         "music",
     }

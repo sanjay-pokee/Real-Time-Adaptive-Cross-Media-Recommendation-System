@@ -10,6 +10,7 @@ import {
   Music,
   Package,
   Star,
+  Tv,
   TrendingUp,
   Users,
   X,
@@ -23,6 +24,7 @@ import { coverFor, imageFor, monogram } from '../utils/cover';
 
 const TYPE_META = {
   movie:      { label: 'Movie',      icon: Film,       color: 'var(--type-movie)' },
+  show:       { label: 'Show',       icon: Tv,         color: 'var(--type-show)' },
   book:       { label: 'Book',       icon: BookOpen,   color: 'var(--type-book)' },
   music:      { label: 'Music',      icon: Music,      color: 'var(--type-music)' },
   health:     { label: 'Health',     icon: HeartPulse, color: 'var(--type-health)' },

@@ -31,6 +31,18 @@ COVER_ART_CACHE_PATH = PROJECT_ROOT / "data" / "processed" / "cover_art_cache.cs
 CERTIFICATION_PATH = PROJECT_ROOT / "datasets" / "tmdb" / "tmdb_certifications.csv"
 # Written by scripts.fetch_tmdb_backdrops: the wide 16:9 still per movie.
 BACKDROP_PATH = PROJECT_ROOT / "datasets" / "tmdb" / "tmdb_backdrops.csv"
+# Written by scripts.fetch_tmdb_franchises: the collection ("The Avengers
+# Collection") and keywords ("superhero", "based on comic") per title.
+#
+# These are appended to `categories`, which is what backend/qdrant_recommender
+# indexes in its keyword haystack - title plus categories, nothing else. Put
+# anywhere but there and a franchise name is invisible to lexical search, which
+# is the whole point: "avengers" matched only titles containing the word, so
+# Iron Man and Black Panther sat in the catalogue unreachable.
+FRANCHISE_PATH = PROJECT_ROOT / "datasets" / "tmdb" / "tmdb_franchises.csv"
+# Genres first, then the collection, then keywords. The frontend renders the
+# leading few as chips, so the order decides what a card shows.
+FRANCHISE_KEYWORD_CAP = 8
 
 # Board ratings mapped onto the maturity levels in config/domains.yaml.
 #
@@ -266,6 +278,30 @@ def normalize_dataset(dataset_name: str, dataset_config: dict) -> pd.DataFrame:
 # Per-media normalizers
 # ---------------------------------------------------------------------------
 
+def _load_franchises(media: str, id_series: pd.Series) -> tuple[pd.Series, pd.Series]:
+    """(collection, keywords) aligned to id_series, blank where unavailable.
+
+    Keyed by (media, id) because a film and a show can share a TMDb id - they
+    live in separate id spaces - and joining on the id alone would cross them.
+    """
+    blank = pd.Series([""] * len(id_series), dtype=str).reset_index(drop=True)
+    if not FRANCHISE_PATH.exists():
+        return blank, blank
+
+    frame = pd.read_csv(FRANCHISE_PATH, dtype=str, keep_default_na=False)
+    frame = frame[frame["media"] == media]
+    if frame.empty:
+        return blank, blank
+
+    collections = dict(zip(frame["media_id"], frame["collection"]))
+    keywords = dict(zip(frame["media_id"], frame["keywords"]))
+    ids = id_series.fillna("").astype(str).reset_index(drop=True)
+    return (
+        ids.map(collections).fillna(""),
+        ids.map(keywords).fillna(""),
+    )
+
+
 def normalize_movies(raw_df: pd.DataFrame, dataset_config: dict) -> pd.DataFrame:
     df = pd.DataFrame()
 
@@ -292,7 +328,26 @@ def normalize_movies(raw_df: pd.DataFrame, dataset_config: dict) -> pd.DataFrame
         "keywords", pd.Series("", index=raw_df.index)
     ).apply(lambda v: ", ".join(parse_name_list(v)))
 
-    df["categories"] = genres
+    # Franchise and keyword metadata, appended to `categories` because that is
+    # what the lexical keyword haystack indexes. Before this, "avengers" could
+    # only reach titles with the word in them; Iron Man and Black Panther were
+    # in the catalogue and unreachable.
+    collection_series, keyword_series = _load_franchises(
+        content_type, raw_df[dataset_config["id_column"]]
+    )
+    franchise_tags = [
+        join_non_empty(
+            [collection] + [
+                term for term in str(tags).split(", ")[:FRANCHISE_KEYWORD_CAP] if term
+            ],
+            separator=", ",
+        )
+        for collection, tags in zip(collection_series, keyword_series)
+    ]
+    df["categories"] = [
+        join_non_empty([genre_text, tags], separator=", ")
+        for genre_text, tags in zip(genres, franchise_tags)
+    ]
     df["release_date"] = raw_df[dataset_config["release_date_column"]].apply(clean_release_date)
     df["popularity"] = raw_df[dataset_config["popularity_column"]]
     df["rating"] = raw_df[dataset_config["rating_column"]]
@@ -313,10 +368,14 @@ def normalize_movies(raw_df: pd.DataFrame, dataset_config: dict) -> pd.DataFrame
         for vals in zip(df["title"], genres, keywords, df["description"], df["creators"])
     ]
 
-    # embedding_text — semantic text for the model (title + genres + description + director + top cast)
+    # embedding_text — semantic text for the model (title + categories +
+    # description + director + top cast). Uses `categories` rather than the raw
+    # genres so the franchise and keyword tags reach the vector too: lexical
+    # match alone would find "The Avengers Collection" only on an exact word,
+    # while the embedding lets "marvel superhero team" land near it.
     df["embedding_text"] = [
         join_non_empty(vals)
-        for vals in zip(df["title"], genres, df["description"], df["creators"])
+        for vals in zip(df["title"], df["categories"], df["description"], df["creators"])
     ]
 
     # The Kaggle 5000-movie export has only a homepage column, but the live

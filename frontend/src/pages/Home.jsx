@@ -48,16 +48,19 @@ const DOMAIN_TILE = {
 function useTheme() {
   const [theme, setTheme] = useState(() => {
     try {
-      return localStorage.getItem('nexus-theme') || 'dark';
+      // Key is versioned. The surface is light-first now, and a browser
+      // holding the old "dark" preference would have opened the redesign in
+      // the variant it was not designed around.
+      return localStorage.getItem('nexus-theme-v2') || 'light';
     } catch {
-      return 'dark';
+      return 'light';
     }
   });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     try {
-      localStorage.setItem('nexus-theme', theme);
+      localStorage.setItem('nexus-theme-v2', theme);
     } catch {
       /* storage can be unavailable (private mode) - the theme still applies */
     }
@@ -420,35 +423,41 @@ export default function Home({ authenticatedUser, onLogout }) {
               of scrolling before a reviewer sees a single recommendation, on a
               product whose entire point is the recommendations. It collapses
               into the search row instead, and the tallies come with it. */}
-          <AnimatePresence initial={false}>
-            {!heroCollapsed && (
-              <motion.div
-                key="hero-pitch"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
-                className="overflow-hidden"
-              >
-                <div className="max-w-2xl pb-6">
-                  <span className="chip mb-4" style={{ color: 'var(--accent)', borderColor: 'color-mix(in oklab, var(--accent) 30%, transparent)' }}>
+          {/* Driven by `animate`, not by mount/unmount inside AnimatePresence.
+              The exit variant only settles if its completion callback fires,
+              and under StrictMode it does not always - which left the wrapper
+              stranded at 49px around a 138px headline, so the top of "Search
+              anything" bled through the search bar. Animating a persistent
+              element to height 0 cannot stall: the target is the truth. */}
+          <motion.div
+            initial={false}
+            animate={heroCollapsed
+              ? { opacity: 0, height: 0 }
+              : { opacity: 1, height: 'auto' }}
+            transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+            aria-hidden={heroCollapsed}
+            className="overflow-hidden"
+          >
+                <div className="max-w-3xl pb-9">
+                  <span className="chip mb-6" style={{ color: 'var(--accent)', borderColor: 'color-mix(in oklab, var(--accent) 30%, transparent)' }}>
                     <Sparkles size={11} />
                     Hybrid retrieval + graph re-ranking
                   </span>
-                  <h1 className="display text-[2rem] font-extrabold leading-[1.08] text-ink sm:text-[2.6rem]">
+                  {/* Editorial scale: the headline is the page's one piece of
+                      real typography, so it is set large enough to carry the
+                      whitespace around it rather than sitting inside it. */}
+                  <h1 className="display text-[2.9rem] leading-[0.98] text-ink sm:text-[4.4rem]">
                     Search anything
                     <br />
-                    <span className="text-irid">by meaning, not keyword.</span>
+                    <em>by meaning,</em> not keyword.
                   </h1>
-                  <p className="mt-3 max-w-lg text-[13.5px] leading-relaxed text-ink-muted">
+                  <p className="mt-6 max-w-xl text-[15px] leading-relaxed text-ink-muted">
                     One engine across {domainCount} domains. Every result shows the
                     signals that ranked it, and every result is checked against the
                     viewer before it is scored.
                   </p>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          </motion.div>
 
           <div className={heroCollapsed ? '' : 'mt-0'}>
             <SearchBar
@@ -492,9 +501,9 @@ export default function Home({ authenticatedUser, onLogout }) {
             ordinary laptop, and the width this gets demoed at — every filter
             panel came before the first recommendation. The rail is sticky, so
             the filters stay reachable without scrolling back up. */}
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[248px_1fr] xl:grid-cols-[264px_1fr]">
+        <div className="flex flex-col gap-7">
           {/* ---------- sidebar ---------- */}
-          <aside className="order-2 flex flex-col gap-3 lg:order-1 lg:sticky lg:top-[76px] lg:self-start lg:max-h-[calc(100vh-92px)] lg:overflow-y-auto lg:pr-1">
+          <aside className="order-1">
             {/* One rail, not six floating cards.
                 Each control used to be its own GlassPanel, so the sidebar was
                 six stacked glass boxes with six rims, six blurs and six
@@ -502,8 +511,11 @@ export default function Home({ authenticatedUser, onLogout }) {
                 page's backdrop-filter layers spent on chrome rather than
                 content. It is now a single glass surface with hairline-divided
                 sections, which is both quieter and cheaper. */}
-            <GlassPanel variant="strong" className="divide-y divide-line p-0">
-              <section className="p-4">
+            <GlassPanel
+              variant="strong"
+              className="flex flex-col p-0 lg:flex-row lg:flex-wrap lg:divide-x lg:divide-y-0 divide-y divide-line"
+            >
+              <section className="flex-1 p-4 lg:min-w-[200px]">
               <p className="label mb-2.5">Profile</p>
               <UserSelector value={userId} onChange={setUserId} users={availableUsers} />
 
@@ -523,7 +535,7 @@ export default function Home({ authenticatedUser, onLogout }) {
               </div>
               </section>
 
-              <section className="p-4">
+              <section className="flex-1 p-4 lg:min-w-[200px]">
               <p className="label mb-2.5">Domain</p>
               <DomainSelector
                 domains={domainCatalog.domains || []}
@@ -532,7 +544,7 @@ export default function Home({ authenticatedUser, onLogout }) {
               />
               </section>
 
-              <section className="p-4">
+              <section className="flex-1 p-4 lg:min-w-[200px]">
               <p className="label mb-3">Audience</p>
               <AudienceControls
                 age={age}
@@ -542,7 +554,7 @@ export default function Home({ authenticatedUser, onLogout }) {
               />
               </section>
 
-              <section className="p-4">
+              <section className="flex-1 p-4 lg:min-w-[200px]">
               <div className="mb-2.5 flex items-baseline justify-between">
                 <p className="label">Results</p>
                 <span className="num text-[11px] font-semibold tabular-nums text-accent">{topK}</span>
@@ -566,7 +578,7 @@ export default function Home({ authenticatedUser, onLogout }) {
               />
               </section>
 
-              <section className="p-4">
+              <section className="flex-1 p-4 lg:min-w-[200px]">
               <p className="label mb-2">Try a query</p>
               <QueryChips onSelect={handleChipSelect} />
               </section>
@@ -580,7 +592,7 @@ export default function Home({ authenticatedUser, onLogout }) {
               and stacking it first put every filter panel ahead of the first
               recommendation again - 5.7 screens of scrolling at phone width.
               Results lead; the filters follow. */}
-          <section className="order-1 min-w-0 lg:order-2">
+          <section className="order-2 min-w-0">
             {/* Regulated domains return an advisory with every response. It
                 sits above the results, not inside a card, because it governs
                 the whole set. */}
@@ -626,13 +638,18 @@ export default function Home({ authenticatedUser, onLogout }) {
             )}
 
             {!loading && results.length > 0 && (
-              <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+              <div className="mb-7 flex flex-wrap items-end justify-between gap-3 border-b pb-5"
+                   style={{ borderColor: 'var(--line)' }}>
                 <div className="min-w-0">
                   <p className="label">
                     {results.length} results
                     {elapsed !== null && <span className="ml-2 normal-case">· {elapsed} ms</span>}
                   </p>
-                  <h2 className="display mt-1 truncate text-xl font-bold text-ink">{resultQuery}</h2>
+                  {/* The heading is the query the *displayed* results came
+                      from, so it is set as a masthead rather than a caption. */}
+                  <h2 className="display mt-2 truncate text-[2rem] leading-tight text-ink sm:text-[2.6rem]">
+                    {resultQuery}
+                  </h2>
                 </div>
               </div>
             )}
@@ -718,20 +735,49 @@ export default function Home({ authenticatedUser, onLogout }) {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.16, ease: 'easeOut' }}
-                  className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3"
+                  className="flex flex-col gap-8"
                 >
-                {results.map((result, index) => (
+                  {/* Magazine hierarchy, not a uniform grid.
+                      A ranked list whose first row looks exactly like its
+                      tenth throws away the one thing the engine is asserting:
+                      that #1 is the answer. The lead runs full width at a
+                      reading measure; the rest fall into a three-up grid below
+                      a rule, the way a section front works. */}
                   <RecommendationCard
-                    key={result.global_id}
-                    result={result}
-                    index={index}
+                    key={results[0].global_id}
+                    result={results[0]}
+                    index={0}
+                    variant="lead"
                     userId={userId}
                     query={query}
                     onSimilar={handleSimilar}
                     onView={setSelectedItem}
                     onToast={addToast}
                   />
-                ))}
+
+                  {results.length > 1 && (
+                    <>
+                      <div className="flex items-center gap-4">
+                        <span className="label shrink-0">More results</span>
+                        <span className="h-px flex-1" style={{ background: 'var(--line)' }} />
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+                        {results.slice(1).map((result, index) => (
+                          <RecommendationCard
+                            key={result.global_id}
+                            result={result}
+                            index={index + 1}
+                            userId={userId}
+                            query={query}
+                            onSimilar={handleSimilar}
+                            onView={setSelectedItem}
+                            onToast={addToast}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

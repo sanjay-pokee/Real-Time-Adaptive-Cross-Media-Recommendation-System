@@ -1,840 +1,771 @@
+/* Fonts are linked from index.html, not @imported here - see the note there. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ============================================================
-   NEXUS — "IRIDESCENT"
-   Dark-first slate, pearl light theme on [data-theme="light"].
+   NEXUS — "PRESS"
+   Editorial light-first. Warm paper, deep ink, one hot accent.
 
-   The whole surface language is one idea: sheets of real glass
-   floating over a slow-moving iridescent field. Colour comes from
-   an oil-slick ramp (cyan -> magenta -> gold) rather than from a
-   single brand hue, so panels catch different light depending on
-   where they sit.
+   The previous surface language was liquid glass over an
+   iridescent field: every panel was translucent and took its
+   colour from whatever drifted behind it. This is the opposite
+   idea and the tokens are inverted to match.
 
-   Glass is built from four layers, and it needs all four to read
-   as glass rather than as a translucent rectangle:
-     1. heavy blur + high saturation backdrop
-     2. a chromatic refractive edge (gradient ring)
-     3. inset specular highlights that imply thickness
-     4. a travelling light sweep
+     paper     an off-white with warmth in it, never #fff. Pure
+               white next to a poster looks like a bug.
+     ink       warm near-black, never #000, so text sits *on*
+               the paper rather than punching a hole in it.
+     accent    a single burnt orange. One hot colour on a warm
+               neutral is what makes a page read as editorial
+               rather than as a dashboard; a second accent hue
+               competing with it is what made the old surface
+               look tinted at random.
+     cobalt    reserved for the analytical furniture - score
+               bars, signals, links - so data never borrows the
+               accent and dilute it.
+
+   Depth comes from hairline rules and layered soft shadows,
+   not from blur. Blur on a light ground turns to grey mud.
    ============================================================ */
 
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
 
   :root {
-    color-scheme: dark;
-
-    /* ---- the iridescent ramp: every accent derives from this ---- */
-    --irid-1: #4dd9ff;   /* cyan   */
-    --irid-2: #ff4fd8;   /* magenta*/
-    --irid-3: #ffc64d;   /* gold   */
-    --irid-4: #7cffb2;   /* mint   */
-
-    /* ---- surfaces: cool slate, never pure black ---- */
-    --bg:            #0b0d14;
-    --surface:       #12151f;
-    --surface-2:     #171b27;
-    --surface-3:     #1d2230;
-    --surface-hover: #242a3a;
-
-    /* ---- the field behind the glass ----
-       Held to a narrow cool band, hue 225-290, rather than spread across the
-       wheel. Glass takes its colour from what sits behind it: four blobs at
-       cyan, magenta, gold and mint read as a rainbow wash and made every panel
-       look tinted at random. A tight blue-to-violet range still gives the
-       depth and movement the refraction needs something to bend, without the
-       surface itself appearing coloured. Chroma is also down (0.26 -> 0.13
-       at most), because saturated backdrops are what force panel text into
-       low contrast. */
-    --field-a: oklch(72% 0.13 258 / 0.24);   /* cool blue        */
-    --field-b: oklch(64% 0.12 285 / 0.22);   /* indigo / violet  */
-    --field-c: oklch(78% 0.09 232 / 0.16);   /* pale ice         */
-    --field-d: oklch(58% 0.10 268 / 0.16);   /* deep periwinkle  */
-
-    /* ---- liquid glass ----
-       The edge is where glass is legible as glass: a bright rim on top where
-       light lands, a dark rim underneath where it falls away, and a crisp
-       specular that moves. Those are raised here; the chromatic ring is cut
-       back, since a rainbow outline on every panel is the single biggest
-       reason the old surface read as plastic rather than glass. */
-    --lg-tint:       color-mix(in oklab, var(--surface) 38%, transparent);
-    --lg-tint-heavy: color-mix(in oklab, var(--surface) 70%, transparent);
-    --lg-blur:       44px;
-    --lg-sat:        185%;
-    --lg-edge-light: oklch(100% 0 0 / 0.40);
-    --lg-edge-dark:  oklch(0%   0 0 / 0.40);
-    --lg-ring:       0.30;   /* chromatic edge opacity */
-    --lg-sweep:      0.16;   /* specular sweep opacity */
-
-    /* The rim gradient itself: near-white specular fading to a faint cool
-       tint, instead of cycling through four accent hues. */
-    --lg-rim: linear-gradient(140deg in oklab,
-      oklch(100% 0 0 / 0.95),
-      oklch(88% 0.05 250 / 0.40) 34%,
-      oklch(70% 0.03 270 / 0.10) 60%,
-      oklch(100% 0 0 / 0.55) 100%);
-
-    /* ---- lines ---- */
-    --line:        oklch(100% 0 0 / 0.09);
-    --line-strong: oklch(100% 0 0 / 0.18);
-
-    /* ---- ink ---- */
-    --ink:       #eaf0f7;
-    --ink-muted: #94a3ba;
-    --ink-faint: #5d6b82;
-
-    /* ---- brand ---- */
-    --accent:      var(--irid-1);
-    --accent-2:    var(--irid-2);
-    --accent-3:    var(--irid-3);
-    --accent-ink:  #07090f;
-    --accent-soft: oklch(78% 0.16 220 / 0.16);
-
-    /* ---- ranking signals ---- */
-    --sig-semantic: var(--irid-1);
-    --sig-graph:    var(--irid-4);
-    --sig-ema:      var(--irid-3);
-    --sig-kg:       var(--irid-2);
-    --sig-profile:  #ff7ab8;
-
-    /* ---- content-type identity ---- */
-    --type-movie:      #4dd9ff;
-    --type-book:       #7cffb2;
-    --type-music:      #ff4fd8;
-    --type-health:     #56e8d5;
-    --type-industrial: #ffc64d;
-    --type-finance:    #b6f24d;
-
-    /* ---- domain identity ---- */
-    --dom-entertainment: #ff4fd8;
-    --dom-health:        #4dd9ff;
-    --dom-industry:      #ffc64d;
-    --dom-finance:       #7cffb2;
-
-    /* ---- audience maturity ---- */
-    --mat-all_ages:   #7cffb2;
-    --mat-teen:       #4dd9ff;
-    --mat-adult:      #ffc64d;
-    --mat-restricted: #ff5470;
-
-    /* ---- feedback ---- */
-    --ok:   #7cffb2;
-    --warn: #ffc64d;
-    --bad:  #ff5470;
-
-    /* ---- elevation ---- */
-    --shadow-sm: 0 1px 2px oklch(0% 0 0 / .45);
-    --shadow:    0 2px 6px oklch(0% 0 0 / .32), 0 12px 34px oklch(0% 0 0 / .44);
-    --shadow-lg: 0 6px 14px oklch(0% 0 0 / .38), 0 32px 80px oklch(0% 0 0 / .58);
-    --shadow-accent: 0 12px 40px oklch(78% 0.16 220 / .34);
-
-    --radius:    16px;
-    --radius-lg: 26px;
-  }
-
-  [data-theme="light"] {
     color-scheme: light;
 
-    --bg:            #f4f1ea;
-    --surface:       #ffffff;
-    --surface-2:     #ffffff;
-    --surface-3:     #efece4;
-    --surface-hover: #e7e3d9;
+    /* ---- paper ---------------------------------------------------- */
+    --paper:         oklch(97.6% 0.008 85);
+    --paper-2:       oklch(95.4% 0.010 80);
+    --paper-3:       oklch(92.6% 0.012 78);
+    --bg:            var(--paper);
+    --surface:       oklch(100% 0 0);
+    --surface-2:     var(--paper-2);
+    --surface-3:     var(--paper-3);
+    --surface-hover: oklch(94% 0.014 76);
 
-    /* Same narrow cool band as dark, lifted for a light ground. */
-    --field-a: oklch(80% 0.10 258 / 0.20);
-    --field-b: oklch(76% 0.09 285 / 0.17);
-    --field-c: oklch(86% 0.07 232 / 0.16);
-    --field-d: oklch(72% 0.08 268 / 0.13);
+    /* ---- ink ------------------------------------------------------ */
+    --ink:        oklch(22% 0.018 62);
+    --ink-muted:  oklch(45% 0.016 65);
+    --ink-faint:  oklch(62% 0.012 68);
+    --ink-invert: var(--paper);
 
-    --lg-tint:       color-mix(in oklab, #ffffff 58%, transparent);
-    --lg-tint-heavy: color-mix(in oklab, #ffffff 84%, transparent);
-    --lg-edge-light: oklch(100% 0 0 / 0.92);
-    --lg-edge-dark:  oklch(0%   0 0 / 0.14);
-    --lg-ring:       0.26;
-    --lg-sweep:      0.18;
+    /* ---- the one hot accent --------------------------------------- */
+    --accent:       oklch(56% 0.168 42);
+    --accent-hover: oklch(50% 0.172 40);
+    --accent-soft:  oklch(93% 0.045 55);
+    --accent-ink:   oklch(100% 0 0);
+    --accent-2:     oklch(45% 0.145 258);   /* cobalt: data only */
+    --tint:         var(--accent);
 
-    /* On a light ground the rim reads as a shadowed edge, not a glow. */
-    --lg-rim: linear-gradient(140deg in oklab,
-      oklch(100% 0 0 / 0.95),
-      oklch(55% 0.04 258 / 0.28) 38%,
-      oklch(45% 0.03 275 / 0.10) 64%,
-      oklch(100% 0 0 / 0.70) 100%);
+    /* ---- lines & shadow ------------------------------------------- */
+    --line:        oklch(22% 0.018 62 / 0.13);
+    --line-strong: oklch(22% 0.018 62 / 0.26);
+    --glass:       var(--surface);
 
-    --line:        oklch(0% 0 0 / 0.10);
-    --line-strong: oklch(0% 0 0 / 0.20);
+    --shadow-1: 0 1px 2px oklch(22% 0.02 62 / 0.05);
+    --shadow-2: 0 2px 4px oklch(22% 0.02 62 / 0.05),
+                0 6px 14px oklch(22% 0.02 62 / 0.05);
+    --shadow-3: 0 3px 6px oklch(22% 0.02 62 / 0.06),
+                0 12px 28px oklch(22% 0.02 62 / 0.09);
+    --shadow-4: 0 6px 12px oklch(22% 0.02 62 / 0.07),
+                0 26px 60px oklch(22% 0.02 62 / 0.14);
+    --shadow-accent: 0 8px 24px oklch(56% 0.168 42 / 0.28);
 
-    --ink:       #10131a;
-    --ink-muted: #4f5b6b;
-    --ink-faint: #7d8899;
+    /* ---- content types --------------------------------------------
+       Distinct hues at a shared lightness/chroma, so no single type
+       shouts louder than the rest in a mixed result list. */
+    --type-movie:      oklch(52% 0.152 28);
+    --type-show:       oklch(52% 0.140 350);
+    --type-book:       oklch(48% 0.120 150);
+    --type-music:      oklch(50% 0.150 300);
+    --type-health:     oklch(52% 0.130 195);
+    --type-industrial: oklch(48% 0.090 240);
+    --type-finance:    oklch(50% 0.110 110);
 
-    --accent:      #0a8fbd;
-    --accent-2:    #c81fa8;
-    --accent-3:    #a8720a;
-    --accent-ink:  #ffffff;
-    --accent-soft: oklch(60% 0.13 220 / 0.14);
+    /* ---- domains ---- */
+    --dom-entertainment: var(--accent);
+    --dom-health:        var(--type-health);
+    --dom-industry:      var(--type-industrial);
+    --dom-finance:       var(--type-finance);
 
-    --sig-semantic: #0a8fbd;
-    --sig-graph:    #12855a;
-    --sig-ema:      #a8720a;
-    --sig-kg:       #c81fa8;
-    --sig-profile:  #c02a72;
+    /* ---- maturity ---- */
+    --mat-all:        oklch(52% 0.120 150);
+    --mat-child:      oklch(54% 0.120 170);
+    --mat-teen:       oklch(54% 0.120 235);
+    --mat-adult:      oklch(54% 0.150 45);
+    --mat-restricted: oklch(50% 0.170 20);
 
-    --type-movie:      #0a8fbd;
-    --type-book:       #12855a;
-    --type-music:      #c81fa8;
-    --type-health:     #0b8b83;
-    --type-industrial: #a8720a;
-    --type-finance:    #5e7d0c;
+    /* ---- ranking signals: all cobalt-family, never the accent ---- */
+    --sig-semantic: oklch(45% 0.145 258);
+    --sig-profile:  oklch(52% 0.120 290);
+    --sig-ema:      oklch(56% 0.115 215);
+    --sig-graph:    oklch(50% 0.100 180);
 
-    --dom-entertainment: #c81fa8;
-    --dom-health:        #0a8fbd;
-    --dom-industry:      #a8720a;
-    --dom-finance:       #12855a;
+    /* ---- status ---- */
+    --ok:   oklch(50% 0.130 150);
+    --warn: oklch(58% 0.140 75);
+    --bad:  oklch(52% 0.170 25);
 
-    --mat-all_ages:   #12855a;
-    --mat-teen:       #0a8fbd;
-    --mat-adult:      #a8720a;
-    --mat-restricted: #cc2244;
+    /* ---- the ambient field ----------------------------------------
+       Two very wide, very pale washes. On paper the field's job is to
+       stop a full-bleed cream page looking flat under a projector, not
+       to be seen in its own right. */
+    --field-a: oklch(88% 0.055 45 / 0.55);
+    --field-b: oklch(90% 0.045 235 / 0.45);
+    --field-c: oklch(93% 0.030 120 / 0.40);
+    --field-d: oklch(91% 0.040 320 / 0.35);
 
-    --ok:   #12855a;
-    --warn: #a8720a;
-    --bad:  #cc2244;
+    /* ---- type ---- */
+    --font-display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
+    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
 
-    --shadow-sm: 0 1px 2px oklch(0% 0 0 / .07);
-    --shadow:    0 2px 6px oklch(0% 0 0 / .07), 0 12px 32px oklch(0% 0 0 / .10);
-    --shadow-lg: 0 6px 16px oklch(0% 0 0 / .10), 0 34px 80px oklch(0% 0 0 / .16);
-    --shadow-accent: 0 12px 36px oklch(60% 0.13 220 / .28);
+    --radius:    14px;
+    --radius-lg: 22px;
+    --radius-sm: 9px;
+
+    /* ---- motion ---- */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --dur-fast: 160ms;
+    --dur: 300ms;
+    --dur-slow: 620ms;
   }
 
-  /* overflow-x lives on html, never on body: setting it on body turns body
-     into a scroll container, which makes position:sticky resolve against
-     body instead of the viewport and strands the header mid-page. */
-  html {
-    scroll-behavior: smooth;
-    overflow-x: hidden;
+  /* ---- dark variant -----------------------------------------------
+     Kept because the header toggle ships it. Same editorial structure,
+     inverted ground: espresso rather than slate, so the accent still
+     reads as warm rather than neon. */
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+
+    --paper:         oklch(18% 0.012 60);
+    --paper-2:       oklch(21% 0.014 58);
+    --paper-3:       oklch(25% 0.016 56);
+    --bg:            oklch(15% 0.012 60);
+    --surface:       oklch(21% 0.014 58);
+    --surface-2:     oklch(24% 0.016 56);
+    --surface-3:     oklch(28% 0.018 54);
+    --surface-hover: oklch(31% 0.020 54);
+
+    --ink:        oklch(95% 0.010 85);
+    --ink-muted:  oklch(76% 0.012 80);
+    --ink-faint:  oklch(58% 0.012 75);
+    --ink-invert: oklch(15% 0.012 60);
+
+    --accent:       oklch(68% 0.165 48);
+    --accent-hover: oklch(74% 0.160 50);
+    --accent-soft:  oklch(32% 0.070 45);
+    --accent-ink:   oklch(15% 0.012 60);
+    --accent-2:     oklch(70% 0.130 250);
+
+    --line:        oklch(95% 0.01 85 / 0.14);
+    --line-strong: oklch(95% 0.01 85 / 0.30);
+
+    --shadow-1: 0 1px 2px oklch(0% 0 0 / 0.4);
+    --shadow-2: 0 2px 4px oklch(0% 0 0 / 0.35), 0 6px 14px oklch(0% 0 0 / 0.35);
+    --shadow-3: 0 3px 6px oklch(0% 0 0 / 0.4),  0 12px 28px oklch(0% 0 0 / 0.45);
+    --shadow-4: 0 6px 12px oklch(0% 0 0 / 0.45), 0 26px 60px oklch(0% 0 0 / 0.55);
+
+    --type-movie:      oklch(72% 0.150 30);
+    --type-show:       oklch(72% 0.140 350);
+    --type-book:       oklch(72% 0.115 152);
+    --type-music:      oklch(72% 0.145 300);
+    --type-health:     oklch(74% 0.120 196);
+    --type-industrial: oklch(72% 0.085 242);
+    --type-finance:    oklch(74% 0.105 112);
+
+    --mat-all:        oklch(72% 0.115 152);
+    --mat-child:      oklch(74% 0.115 172);
+    --mat-teen:       oklch(72% 0.115 236);
+    --mat-adult:      oklch(74% 0.145 48);
+    --mat-restricted: oklch(70% 0.165 22);
+
+    --sig-semantic: oklch(70% 0.130 250);
+    --sig-profile:  oklch(72% 0.115 292);
+    --sig-ema:      oklch(74% 0.110 216);
+    --sig-graph:    oklch(70% 0.095 182);
+
+    --ok:   oklch(72% 0.120 152);
+    --warn: oklch(78% 0.130 78);
+    --bad:  oklch(70% 0.160 26);
+
+    --field-a: oklch(45% 0.090 45 / 0.35);
+    --field-b: oklch(42% 0.080 250 / 0.32);
+    --field-c: oklch(40% 0.060 150 / 0.22);
+    --field-d: oklch(44% 0.070 320 / 0.22);
   }
+
+  html { -webkit-text-size-adjust: 100%; }
 
   body {
-    min-width: 320px;
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  /* Grain over everything. Large soft gradients band badly on 8-bit panels,
-     and a little noise is also what stops the glass reading as flat plastic. */
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 0;
-    opacity: .04;
-    background-image: radial-gradient(oklch(100% 0 0) .5px, transparent .5px);
-    background-size: 3px 3px;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'cv05' 1, 'ss01' 1;
   }
 
   ::selection { background: var(--accent-soft); color: var(--ink); }
 
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb {
-    background: var(--line-strong);
-    border-radius: 999px;
-    border: 3px solid transparent;
-    background-clip: content-box;
-  }
-  ::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); background-clip: content-box; }
-
   :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-    border-radius: 10px;
+    border-radius: 4px;
   }
 
-  input[type='range'] { accent-color: var(--accent); }
+  /* Scrollbars, tuned for paper rather than for a dark app. */
+  * { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb {
+    background: var(--line-strong);
+    border-radius: 99px;
+    border: 3px solid var(--bg);
+  }
+  *::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); }
 }
 
+/* ============================================================
+   TYPE
+   ============================================================ */
 @layer components {
-
-  /* ============ the iridescent field ============ */
-  /* Fixed and clipped to exactly the viewport, with the blobs that move living
-     inside it. An oversized fixed layer that animates itself falls out of sync
-     with the scroller and paints bands over sticky elements.
-
-     Named `ambient-field`, NOT `field`: `.field` is the form-input style further
-     down this file, and every text input carries it. Under the old name both
-     rules matched those inputs, and the four properties this rule declares that
-     the input rule does not - position: fixed, inset: 0, pointer-events: none,
-     contain: strict - all survived the cascade. Every input in the app was
-     therefore a fixed, full-width, click-through bar pinned to the top of the
-     viewport: the search box could not be focused or typed into, and neither
-     could the login fields. */
-  .ambient-field {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    overflow: hidden;
-    pointer-events: none;
-    contain: strict;
-  }
-
-  .field-blob {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(70px);
-    --animation-reduced: none;
-  }
-  .field-a {
-    inline-size: 48rem; block-size: 36rem;
-    inset-block-start: -12rem; inset-inline-start: -10rem;
-    background: var(--field-a);
-    animation: drift-a 32s ease-in-out infinite alternate;
-  }
-  .field-b {
-    inline-size: 42rem; block-size: 34rem;
-    inset-block-start: -8rem; inset-inline-end: -12rem;
-    background: var(--field-b);
-    animation: drift-b 40s ease-in-out infinite alternate;
-  }
-  .field-c {
-    inline-size: 40rem; block-size: 32rem;
-    inset-block-end: -14rem; inset-inline-start: 26%;
-    background: var(--field-c);
-    animation: drift-c 46s ease-in-out infinite alternate;
-  }
-  .field-d {
-    inline-size: 34rem; block-size: 28rem;
-    inset-block-start: 34%; inset-inline-start: 46%;
-    background: var(--field-d);
-    animation: drift-d 52s ease-in-out infinite alternate;
-  }
-
-  /* ============ LIQUID GLASS ============ */
-  /* Layer 1 — the refracting body. */
-  .lg {
-    position: relative;
-    isolation: isolate;
-    background: var(--lg-tint);
-    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.06);
-    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.06);
-    border-radius: var(--radius-lg);
-    /* Layer 3 — inset speculars. A bright top edge and a dark bottom edge are
-       what make a flat rectangle read as a sheet with thickness. */
-    box-shadow:
-      inset 0 1px 0 var(--lg-edge-light),
-      inset 0 -1px 0 var(--lg-edge-dark),
-      inset 0 0 30px -10px oklch(100% 0 0 / .14),
-      var(--shadow);
-  }
-
-  /* Without backdrop-filter a 42%-opaque panel over a moving field is
-     unreadable, so fall back to an opaque surface rather than a tint. */
-  @supports not (backdrop-filter: blur(1px)) {
-    .lg { background: var(--surface-2); }
-  }
-
-  /* Layer 2 — the chromatic refractive edge. A gradient ring masked to a 1px
-     border, so the rim splits light the way a real glass edge does. */
-  .lg::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: inherit;
-    padding: 1px;
-    /* A specular rim, not an accent ramp. See --lg-rim. */
-    background: var(--lg-rim);
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    mask-composite: exclude;
-    opacity: var(--lg-ring);
-    pointer-events: none;
-  }
-
-  /* Layer 4 — a travelling specular sweep, so the light looks like it moves
-     across the sheet rather than being painted on. */
-  .lg::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: inherit;
-    background: linear-gradient(105deg,
-      transparent 34%,
-      oklch(100% 0 0 / var(--lg-sweep)) 47%,
-      transparent 60%);
-    background-size: 280% 100%;
-    animation: sweep 9s ease-in-out infinite;
-    --animation-reduced: none;
-    pointer-events: none;
-  }
-
-  .lg-heavy { background: var(--lg-tint-heavy); }
-  .lg-quiet::after { display: none; }
-  .lg-quiet::before { opacity: calc(var(--lg-ring) * 0.5); }
-
-  /* Interactive glass: lifts, and the chromatic rim brightens. */
-  .lg-hover {
-    transition: translate .3s cubic-bezier(.2,.8,.2,1),
-                box-shadow .3s cubic-bezier(.2,.8,.2,1);
-  }
-  .lg-hover:hover { translate: 0 -5px; box-shadow:
-      inset 0 1px 0 var(--lg-edge-light),
-      inset 0 -1px 0 var(--lg-edge-dark),
-      inset 0 0 34px -8px oklch(100% 0 0 / .20),
-      var(--shadow-lg); }
-  .lg-hover:hover::before { opacity: 1; }
-
-  /* ---------- legacy surface aliases ----------
-     The existing components are written against .panel/.card, so those resolve
-     to the same glass recipe rather than every call site being rewritten.
-     Spelled out rather than using `composes`, which is a CSS Modules feature
-     and does nothing in a plain PostCSS/Tailwind pipeline. */
-  .panel,
-  .card {
-    position: relative;
-    isolation: isolate;
-    background: var(--lg-tint);
-    backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.06);
-    -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.06);
-    border-radius: var(--radius-lg);
-    box-shadow:
-      inset 0 1px 0 var(--lg-edge-light),
-      inset 0 -1px 0 var(--lg-edge-dark),
-      inset 0 0 30px -10px oklch(100% 0 0 / .14),
-      var(--shadow);
-  }
-  @supports not (backdrop-filter: blur(1px)) {
-    .panel, .card { background: var(--surface-2); }
-  }
-  .panel::before,
-  .card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: inherit;
-    padding: 1px;
-    /* A specular rim, not an accent ramp. See --lg-rim. */
-    background: var(--lg-rim);
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    mask-composite: exclude;
-    opacity: var(--lg-ring);
-    pointer-events: none;
-  }
-
-  /* Layer 4 on the legacy aliases too. This was defined only on .lg, and since
-     every component is written against .panel/.card the specular sweep was
-     missing from the entire UI. */
-  .panel::after,
-  .card::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: inherit;
-    background: linear-gradient(105deg,
-      transparent 34%,
-      oklch(100% 0 0 / var(--lg-sweep)) 47%,
-      transparent 60%);
-    background-size: 280% 100%;
-    animation: sweep 9s ease-in-out infinite;
-    --animation-reduced: none;
-    pointer-events: none;
-  }
-
-  /* Stagger the sweeps across a grid, so a wall of cards does not glint in
-     unison like a single object. */
-  .card:nth-child(3n+2)::after { animation-delay: -3s; }
-  .card:nth-child(3n+3)::after { animation-delay: -6s; }
-
-  .card {
-    transition: translate .3s cubic-bezier(.2,.8,.2,1),
-                box-shadow .3s cubic-bezier(.2,.8,.2,1);
-  }
-  .card:hover {
-    translate: 0 -5px;
-    box-shadow:
-      inset 0 1px 0 var(--lg-edge-light),
-      inset 0 -1px 0 var(--lg-edge-dark),
-      inset 0 0 34px -8px oklch(100% 0 0 / .20),
-      var(--shadow-lg);
-  }
-  .card:hover::before { opacity: 1; }
-
-  /* The old lit-edge modifier is now redundant — every glass surface has a
-     chromatic rim — so it just strengthens it. */
-  .panel-lit::before { opacity: 1; }
-
-  /* ---------- refraction ----------
-     Frost says "translucent"; bending the backdrop says "glass". The filter
-     lives in App.jsx and is referenced here, appended to the existing frost so
-     a panel keeps its blur and saturation and gains lensing on top.
-
-     Deliberately opt-in and used on the hero alone. A displaced backdrop is a
-     full offscreen pass per element, and applying it to a grid of result cards
-     costs far more than it adds — the effect is only legible on a large surface
-     anyway.
-
-     @supports gates it: a browser without backdrop-filter never sees the rule,
-     and one that has backdrop-filter but ignores url() filters keeps the plain
-     frost rather than losing the background entirely. */
-  @supports (backdrop-filter: blur(1px)) {
-    .lg-refract {
-      backdrop-filter:
-        blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.06)
-        url(#lg-refraction);
-      -webkit-backdrop-filter:
-        blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.06);
-    }
-  }
-
-  /* Refraction is motion-adjacent: it warps whatever is behind it as the field
-     drifts. Respect a reduced-motion preference by dropping back to frost. */
-  @media (prefers-reduced-motion: reduce) {
-    .lg-refract {
-      backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-sat)) brightness(1.06);
-    }
-  }
-
-  .panel-flat {
-    background: color-mix(in oklab, var(--surface-3) 82%, transparent);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-  }
-
-  /* Opaque surface for anything floating ON TOP of other content: dropdowns,
-     menus, popovers. Glass needs a soft backdrop to refract; over a grid of
-     high-contrast result cards it is simply unreadable, and backdrop-filter
-     cannot rescue it. */
-  .panel-overlay {
-    position: relative;
-    background: var(--surface-2);
-    border: 1px solid var(--line-strong);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-lg);
-  }
-
-  /* ---------- buttons ---------- */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: .5rem;
-    border-radius: 13px;
-    font-weight: 650;
-    font-size: .8125rem;
-    letter-spacing: -.01em;
-    white-space: nowrap;
-    min-block-size: 2.25rem;
-    transition: background .18s ease, border-color .18s ease,
-                color .18s ease, scale .12s ease, box-shadow .18s ease,
-                filter .18s ease;
-  }
-  @media (pointer: coarse) { .btn { min-block-size: 2.75rem; } }
-  .btn:active { scale: .975; }
-  .btn:disabled { opacity: .45; cursor: not-allowed; scale: 1; }
-
-  /* The primary button carries the full ramp, and drifts, so it reads as the
-     same material as the panels. */
-  .btn-primary {
-    position: relative;
-    background: linear-gradient(110deg in oklab,
-      var(--irid-1), var(--irid-2) 45%, var(--irid-3) 100%);
-    background-size: 220% 100%;
-    animation: ramp-drift 11s ease-in-out infinite alternate;
-    --animation-reduced: none;
-    color: var(--accent-ink);
-    border: 1px solid transparent;
-    box-shadow: var(--shadow-accent), inset 0 1px 0 oklch(100% 0 0 / .35);
-  }
-  .btn-primary:hover:not(:disabled) { filter: brightness(1.12) saturate(1.12); }
-
-  .btn-ghost {
-    background: color-mix(in oklab, var(--surface-3) 62%, transparent);
-    color: var(--ink-muted);
-    border: 1px solid var(--line);
-    backdrop-filter: blur(12px) saturate(150%);
-    -webkit-backdrop-filter: blur(12px) saturate(150%);
-  }
-  .btn-ghost:hover:not(:disabled) {
-    background: var(--surface-hover);
+  /* Doubled selector on purpose. The markup pairs `.display` with Tailwind's
+     `font-bold`/`font-extrabold`, and Instrument Serif ships one weight - so
+     the browser synthesises a fake bold that smears the serifs. Specificity
+     0,2,0 beats the utility and holds the real weight. */
+  .display {
+    font-family: var(--font-display);
+    letter-spacing: -0.018em;
+    line-height: 1.03;
     color: var(--ink);
-    border-color: var(--line-strong);
   }
 
-  /* ---------- inputs ---------- */
-  .field-input,
-  .field {
-    width: 100%;
-    background: color-mix(in oklab, var(--surface-3) 68%, transparent);
-    border: 1px solid var(--line);
-    border-radius: 13px;
-    color: var(--ink);
-    font-size: .875rem;
-    outline: none;
-    backdrop-filter: blur(12px) saturate(150%);
-    -webkit-backdrop-filter: blur(12px) saturate(150%);
-    transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
-  }
-  .field::placeholder { color: var(--ink-faint); }
-  .field:focus {
-    border-color: transparent;
-    background: var(--surface-2);
-    box-shadow: 0 0 0 2px var(--accent), 0 0 24px -6px var(--accent);
-  }
-  .field:disabled { opacity: .5; cursor: not-allowed; }
-  /* :user-invalid, not :invalid — only flag a field the user has touched,
-     rather than shouting at required-empty fields on first paint. */
-  .field:user-invalid { border-color: var(--bad); }
-
-  /* ---------- chips ---------- */
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: .375rem;
-    padding: .25rem .5625rem;
-    border-radius: 999px;
-    font-size: .6875rem;
-    font-weight: 650;
-    letter-spacing: .01em;
-    border: 1px solid var(--line);
-    background: color-mix(in oklab, var(--surface-3) 64%, transparent);
-    color: var(--ink-muted);
-    white-space: nowrap;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-
-  .chip-interactive { cursor: pointer; transition: all .16s ease; }
-  .chip-interactive:hover {
-    border-color: var(--line-strong);
-    color: var(--ink);
-    background: var(--surface-hover);
-  }
-
-  .chip-tinted {
-    border-color: color-mix(in oklab, var(--tint) 48%, transparent);
-    background: color-mix(in oklab, var(--tint) 16%, transparent);
-    color: var(--tint);
-  }
-
-  /* ---------- liquid slider ---------- */
-  /* Recreating the thumb is justified: the native one cannot carry the glow
-     that ties it to the ramp. The input element is kept, so keyboard stepping
-     and AT semantics still work. */
-  .slider {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 26px;
-    background: transparent;
-    cursor: pointer;
-  }
-  .slider::-webkit-slider-runnable-track {
-    height: 8px;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background:
-      linear-gradient(90deg in oklab,
-        var(--irid-1) 0%, var(--irid-2) var(--fill, 50%),
-        transparent var(--fill, 50%)),
-      color-mix(in oklab, var(--surface-3) 80%, transparent);
-  }
-  .slider::-moz-range-track {
-    height: 8px; border-radius: 999px;
-    border: 1px solid var(--line); background: var(--surface-3);
-  }
-  .slider::-moz-range-progress {
-    height: 8px; border-radius: 999px;
-    background: linear-gradient(90deg in oklab, var(--irid-1), var(--irid-2));
-  }
-  .slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 21px; height: 21px;
-    margin-top: -7px;
-    border-radius: 50%;
-    border: 2px solid var(--bg);
-    background: radial-gradient(circle at 34% 30%, white, var(--irid-1) 78%);
-    box-shadow: 0 0 0 1px var(--irid-1), 0 0 20px -2px var(--irid-1), var(--shadow-sm);
-    transition: scale .14s ease;
-  }
-  .slider::-moz-range-thumb {
-    width: 21px; height: 21px; border-radius: 50%;
-    border: 2px solid var(--bg);
-    background: radial-gradient(circle at 34% 30%, white, var(--irid-1) 78%);
-    box-shadow: 0 0 0 1px var(--irid-1), 0 0 20px -2px var(--irid-1);
-  }
-  .slider:hover::-webkit-slider-thumb  { scale: 1.14; }
-  .slider:active::-webkit-slider-thumb { scale: 1.24; }
-  .slider:disabled { cursor: not-allowed; opacity: .45; }
-
-  /* ---------- switch ---------- */
-  /* appearance:none plus generated content, per the multiple-choice guidance —
-     still a real checkbox, so it stays focusable and announces its state. */
-  .switch {
-    -webkit-appearance: none;
-    appearance: none;
-    position: relative;
-    inline-size: 41px;
-    block-size: 24px;
-    flex: none;
-    border-radius: 999px;
-    border: 1px solid var(--line-strong);
-    background: color-mix(in oklab, var(--surface-3) 84%, transparent);
-    cursor: pointer;
-    transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
-  }
-  .switch::after {
-    content: '';
-    position: absolute;
-    inset-block-start: 2px;
-    inset-inline-start: 2px;
-    inline-size: 18px;
-    block-size: 18px;
-    border-radius: 50%;
-    background: var(--ink-faint);
-    transition: translate .24s cubic-bezier(.2,.8,.2,1), background .24s ease;
-  }
-  .switch:checked {
-    background: linear-gradient(110deg in oklab, var(--irid-1), var(--irid-2));
-    border-color: transparent;
-    box-shadow: 0 0 18px -4px var(--irid-2);
-  }
-  .switch:checked::after {
-    translate: 17px 0;
-    background: white;
-  }
-  .switch:disabled { opacity: .45; cursor: not-allowed; }
-
-  /* ---------- meters ---------- */
-  .track {
-    height: 6px;
-    background: color-mix(in oklab, var(--surface-3) 84%, transparent);
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    overflow: hidden;
-  }
-
-  /* ---------- type ---------- */
-  .display { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; letter-spacing: -.038em; }
-  .num     { font-variant-numeric: tabular-nums; }
+  /* Weight only, and deliberately nothing else. The doubled selector exists to
+     out-specify Tailwind's `font-bold`, which would otherwise synthesise a
+     fake bold on a single-weight serif. Putting `color` in here too was a
+     mistake: at 0,2,0 it also beat `text-white`, so every card title sitting
+     on a poster went from white to ink and became unreadable against the
+     image scrim. */
+  .display.display { font-weight: 400; }
+  .display em,
+  .display .accent { font-style: italic; color: var(--accent); }
 
   .label {
-    font-size: .6875rem;
-    font-weight: 700;
-    letter-spacing: .11em;
+    font-family: var(--font-sans);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
     text-transform: uppercase;
     color: var(--ink-faint);
   }
 
-  /* Oil-slick text for hero words. */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  .clamp-1, .clamp-2, .clamp-3 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .clamp-1 { -webkit-line-clamp: 1; }
+  .clamp-2 { -webkit-line-clamp: 2; }
+  .clamp-3 { -webkit-line-clamp: 3; }
+
+  /* ============================================================
+     SURFACES
+     Editorial cards: real white on warm paper, a hairline rule,
+     and layered shadow for lift. No blur anywhere.
+     ============================================================ */
+  .panel,
+  .lg,
+  .glass {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2);
+  }
+
+  .panel-flat,
+  .lg-quiet {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-1);
+  }
+
+  .panel-lit,
+  .lg-heavy,
+  .glass-lit {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-4);
+  }
+
+  .panel-overlay {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-4);
+  }
+
+  /* The old glass classes still exist so nothing 404s on a class name;
+     on paper they simply resolve to the same editorial surface. */
+  .lg-refract { position: relative; }
+
+  .lg-hover {
+    transition: transform var(--dur) var(--ease-out),
+                box-shadow var(--dur) var(--ease-out),
+                border-color var(--dur) var(--ease-out);
+  }
+  .lg-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-4);
+    border-color: var(--line-strong);
+  }
+
+  .card {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2);
+    overflow: hidden;
+  }
+
+  .above { position: relative; z-index: 1; }
+  .defer-paint { content-visibility: auto; contain-intrinsic-size: auto 420px; }
+
+  /* ============================================================
+     CONTROLS
+     ============================================================ */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 13.5px;
+    font-weight: 550;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out),
+                transform var(--dur-fast) var(--ease-out),
+                box-shadow var(--dur-fast) var(--ease-out);
+  }
+  .btn:hover { background: var(--surface-hover); border-color: var(--line-strong); }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: transparent;
+    color: var(--accent-ink);
+    font-weight: 600;
+    box-shadow: var(--shadow-accent);
+  }
+  .btn-primary:hover {
+    background: var(--accent-hover);
+    border-color: transparent;
+    transform: translateY(-1px);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--ink-muted);
+    box-shadow: none;
+  }
+  .btn-ghost:hover { background: var(--surface-2); color: var(--ink); border-color: transparent; }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 11px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--paper-2);
+    color: var(--ink-muted);
+    font-size: 11.5px;
+    font-weight: 550;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+  .chip-tinted {
+    background: color-mix(in oklab, var(--tint) 11%, var(--surface));
+    border-color: color-mix(in oklab, var(--tint) 30%, transparent);
+    color: color-mix(in oklab, var(--tint) 78%, var(--ink));
+  }
+  .chip-interactive {
+    cursor: pointer;
+    transition: background var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out),
+                transform var(--dur-fast) var(--ease-out);
+  }
+  .chip-interactive:hover {
+    background: var(--accent-soft);
+    border-color: color-mix(in oklab, var(--accent) 40%, transparent);
+    color: var(--accent);
+    transform: translateY(-1px);
+  }
+
+  .field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    box-shadow: var(--shadow-2);
+    transition: border-color var(--dur) var(--ease-out),
+                box-shadow var(--dur) var(--ease-out);
+  }
+  .field:focus-within {
+    border-color: color-mix(in oklab, var(--accent) 55%, transparent);
+    box-shadow: var(--shadow-3), 0 0 0 4px var(--accent-soft);
+  }
+
+  .field-input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 15.5px;
+  }
+  .field-input::placeholder { color: var(--ink-faint); }
+
+  /* range slider ------------------------------------------------- */
+  .slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 22px;
+    background: transparent;
+    cursor: pointer;
+  }
+  .slider::-webkit-slider-runnable-track {
+    height: 5px;
+    border-radius: 999px;
+    background: var(--paper-3);
+  }
+  .slider::-moz-range-track {
+    height: 5px;
+    border-radius: 999px;
+    background: var(--paper-3);
+  }
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 17px;
+    height: 17px;
+    margin-top: -6px;
+    border-radius: 999px;
+    background: var(--accent);
+    border: 2.5px solid var(--surface);
+    box-shadow: var(--shadow-2);
+    transition: transform var(--dur-fast) var(--ease-spring);
+  }
+  .slider::-moz-range-thumb {
+    width: 17px;
+    height: 17px;
+    border-radius: 999px;
+    background: var(--accent);
+    border: 2.5px solid var(--surface);
+    box-shadow: var(--shadow-2);
+  }
+  .slider:hover::-webkit-slider-thumb { transform: scale(1.18); }
+  .slider:active::-webkit-slider-thumb { transform: scale(1.05); }
+
+  .track {
+    height: 5px;
+    border-radius: 999px;
+    background: var(--paper-3);
+    overflow: hidden;
+  }
+
+  /* toggle -------------------------------------------------------- */
+  .switch {
+    position: relative;
+    width: 42px;
+    height: 24px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--paper-3);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease-out),
+                border-color var(--dur) var(--ease-out);
+  }
+  .switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--surface);
+    box-shadow: var(--shadow-1);
+    transition: translate var(--dur) var(--ease-spring);
+  }
+  .switch[data-on='true'],
+  .switch[aria-checked='true'] { background: var(--accent); border-color: transparent; }
+  .switch[data-on='true']::after,
+  .switch[aria-checked='true']::after { translate: 18px 0; }
+
   .text-irid {
-    background: linear-gradient(100deg in oklab,
-      var(--irid-1), var(--irid-2) 34%, var(--irid-3) 62%, var(--irid-4) 92%);
-    background-size: 260% 100%;
+    background: linear-gradient(100deg, var(--accent), var(--accent-2) 70%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    animation: ramp-drift 10s ease-in-out infinite alternate;
-    --animation-reduced: none;
-  }
-
-  /* ---------- skeleton ---------- */
-  .skeleton {
-    background: linear-gradient(90deg,
-      var(--surface-3) 0%, var(--surface-hover) 50%, var(--surface-3) 100%);
-    background-size: 200% 100%;
-    animation: shimmer 1.6s ease-in-out infinite;
-    --animation-reduced: shimmer 6s ease-in-out infinite;
-    border-radius: 10px;
   }
 }
 
-@layer utilities {
-  .clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-  .clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-  .above   { position: relative; z-index: 1; }
-
-  /* Long result lists: skip painting offscreen cards. The intrinsic size has to
-     be close to the real card height or the scrollbar jumps while scrolling. */
-  .defer-paint {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 22rem;
-  }
+/* ============================================================
+   THE FIELD
+   Two slow washes plus a paper grain. The grain is what stops a
+   flat cream page banding on a projector.
+   ============================================================ */
+.ambient-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
 }
 
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position:  200% 0; }
+.field-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  will-change: transform;
+}
+.field-a { width: 52vw; height: 52vw; left: -12vw; top: -14vw;  background: var(--field-a); }
+.field-b { width: 46vw; height: 46vw; right: -10vw; top: 8vh;   background: var(--field-b); }
+.field-c { width: 40vw; height: 40vw; left: 14vw; bottom: -16vw; background: var(--field-c); }
+.field-d { width: 34vw; height: 34vw; right: 18vw; bottom: -10vw; background: var(--field-d); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .field-a { animation: drift-a 34s ease-in-out infinite alternate; }
+  .field-b { animation: drift-b 42s ease-in-out infinite alternate; }
+  .field-c { animation: drift-a 50s ease-in-out infinite alternate reverse; }
+  .field-d { animation: drift-b 38s ease-in-out infinite alternate reverse; }
 }
 
-/* Each blob drifts on its own clock so the field never visibly loops.
-   translate/scale only, so these stay on the compositor. */
 @keyframes drift-a {
-  0%   { translate:  0    0;  scale: 1;    }
-  50%  { translate:  7vw  5vh; scale: 1.18; }
-  100% { translate:  2vw 11vh; scale: 1.06; }
+  to { translate: 8vw 6vh; scale: 1.14; }
 }
 @keyframes drift-b {
-  0%   { translate:  0    0;  scale: 1.06; }
-  50%  { translate: -8vw  7vh; scale: 1;    }
-  100% { translate: -3vw 13vh; scale: 1.20; }
-}
-@keyframes drift-c {
-  0%   { translate:  0    0;  scale: 1.12; }
-  50%  { translate:  6vw -8vh; scale: 1;    }
-  100% { translate: -7vw -3vh; scale: 1.14; }
-}
-@keyframes drift-d {
-  0%   { translate:  0    0;  scale: 1;    }
-  50%  { translate: -6vw -6vh; scale: 1.22; }
-  100% { translate:  5vw  4vh; scale: 1.08; }
+  to { translate: -7vw 8vh; scale: 0.9; }
 }
 
-/* The specular sweep travelling across a glass sheet. */
-@keyframes sweep {
-  0%, 100% { background-position: 130% 0; }
-  50%      { background-position: -30% 0; }
+/* Paper grain: a single repeating SVG turbulence, held very low so it
+   reads as tooth rather than as noise. */
+.ambient-field::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.32;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.34'/%3E%3C/svg%3E");
+}
+:root[data-theme='dark'] .ambient-field::after { mix-blend-mode: screen; opacity: 0.16; }
+
+/* ============================================================
+   SKELETON — a directional shimmer, not a pulse
+   ============================================================ */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--paper-2);
+  border-radius: var(--radius-sm);
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg,
+    transparent,
+    color-mix(in oklab, var(--surface) 92%, transparent),
+    transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .skeleton::after { animation: shimmer 1.5s infinite; }
+}
+@keyframes shimmer {
+  to { transform: translateX(100%); }
 }
 
-@keyframes ramp-drift {
-  0%   { background-position:   0% 50%; }
-  100% { background-position: 100% 50%; }
+/* ============================================================
+   MOTION
+   ============================================================ */
+
+/* --- entry/exit for elements added to or removed from the DOM ---
+   @starting-style plus allow-discrete, so a card can animate in on
+   first paint without a JS animation library coordinating it. */
+@layer components {
+  .enter {
+    opacity: 1;
+    translate: 0 0;
+    transition: opacity var(--dur) var(--ease-out),
+                translate var(--dur) var(--ease-out),
+                display var(--dur) allow-discrete;
+  }
+  @starting-style {
+    .enter { opacity: 0; translate: 0 14px; }
+  }
+  .enter[hidden] { opacity: 0; translate: 0 8px; }
 }
 
-@keyframes rise-in {
-  from { opacity: 0; translate: 0 16px; }
-  to   { opacity: 1; translate: 0 0; }
+/* --- scroll-driven reveal ---
+   Progressive enhancement: without scroll-driven animation support the
+   element is simply already visible, which is the correct fallback. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    /* `.reveal` deliberately animates only transform, never opacity.
+       A scroll-driven animation holds its `from` state via fill-mode, so an
+       opacity-0 start strands the element permanently whenever the timeline
+       does not advance - which is exactly what happened when this was put on
+       the result cards: that list scrolls inside a container, the timeline
+       never progressed, and 8 of 10 cards were invisible with no error to
+       explain it. Transform-only fails visible, which is the right failure. */
+    .reveal {
+      animation: reveal-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 62%;
+    }
+    @keyframes reveal-in {
+      from { translate: 0 34px; scale: 0.975; }
+      to   { translate: 0 0;    scale: 1; }
+    }
+
+    /* Posters drift slightly slower than the card that holds them,
+       which is what sells depth on a long scroll. */
+    .parallax-media {
+      animation: parallax-shift linear both;
+      animation-timeline: view();
+      animation-range: cover;
+    }
+    @keyframes parallax-shift {
+      from { translate: 0 -5%; }
+      to   { translate: 0 5%; }
+    }
+  }
 }
 
-/* Reduced motion: opt each animation out individually through
-   --animation-reduced rather than zeroing every duration globally, which can
-   make some animations more jarring rather than less. */
-@property --animation-reduced {
-  syntax: "*";
+/* --- 3D tilt ---
+   The transform is driven by two custom properties the card sets from
+   pointer position; registering them as <angle> lets them interpolate,
+   so the card eases back to rest instead of snapping. */
+@property --tilt-x {
+  syntax: '<angle>';
+  initial-value: 0deg;
   inherits: false;
-  initial-value: none;
 }
+@property --tilt-y {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.tilt {
+  transform: perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+  transform-style: preserve-3d;
+  transition: transform var(--dur) var(--ease-out),
+              box-shadow var(--dur) var(--ease-out),
+              --tilt-x var(--dur) var(--ease-out),
+              --tilt-y var(--dur) var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tilt { transform: none; }
+}
+
+/* --- staggered list entry --- */
+@media (prefers-reduced-motion: no-preference) {
+  .stagger > * {
+    animation: rise-in var(--dur-slow) var(--ease-out) backwards;
+    animation-delay: calc(var(--i, 0) * 55ms);
+  }
+  @keyframes rise-in {
+    from { opacity: 0; translate: 0 20px; }
+  }
+}
+
+/* --- view transitions between result sets --- */
+@view-transition { navigation: auto; }
+
+::view-transition-old(results),
+::view-transition-new(results) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+::view-transition-old(results) { animation-name: vt-out; }
+::view-transition-new(results) { animation-name: vt-in; }
+
+@keyframes vt-out { to { opacity: 0; translate: 0 -10px; } }
+@keyframes vt-in  { from { opacity: 0; translate: 0 14px; } }
+
+/* A hero that shrinks as the page scrolls, rather than scrolling away. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: scroll()) {
+    .hero-collapse {
+      animation: hero-shrink linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 220px;
+    }
+    @keyframes hero-shrink {
+      to { opacity: 0.4; scale: 0.96; translate: 0 -10px; }
+    }
+  }
+}
+
+/* --- underline that draws itself --- */
+.link-draw {
+  position: relative;
+  text-decoration: none;
+  color: inherit;
+}
+.link-draw::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 1.5px;
+  background: var(--accent);
+  scale: 0 1;
+  transform-origin: left;
+  transition: scale var(--dur) var(--ease-out);
+}
+.link-draw:hover::after { scale: 1 1; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation: var(--animation-reduced) !important;
-    scroll-behavior: auto;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
-  .card, .lg-hover { transition-duration: .01ms; }
 }
