@@ -375,3 +375,75 @@ def test_a_missing_certification_file_is_a_warning_not_a_failure(
     assert "WARNING" in capsys.readouterr().out
     # Still fails closed: the genre cannot relax a board-rated type.
     assert annotate_audience(result).iloc[0]["maturity"] == "teen"
+
+
+class TestHardcoreKeywordHardening:
+    """Porn scene listings reached the music catalogue rated `teen`.
+
+    Music rows carry no genre text, so the rules had nothing to match and fell
+    through to the content type's default. These keywords are the backstop.
+    """
+
+    @pytest.mark.parametrize("title", [
+        "Private Gangbangs Vol. 5 (Scene 3)",
+        "7on1 MEGA GANGBANG! Sweet Slut Sofia Smith",
+        "Colombian pornstars Madison Stil getting used",
+        "Beautiful teen undergoes hardcore double penetration",
+        "Double Vaginal Fantasy Of a Busty Beauty",
+        "Anal-Crazy Hottie Gets DPed",
+    ])
+    def test_explicit_titles_are_restricted(self, title):
+        assert maturity_for_row("music", title) == "restricted"
+
+    @pytest.mark.parametrize("title", [
+        # Each of these was measured against the full catalogue; a stem match
+        # or a looser word list would wrongly restrict every one.
+        "Final Analysis",
+        "Analyze This",
+        "El analfabeto",
+        "xXx: State of the Union",
+        "Kick-Ass",
+        "A Pain in the Ass",
+        "DAP 18130 2 Pack 10.1 oz. Alex Plus All Purpose Sealant",
+        "Take Me Home - BBC Children In Need Single 2011",
+        "A Cock and Bull Story",
+    ])
+    def test_ordinary_titles_are_not_restricted(self, title):
+        assert maturity_for_row("movie", title) != "restricted"
+
+    def test_pornograph_still_matches_as_a_stem(self):
+        # The whole-word family must not have broken stem matching.
+        assert maturity_for_row("movie", "A history of pornography") == "restricted"
+
+    def test_whole_word_family_matches_its_own_terms(self):
+        assert maturity_for_row("movie", "MILF Comedy") == "restricted"
+
+    def test_keywords_alone_cannot_catch_every_case(self):
+        # Documented limitation, asserted so it is not mistaken for coverage:
+        # 10 of the 24 real listings carried no explicit word at all. Ingestion
+        # filtering is the real defence; see scripts/fetch_lastfm_tracks.py.
+        assert maturity_for_row("music", "Stepmoms Protein Supplements") != "restricted"
+
+
+class TestPornWholeWordTier:
+    """"porn" belongs in `adult`, not `restricted`: these are films about the
+    industry, not hardcore material. Before this, 7 of 10 were rated `teen`."""
+
+    @pytest.mark.parametrize("title", [
+        "After Porn Ends 2", "Bikini Porn", "Zack and Miri Make a Porno",
+        "Porn in the Hood", "Android Porn",
+    ])
+    def test_porn_titles_are_at_least_adult(self, title):
+        assert maturity_for_row("movie", title) == "adult"
+
+    def test_pornography_is_still_restricted_not_merely_adult(self):
+        # The whole-word "porn" must not shadow the stem "pornograph".
+        assert maturity_for_row("movie", "A history of pornography") == "restricted"
+
+    @pytest.mark.parametrize("title", [
+        "xXx: Return of Xander Cage",       # the film
+        "XXX. FEAT. U2.",                   # a song
+        "Elastic Knee Support Beige XXX-Large 24\" - 26\"",  # a clothing size
+    ])
+    def test_xxx_is_not_used_as_a_signal(self, title):
+        assert maturity_for_row("movie", title) not in ("restricted",)

@@ -30,7 +30,25 @@ from backend.domains import ContentTypeSpec, DomainRegistry, get_registry
 MATURITY_CATEGORY_RULES: list[tuple[str, tuple[str, ...]]] = [
     (
         "restricted",
-        ("adults only", "adult only", "pornograph", "x-rated"),
+        (
+            "adults only", "adult only", "pornograph", "x-rated",
+            # Hardcore terms, added after Last.fm year tags pulled 24 porn
+            # scene listings into the music catalogue - every one of them rated
+            # `teen`, because music rows carry no genre text for these rules to
+            # match and so fell through to the content type's default.
+            #
+            # These are stems with no false positives against all 106k
+            # catalogue titles. They are NOT sufficient on their own: of those
+            # 24 listings, 10 contained no explicit word at all ("Stepmoms
+            # Protein Supplements", "Stepson Involved"). Keywords cannot
+            # classify those, so ingestion filtering is the real defence and
+            # this is the backstop.
+            "gangbang", "gang bang", "pornstar", "porn star",
+            "blowjob", "blow job", "creampie", "cream pie",
+            "cumshot", "cum shot", "deepthroat", "deep throat",
+            "bukkake", "fisting", "hentai",
+            "double penetrat", "double vaginal",
+        ),
     ),
     (
         "adult",
@@ -81,25 +99,62 @@ MATURITY_CATEGORY_RULES: list[tuple[str, tuple[str, ...]]] = [
 ]
 
 
+# Keywords that must match as a whole word, not as a stem. Kept separate from
+# MATURITY_CATEGORY_RULES because the two need different boundary handling and
+# using the wrong one is silently destructive in opposite directions: a stem
+# match on these fires on ordinary words, while a whole-word match on
+# "pornograph" would stop matching "pornography".
+#
+# Every candidate here was measured against all 106k catalogue titles first.
+# Rejected on that evidence, with their false-positive counts:
+#   "anal" as a stem  - 547 hits: "Final Analysis", "Analyze This", "El analfabeto"
+#   "xxx"  as a stem  -  31 hits: the film "xXx" and its sequels
+#   "ass"  whole word -  25 hits: "Kick-Ass", "Bad Ass", "A Pain in the Ass"
+#   "dap"  whole word -  17 hits: DAP-brand caulk in the health catalogue
+#   "bbc"  whole word -   6 hits: "BBC Children In Need", "Ex-Factor - BBC Live"
+#   "cock" whole word -  23 hits: "A Cock and Bull Story", "Cock the Hammer"
+#   "xxx"  whole word -  14 hits: the "xXx" films, "XXX. FEAT. U2.", and -
+#                        the one nobody predicts - "XXX-Large" clothing sizes
+#                        in the health catalogue.
+# Do not add any of those without re-measuring.
+MATURITY_WHOLE_WORD_RULES: list[tuple[str, tuple[str, ...]]] = [
+    ("restricted", ("slut", "sluts", "milf", "milfs", "dped")),
+    # `adult`, not `restricted`: these are films *about* the industry, not
+    # hardcore material. All 10 catalogue hits are adult-themed and 7 of them
+    # were rated `teen` - a 13-year-old was served "Bikini Porn" and
+    # "After Porn Ends 2". The stem "pornograph" above is unaffected, because a
+    # whole-word "porn" cannot match inside "pornography".
+    ("adult", ("porn", "porno", "porns")),
+]
+
+
 LEFT_BOUNDARY = "(?<![a-z])"
+RIGHT_BOUNDARY = "(?![a-z])"
 
 
-def _compile(rules: list[tuple[str, tuple[str, ...]]]) -> list[tuple[str, re.Pattern[str]]]:
+def _compile(
+    rules: list[tuple[str, tuple[str, ...]]],
+    whole_word_rules: list[tuple[str, tuple[str, ...]]] | None = None,
+) -> list[tuple[str, re.Pattern[str]]]:
     # Match only at a left word boundary, so "teen" no longer fires on
     # "canteen"/"sixteen" and "war" would not fire on "award". A symmetric
     # word-boundary assertion would break stem keywords such as "pornograph"
     # (it has to still match "pornography"), so this is a negative lookbehind
     # on the left only. The haystack is lowercased before matching.
-    return [
-        (
-            maturity,
-            re.compile("|".join(LEFT_BOUNDARY + re.escape(k) for k in keywords)),
-        )
-        for maturity, keywords in rules
-    ]
+    whole_words = dict(whole_word_rules or [])
+
+    compiled = []
+    for maturity, keywords in rules:
+        alternatives = [LEFT_BOUNDARY + re.escape(k) for k in keywords]
+        alternatives += [
+            LEFT_BOUNDARY + re.escape(k) + RIGHT_BOUNDARY
+            for k in whole_words.get(maturity, ())
+        ]
+        compiled.append((maturity, re.compile("|".join(alternatives))))
+    return compiled
 
 
-_COMPILED_RULES = _compile(MATURITY_CATEGORY_RULES)
+_COMPILED_RULES = _compile(MATURITY_CATEGORY_RULES, MATURITY_WHOLE_WORD_RULES)
 
 
 def maturity_for_row(

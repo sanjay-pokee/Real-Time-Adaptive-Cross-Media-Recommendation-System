@@ -10,12 +10,16 @@ import pandas as pd
 
 try:
     from .audience_tagging import annotate_audience
-    from .cleaners import clean_text, join_non_empty, make_text_hash, parse_name_list
+    from .cleaners import (
+        clean_release_date, clean_text, join_non_empty, make_text_hash, parse_name_list,
+    )
     from .content_schema import CATALOG_COLUMNS, CONTENT_COLUMNS, make_global_id
     from .loaders import DEFAULT_CONFIG_PATH, load_dataset_config, resolve_project_path
 except ImportError:
     from audience_tagging import annotate_audience
-    from cleaners import clean_text, join_non_empty, make_text_hash, parse_name_list
+    from cleaners import (
+        clean_release_date, clean_text, join_non_empty, make_text_hash, parse_name_list,
+    )
     from content_schema import CATALOG_COLUMNS, CONTENT_COLUMNS, make_global_id
     from loaders import DEFAULT_CONFIG_PATH, load_dataset_config, resolve_project_path
 
@@ -289,7 +293,7 @@ def normalize_movies(raw_df: pd.DataFrame, dataset_config: dict) -> pd.DataFrame
     ).apply(lambda v: ", ".join(parse_name_list(v)))
 
     df["categories"] = genres
-    df["release_date"] = raw_df[dataset_config["release_date_column"]]
+    df["release_date"] = raw_df[dataset_config["release_date_column"]].apply(clean_release_date)
     df["popularity"] = raw_df[dataset_config["popularity_column"]]
     df["rating"] = raw_df[dataset_config["rating_column"]]
 
@@ -358,7 +362,7 @@ def normalize_books(raw_df: pd.DataFrame, dataset_config: dict) -> pd.DataFrame:
     df["image_url"] = raw_df.get(
         "thumbnail", pd.Series("", index=raw_df.index)
     ).fillna("").astype(str)
-    df["release_date"] = raw_df[dataset_config["release_date_column"]]
+    df["release_date"] = raw_df[dataset_config["release_date_column"]].apply(clean_release_date)
     df["popularity"] = raw_df[dataset_config["popularity_column"]]
     df["rating"] = raw_df[dataset_config["rating_column"]]
 
@@ -410,7 +414,7 @@ def normalize_music(raw_df: pd.DataFrame, dataset_config: dict) -> pd.DataFrame:
         for vals in zip(playlist_genre, playlist_subgenre)
     ]
     df["creators"] = raw_df["track_artist"].apply(clean_text)
-    df["release_date"] = raw_df[dataset_config["release_date_column"]]
+    df["release_date"] = raw_df[dataset_config["release_date_column"]].apply(clean_release_date)
     df["popularity"] = raw_df[dataset_config["popularity_column"]]
     df["rating"] = ""
 

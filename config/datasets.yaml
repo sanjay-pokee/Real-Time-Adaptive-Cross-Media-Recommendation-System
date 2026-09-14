@@ -29,8 +29,16 @@ datasets:
 
   books:
     content_type: book
-    source: google_books_dataset
-    path: datasets/books/archive/google_books_dataset.csv
+    # Was a Google Books scrape on Kaggle: 15,147 rows from 149 keyword
+    # searches, of which only 8,351 (55%) carried a description and the
+    # highest-ranked were SEO spam - "Bestsellers" by "Ivan King, bestsellers".
+    # Now fetched live:
+    #   python -m scripts.fetch_openlibrary_books
+    # Open Library needs no key, and returns the synopsis as a search field, so
+    # a page of 100 books costs one request. sort=rating plus a required
+    # description and cover is what keeps the rows worth embedding.
+    source: openlibrary_api
+    path: datasets/books/openlibrary_books.csv
     id_column: book_id
     title_column: title
     description_column: description
@@ -53,6 +61,41 @@ datasets:
     content_type: music
     source: spotify_songs
     path: datasets/music/songs/spotify_songs.csv
+    id_column: track_id
+    title_column: track_name
+    description_column: null
+    category_columns:
+      - playlist_genre
+      - playlist_subgenre
+    creator_columns:
+      - track_artist
+    release_date_column: track_album_release_date
+    popularity_column: track_popularity
+    rating_column: null
+    metadata_columns:
+      - track_name
+      - track_artist
+      - track_album_name
+      - playlist_genre
+      - playlist_subgenre
+
+  # Current music from the live Last.fm API, alongside the Spotify export
+  # above rather than replacing it. The Kaggle export stops at 2020, so
+  # "what came out recently" returned nothing for music while movies - which
+  # are fetched live from TMDb - reached 2026.
+  #
+  # Same normalizer and the same column names as the Spotify file, so this is
+  # a config entry rather than new code:
+  #   python -m scripts.fetch_lastfm_tracks
+  #
+  # Kept as a second source rather than a migration: the Spotify rows are what
+  # the LightGCN benchmark and the paper's item counts describe, and swapping
+  # them out the week of a review would invalidate both.
+  music_lastfm:
+    content_type: music
+    normalizer: music
+    source: lastfm_api
+    path: datasets/music/lastfm/lastfm_tracks.csv
     id_column: track_id
     title_column: track_name
     description_column: null

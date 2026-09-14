@@ -13,7 +13,13 @@ import pytest
 # Make sure the package is importable when running from the project root.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from preprocessing.cleaners import clean_text, join_non_empty, make_text_hash, parse_name_list
+from preprocessing.cleaners import (
+    clean_release_date,
+    clean_text,
+    join_non_empty,
+    make_text_hash,
+    parse_name_list,
+)
 from preprocessing.content_schema import CONTENT_COLUMNS, REQUIRED_NON_EMPTY, make_global_id
 from preprocessing.validate_content_catalog import validate_catalog
 
@@ -238,3 +244,34 @@ class TestValidateCatalog:
     def test_all_content_types_valid(self):
         """Catalog with all three content types should pass validation."""
         validate_catalog(_valid_catalog(3))
+
+
+class TestCleanReleaseDate:
+    """Sources ship either a full ISO date or a bare year; both must survive.
+
+    A bare-year column with any blank in it reads back as float64, so 1979
+    became "1979.0" in the catalogue, the Qdrant payload and the API response.
+    """
+
+    def test_full_iso_date_is_untouched(self):
+        assert clean_release_date("2019-06-14") == "2019-06-14"
+
+    def test_bare_year_string_is_untouched(self):
+        assert clean_release_date("1979") == "1979"
+
+    def test_float_year_loses_its_decimal(self):
+        assert clean_release_date(2012.0) == "2012"
+
+    def test_already_coerced_text_is_repaired(self):
+        assert clean_release_date("2012.0") == "2012"
+
+    def test_blanks_become_empty_string(self):
+        assert clean_release_date(None) == ""
+        assert clean_release_date(float("nan")) == ""
+        assert clean_release_date("") == ""
+
+    def test_integer_year_survives(self):
+        assert clean_release_date(2021) == "2021"
+
+    def test_non_date_text_is_left_alone(self):
+        assert clean_release_date("n/a") == "n/a"

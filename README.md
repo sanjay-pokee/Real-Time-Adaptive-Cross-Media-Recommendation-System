@@ -91,8 +91,55 @@ id, so an interrupted run resumes and a re-run only fetches what is missing; the
 fetch is concurrent (`--workers`, default 8) because serial throughput is bounded by round-trip
 latency and a 22k backlog takes hours at one request in flight.
 
+Books are fetched from the live Open Library API, which needs no key:
+
+```powershell
+python -m scripts.fetch_openlibrary_books
+```
+
+This replaced a Google Books scrape from Kaggle — 15,147 rows from 149 keyword searches, of
+which only 8,351 (55%) had a description at all, and whose highest-ranked rows were SEO spam
+("Bestsellers", by "Ivan King, bestsellers", published by "bestsellers"). A row with no
+description embeds to noise, and a keyword-stuffed one embeds to worse than noise, because it
+matches every query weakly.
+
+`fetch_openlibrary_books` asks `search.json` for `description` as a Solr field, so a page of
+100 books costs one request rather than a search plus 100 work lookups. It takes its breadth
+from a list of 60 subjects rather than from deep paging, because `sort=rating` is what buys the
+quality — description coverage runs 99% on a subject's first page and 58% by page 500 — and
+`search_category` records which subject found each row. A description and a cover are both
+required, the same bar `fetch_tmdb_movies` applies to overviews and posters. Tune with
+`--per-subject`, `--subject`, `--language` and `--sort`.
+
+`sort=rating` has one systematic blind spot: ratings take years to accumulate, so new releases
+rank low no matter how good they are. A plain run returned 42 books from 2026 against a median
+year of 2003, which makes "books from this year" an empty answer at a demo. Top up the recent
+end with a year window, merged into the existing file:
+
+```powershell
+python -m scripts.fetch_openlibrary_books --from-year 2024 --to-year 2026 --per-subject 120 --merge
+```
+
+Sorting by `new` instead would be the wrong fix — that ranks records *created* recently rather
+than books *published* recently, and only 18 of 100 hits carried a description against 86 of 100
+for the same window sorted by rating. So the window narrows the pool and `rating` still orders
+it. `--merge` keeps rows already on disk on a collision, so no `global_id` moves: the MySQL load
+prunes nothing and seeded interactions survive, which makes a top-up far cheaper downstream than
+the original re-source was.
+
 `backend/api_ingestion.py` contains unused TMDb, Open Library and MusicBrainz clients. Nothing
-imports it; it is scaffolding from an earlier approach and is not part of the pipeline.
+imports it; it is scaffolding from an earlier approach and is not part of the pipeline — the
+fetch scripts above call these APIs directly, because they need session retries, rate limiting
+and pagination that the clients do not provide.
+
+**Stop the API server before rebuilding the Qdrant collection.** In embedded mode (`QDRANT_PATH`
+set, which is the default) the storage folder takes a single-process lock, so a running
+`uvicorn backend.app:app` holds it and the rebuild fails with either *"Storage folder
+qdrant_storage is already accessed by another instance"* or a bare `PermissionError [WinError 32]`
+on `storage.sqlite`. Stop the server, wait for the handle to actually clear — Windows takes a few
+seconds to release a memory-mapped file that size, so killing the process and rebuilding
+immediately fails the same way — then rebuild and restart. Running Qdrant as a server
+(`QDRANT_URL`) instead of embedded removes the constraint.
 
 Load the processed catalog into MySQL after building it:
 
