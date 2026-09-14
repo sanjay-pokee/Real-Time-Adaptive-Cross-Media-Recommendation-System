@@ -20,10 +20,10 @@
          redesign in the variant it was not designed around. */
       (function () {
         try {
-          var saved = localStorage.getItem('nexus-theme-v2') || 'light';
+          var saved = localStorage.getItem('nexus-theme-v3') || 'dark';
           document.documentElement.setAttribute('data-theme', saved);
         } catch (e) {
-          document.documentElement.setAttribute('data-theme', 'light');
+          document.documentElement.setAttribute('data-theme', 'dark');
         }
       })();
     </script>

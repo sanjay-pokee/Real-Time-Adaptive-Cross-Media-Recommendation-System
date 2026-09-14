@@ -81,6 +81,13 @@
 \newcommand{\sNEW}{\textcolor{amritaMaroon}{\textbf{New}}}
 
 % --- A block heading inside a column ---
+% --- Ragged-right fixed-width column. Justified narrow columns produce
+%     rivers of white space and ugly hyphenation; L{} fixes both.
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+% --- Discourage hyphenation in narrow table cells ---
+\hyphenpenalty=2000
+\tolerance=1500
+
 \newcommand{\blk}[1]{{\scriptsize\textbf{#1}}\par\vspace{0.9mm}}
 
 % --- Bulleted list with room to breathe ---
@@ -180,7 +187,7 @@ one is delivered and measured, one is scoped with a benchmark plan.}}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{Previous Panel Review --- How Each Comment Was Addressed}
+\begin{frame}[shrink=15]{Previous Panel Review --- How Each Comment Was Addressed}
 \framesubtitle{Recommendation 1 is scoped and planned; recommendation 2 is delivered and measured}
 \vspace{1mm}
 \begin{center}
@@ -238,7 +245,7 @@ Test evidence
 % =====================================================================
 \section{Implementation Progress}
 
-\begin{frame}{2. Implementation Progress ($\approx$75\%)}
+\begin{frame}[shrink=15]{2. Implementation Progress ($\approx$75\%)}
 \framesubtitle{Rubric: Backend, Frontend, Database \& Core Modules Functional (8 Marks)}
 \vspace{0.5mm}
 \begin{center}
@@ -355,7 +362,7 @@ origin. GPU training on Kaggle T4 --- only the \texttt{.npz} ships back, so the 
 % =====================================================================
 \section{Retrieval \& Knowledge Graph}
 
-\begin{frame}{2. Data Layer --- Sources and Scale on Disk}
+\begin{frame}[shrink=15]{2. Data Layer --- Sources and Scale on Disk}
 \framesubtitle{Rubric: Implementation Progress (8 Marks) $\cdot$ how large the data actually is}
 \vspace{0.5mm}
 \begin{columns}[T]
@@ -408,7 +415,7 @@ Only the artwork URL is read; it reaches no model.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{2. Retrieval --- Hybrid Lexical and Semantic}
+\begin{frame}[shrink=15]{2. Retrieval --- Hybrid Lexical and Semantic}
 \framesubtitle{Candidate generation: dense vectors for meaning, a lexical path for exact names}
 \vspace{1mm}
 \begin{columns}[T]
@@ -524,7 +531,7 @@ slide --- algorithm, equation and measured result.}
 % =====================================================================
 \section{Constraint \& Eligibility}
 
-\begin{frame}{2. Constraint \& Eligibility --- Domain Packs and Audience}
+\begin{frame}[shrink=15]{2. Constraint \& Eligibility --- Domain Packs and Audience}
 \framesubtitle{Eligibility first, relevance second}
 \vspace{1mm}
 \begin{columns}[T]
@@ -578,25 +585,42 @@ too --- a child profile sees 4.1\% of the catalog.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{2. System in Action --- Audience Filtering}
-\framesubtitle{The same query at age 8 and at age 25}
-\vspace{1mm}
+\begin{frame}[shrink=15]{2. System in Action --- Audience Filtering}
+\framesubtitle{The same query, the same profile, age 8 against age 25}
+\vspace{0.5mm}
 \begin{columns}[T]
 \column{0.485\textwidth}
 \begin{center}
-\shot{age-child}{width=\linewidth,height=4.6cm,keepaspectratio}%
-{Same query, age set to 8. Show the maturity badges and the reduced result count.}
+\shot{age-child}{width=\linewidth,height=4.5cm,keepaspectratio}%
+{Refine drawer open, age set to 8.}
 \end{center}
+\vspace{-1mm}
+{\tiny\centering\textbf{Age 8} --- Strange World, Bubble, Ice Age, Spellbound\par}
+
 \column{0.485\textwidth}
 \begin{center}
-\shot{age-adult}{width=\linewidth,height=4.6cm,keepaspectratio}%
-{Same query, age set to 25. Show the wider result set, and on a health or finance query the advisory banner.}
+\shot{age-adult}{width=\linewidth,height=4.5cm,keepaspectratio}%
+{Refine drawer open, age set to 25.}
 \end{center}
+\vspace{-1mm}
+{\tiny\centering\textbf{Age 25} --- Strange World, Johnny Test, Abenobashi, Fixed\par}
 \end{columns}
-\vspace{2.5mm}
-{\scriptsize\textbf{What to watch:} the result count changes, the maturity badge on each card
-changes, and on a tier-1 domain an advisory banner appears above the results. No ranking code ran
-differently --- the ineligible items were never retrieved.}
+\vspace{1.5mm}
+\begin{columns}[T]
+\column{0.485\textwidth}
+\begin{itemize}\tiny\setlength{\itemsep}{2.5pt}
+  \item Query \texttt{"fun animation adventure"} and profile are \textbf{identical} in both shots.
+        Only the declared age differs, and the result set changes with it.
+  \item The panel reports the ceiling back to the viewer: \textbf{SEES UP TO 7+} at age 8.
+\end{itemize}
+
+\column{0.485\textwidth}
+\begin{itemize}\tiny\setlength{\itemsep}{2.5pt}
+  \item No ranking code ran differently. The ineligible items were \textbf{never retrieved}, so no
+        head could score or promote them --- which the panel itself states on screen.
+  \item The two risk-tier-1 domains carry an advisory marker in the domain list.
+\end{itemize}
+\end{columns}
 \end{frame}
 
 % =====================================================================
@@ -604,7 +628,7 @@ differently --- the ineligible items were never retrieved.}
 % =====================================================================
 \section{Technical Knowledge}
 
-\begin{frame}{3. Technical Knowledge \& Engineering Decisions}
+\begin{frame}[shrink=15]{3. Technical Knowledge \& Engineering Decisions}
 \framesubtitle{Rubric: Software Architecture, Implementation, Integration \& Tech Stack (5 Marks)}
 \vspace{1mm}
 \begin{columns}[T]
@@ -646,85 +670,55 @@ differently --- the ineligible items were never retrieved.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{3. Is Each Module Justified?}
+\begin{frame}[shrink=15]{3. Is Each Module Justified?}
 \framesubtitle{Why it matters $\cdot$ what breaks without it $\cdot$ is the current build defensible}
-\vspace{0.5mm}
+\vspace{1mm}
 \begin{center}
 {\tiny
-\renewcommand{\arraystretch}{1.40}
-\begin{tabular}{p{1.55cm} p{3.15cm} p{2.95cm} p{3.25cm}}
+\renewcommand{\arraystretch}{1.12}
+\begin{tabular}{L{1.45cm} L{3.05cm} L{2.85cm} L{3.35cm}}
 \toprule
 \textbf{Module} & \textbf{Why it matters} & \textbf{What breaks without it} & \textbf{Current build defensible?}\\
 \midrule
-Data layer
- & One schema over 9 heterogeneous sources makes cross-domain ranking possible at all.
- & Every downstream module needs per-source special cases.
- & \textbf{Yes.} 120{,}747 rows, validated, 27 preprocessing tests.\\
-Domain registry
- & Turns "add a vertical" from a code change into a config change.
- & The engine stays entertainment-shaped.
- & \textbf{Yes.} 4 packs live; risk tier and advisory drive real behaviour.\\
-Embedding
- & One shared space lets a film and a finance book be compared with no learned bridge.
- & Cold-start items cannot be ranked at all.
- & \textbf{Yes, with a caveat.} MiniLM is small and general; a tuned encoder is Review 3.\\
-Retrieval
- & Eligibility filtering happens inside the ANN search, not after it.
- & Post-filtering would let ineligible items be scored and promoted.
- & \textbf{Yes.} Hybrid lexical and vector, with the matched field exposed.\\
-Audience
- & The safety property the panel asked for, enforced as a hard predicate.
- & Age filtering degrades to a demotion another head can undo.
- & \textbf{Yes.} 0.000 violations over 9 profiles; heuristics are the known limit.\\
-EMA
- & Makes the "real-time adaptive" claim concrete.
- & Adaptation costs a retrain, so it is no longer real time.
- & \textbf{Yes.} One vector write per event; no session decay yet.\\
-Graph CF
- & Behaviour that text cannot express; a reranker over the candidate set.
- & Only content similarity remains; no collaborative signal.
- & \textbf{Partly.} Benchmarks are real on 3 domains; the served artifact is not yet.\\
-Knowledge graph
- & Cross-domain bridge and exact-entity matching at zero parameters.
- & Named-entity queries smear; cold items lose their structural signal.
- & \textbf{Yes, as scoped.} Token overlap at runtime; the graph database is Review 3.\\
-Persistence
- & Interactions must survive a restart for the EMA loop to mean anything.
- & The feedback loop resets on every process restart.
- & \textbf{Yes.} Validated, idempotent, indexed on the hot path.\\
-API + UI
- & Every sub-score is returned and drawn, so a recommendation is explainable.
- & The system becomes a black box.
- & \textbf{Yes.} 8 endpoints, 19 components, score breakdown per card.\\
+Data layer      & One schema over 9 sources makes cross-domain ranking possible.   & Every module needs per-source special cases.     & \textbf{Yes.} 120{,}747 rows, validated, 27 tests.\\
+Domain registry & Adding a vertical becomes config, not code.                      & The engine stays entertainment-shaped.           & \textbf{Yes.} 4 packs live, driving real behaviour.\\
+Embedding       & One space compares a film and a finance book directly.           & Cold-start items cannot be ranked at all.        & \textbf{Yes, with a caveat.} A tuned encoder is Review 3.\\
+Retrieval       & Eligibility filters inside the ANN search, not after.            & Post-filtering lets ineligible items be scored.  & \textbf{Yes.} Hybrid lexical and vector.\\
+Audience        & The safety property, as a hard predicate.                        & Age filtering degrades to a soft demotion.       & \textbf{Yes.} 0.000 violations over 9 profiles.\\
+EMA             & Makes the "real-time adaptive" claim concrete.                   & Adaptation costs a retrain.                      & \textbf{Yes.} 39\,$\mu$s per event.\\
+Graph CF        & Behaviour that text cannot express.                              & No collaborative signal at all.                  & \textbf{Partly.} Benchmarks real; served artifact is not.\\
+Knowledge graph & Cross-domain bridge at zero parameters.                          & Named-entity queries smear.                      & \textbf{Yes, as scoped.} Graph DB is Review 3.\\
+Persistence     & Interactions must survive a restart.                             & The feedback loop resets each restart.           & \textbf{Yes.} Validated, idempotent, indexed.\\
+API + UI        & Every sub-score is returned, so results are explainable.         & The system becomes a black box.                  & \textbf{Yes.} 8 endpoints, 19 components.\\
 \bottomrule
 \end{tabular}}
 \end{center}
 \vspace{1mm}
-{\scriptsize\textbf{Added in integration since Review 1:} the eligibility filter compiled into the
-search query $\cdot$ the domain registry driving API, filter and UI from one file $\cdot$ the
-matched field surfaced end to end $\cdot$ risk-tier advisories rendered from backend metadata
-$\cdot$ EMA writes inside the interaction transaction.}
+{\tiny\textbf{Added in integration since the last review:} the eligibility filter compiled into the
+search query $\cdot$ the domain registry driving API, filter and UI from one file $\cdot$ the matched
+field surfaced end to end $\cdot$ risk-tier advisories from backend metadata $\cdot$ EMA writes inside
+the interaction transaction.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{3. Comparison with Existing Solutions}
+\begin{frame}[shrink=15]{3. Comparison with Existing Solutions}
 \framesubtitle{Where this sits against production systems and published baselines}
 \vspace{1mm}
 \begin{center}
 {\scriptsize
-\renewcommand{\arraystretch}{1.45}
-\begin{tabular}{p{2.9cm} c c c c}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{L{3.1cm} c c c c}
 \toprule
 \textbf{System / approach} & \textbf{Cross-} & \textbf{Cold} & \textbf{Real-time} & \textbf{Eligibility}\\
                            & \textbf{domain} & \textbf{start}& \textbf{adaptation}& \textbf{layer}\\
 \midrule
-Netflix / Prime (in-domain CF)  & No     & Weak & Batch   & Ratings only\\
-Spotify (audio + CF)            & No     & Weak & Session & Explicit flag\\
-Amazon item-to-item CF          & Partly & No   & Batch   & Category\\
-LightFM / hybrid CF             & No     & Yes  & No      & No\\
-Published LightGCN              & No     & No   & No      & No\\
+Netflix / Prime      & No     & Weak & Batch   & Ratings only\\
+Spotify              & No     & Weak & Session & Explicit flag\\
+Amazon item-to-item  & Partly & No   & Batch   & Category\\
+LightFM / hybrid CF  & No     & Yes  & No      & No\\
+Published LightGCN   & No     & No   & No      & No\\
 \midrule
-\textbf{This project}           & \textbf{Yes, 4} & \textbf{Yes} & \textbf{Yes} & \textbf{Yes, hard}\\
+\textbf{This project} & \textbf{Yes, 4} & \textbf{Yes} & \textbf{Yes} & \textbf{Yes, hard}\\
 \bottomrule
 \end{tabular}}
 \end{center}
@@ -732,31 +726,28 @@ Published LightGCN              & No     & No   & No      & No\\
 \begin{columns}[T]
 \column{0.485\textwidth}
 \blk{Where ours is genuinely better}
-\begin{itemize}\tiny\setlength{\itemsep}{3pt}
-  \item \textbf{One query spans four unrelated domains.} Every system above is single-domain by
-        construction --- a Netflix query cannot return a finance book. Ours can, because the
-        namespaces are shared rather than bridged.
-  \item \textbf{Eligibility is a hard pre-filter, not a ranking penalty.} The systems above filter
-        on metadata \emph{after} retrieval; ours cannot retrieve an ineligible item at all.
+\begin{itemize}\tiny\setlength{\itemsep}{2.5pt}
+  \item \textbf{One query spans four unrelated domains.} A Netflix query cannot return a finance
+        book; ours can, because namespaces are shared rather than bridged.
+  \item \textbf{Eligibility is a hard pre-filter.} The systems above filter metadata \emph{after}
+        retrieval; ours cannot retrieve an ineligible item at all.
   \item \textbf{Adding a vertical is a config change} --- no retraining, no new code path.
-  \item \textbf{Every sub-score is returned.} Five heads, visible per card.
 \end{itemize}
 
 \column{0.485\textwidth}
 \blk{Where we are behind}
-\begin{itemize}\tiny\setlength{\itemsep}{3pt}
+\begin{itemize}\tiny\setlength{\itemsep}{2.5pt}
   \item \textbf{Data scale.} 914\,k interactions against their billions, so absolute recall is not
         comparable and we do not claim it is.
   \item \textbf{No online A/B evidence} --- every number here is offline or scenario-based.
-  \item \textbf{The served LightGCN artifact is synthetic.} The benchmarks are real; the
-        deployment is not yet.
-  \item \textbf{No latency study.} P95 under load is unmeasured.
+  \item \textbf{The served LightGCN artifact is synthetic.} The benchmarks are real; the deployment
+        is not yet.
 \end{itemize}
+\end{columns}
 \vspace{1.5mm}
 {\tiny\textbf{The fair claim} is not "better than Netflix". It is that the combination --- cross-domain
 retrieval, cold-start coverage, real-time adaptation and hard eligibility in one serving path ---
 is not something the systems above provide together.}
-\end{columns}
 \end{frame}
 
 % =====================================================================
@@ -820,7 +811,7 @@ is not something the systems above provide together.}
 % =====================================================================
 \section{Appendix}
 
-\begin{frame}{Appendix --- Scenario Evaluation Across All Four Domains}
+\begin{frame}[shrink=15]{Appendix --- Scenario Evaluation Across All Four Domains}
 \framesubtitle{Backup slide: measured end-to-end behaviour}
 \vspace{1mm}
 \begin{center}
@@ -848,7 +839,7 @@ deliberately blank rather than zero. \textbf{Four of eight} scenarios returned m
 type in the top-10, which is the cross-domain claim measured rather than asserted.}
 \end{frame}
 
-\begin{frame}{Appendix --- Known Limitations and Next Steps}
+\begin{frame}[shrink=15]{Appendix --- Known Limitations and Next Steps}
 \framesubtitle{Backup slide}
 \vspace{1mm}
 \begin{columns}[T]

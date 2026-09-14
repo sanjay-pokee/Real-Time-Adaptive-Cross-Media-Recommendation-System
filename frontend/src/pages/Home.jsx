@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertCircle,
+  ArrowUpRight,
   Factory,
   Film,
   HeartPulse,
@@ -9,8 +10,8 @@ import {
   LogOut,
   Moon,
   RefreshCw,
-  Search,
   ShieldAlert,
+  SlidersHorizontal,
   Sparkles,
   Sun,
 } from 'lucide-react';
@@ -51,16 +52,16 @@ function useTheme() {
       // Key is versioned. The surface is light-first now, and a browser
       // holding the old "dark" preference would have opened the redesign in
       // the variant it was not designed around.
-      return localStorage.getItem('nexus-theme-v2') || 'light';
+      return localStorage.getItem('nexus-theme-v3') || 'dark';
     } catch {
-      return 'light';
+      return 'dark';
     }
   });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     try {
-      localStorage.setItem('nexus-theme-v2', theme);
+      localStorage.setItem('nexus-theme-v3', theme);
     } catch {
       /* storage can be unavailable (private mode) - the theme still applies */
     }
@@ -114,6 +115,20 @@ export default function Home({ authenticatedUser, onLogout }) {
   const searchSeq = useRef(0);
   // Bumped to force a scope re-search when only the query text changed.
   const [scopeNonce, setScopeNonce] = useState(0);
+  // Controls live off the page. Everything the old rail held is one
+  // keystroke away, but none of it competes with the results for the
+  // reader's attention - which is what a rail, horizontal or vertical,
+  // always ends up doing.
+  const [refineOpen, setRefineOpen] = useState(false);
+
+  // A control panel you cannot see is only safe if the page still says what it
+  // is doing. This is the number of active narrowings, shown on the trigger.
+  const activeFilters = [
+    domain,
+    contentType,
+    age !== null ? 'age' : null,
+    safeMode ? 'safe' : null,
+  ].filter(Boolean).length;
 
   const activeUser = availableUsers.find((user) => user.id === userId) || availableUsers[0];
   const averageScore = results.length
@@ -241,12 +256,12 @@ export default function Home({ authenticatedUser, onLogout }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [domain, age, safeMode, contentType, topK, scopeNonce]);
 
+  // No search runs on load. Firing the default query meant the product opened
+  // mid-task - a result set for a question nobody asked - and the landing page
+  // was never seen. `hasRunDefault` is kept because a chip or a domain click
+  // still needs to know whether the first search has happened.
   useEffect(() => {
-    if (!hasRunDefault.current && backendStatus === 'online') {
-      hasRunDefault.current = true;
-      handleSearch();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (backendStatus === 'online') hasRunDefault.current = false;
   }, [backendStatus]);
 
   /**
@@ -390,6 +405,24 @@ export default function Home({ authenticatedUser, onLogout }) {
             </div>
 
             <button
+              type="button"
+              onClick={() => setRefineOpen(true)}
+              className="btn"
+              title="Filters, audience and profile"
+            >
+              <SlidersHorizontal size={13} />
+              Refine
+              {activeFilters > 0 && (
+                <span
+                  className="num ml-0.5 rounded-full px-1.5 text-[10px] font-bold"
+                  style={{ background: 'var(--accent)', color: 'var(--accent-ink)' }}
+                >
+                  {activeFilters}
+                </span>
+              )}
+            </button>
+
+            <button
               onClick={toggleTheme}
               className="btn btn-ghost h-8 w-8 p-0"
               title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
@@ -503,7 +536,33 @@ export default function Home({ authenticatedUser, onLogout }) {
             the filters stay reachable without scrolling back up. */}
         <div className="flex flex-col gap-7">
           {/* ---------- sidebar ---------- */}
-          <aside className="order-1">
+          <AnimatePresence>
+            {refineOpen && (
+              <>
+                <motion.button
+                  type="button"
+                  aria-label="Close refine panel"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setRefineOpen(false)}
+                  className="fixed inset-0 z-40 cursor-default"
+                  style={{ background: 'oklch(22% 0.02 62 / 0.34)' }}
+                />
+                <motion.aside
+                  initial={{ x: '100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '100%' }}
+                  transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+                  className="fixed right-0 top-0 z-50 flex h-full w-full max-w-[430px] flex-col gap-3 overflow-y-auto p-4"
+                  style={{ background: 'var(--bg)', borderLeft: '1px solid var(--line)' }}
+                >
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="display text-[26px]">Refine</p>
+                    <button type="button" className="btn btn-ghost" onClick={() => setRefineOpen(false)}>
+                      Done
+                    </button>
+                  </div>
             {/* One rail, not six floating cards.
                 Each control used to be its own GlassPanel, so the sidebar was
                 six stacked glass boxes with six rims, six blurs and six
@@ -513,9 +572,9 @@ export default function Home({ authenticatedUser, onLogout }) {
                 sections, which is both quieter and cheaper. */}
             <GlassPanel
               variant="strong"
-              className="flex flex-col p-0 lg:flex-row lg:flex-wrap lg:divide-x lg:divide-y-0 divide-y divide-line"
+              className="flex flex-col divide-y divide-line p-0"
             >
-              <section className="flex-1 p-4 lg:min-w-[200px]">
+              <section className="p-4">
               <p className="label mb-2.5">Profile</p>
               <UserSelector value={userId} onChange={setUserId} users={availableUsers} />
 
@@ -535,7 +594,7 @@ export default function Home({ authenticatedUser, onLogout }) {
               </div>
               </section>
 
-              <section className="flex-1 p-4 lg:min-w-[200px]">
+              <section className="p-4">
               <p className="label mb-2.5">Domain</p>
               <DomainSelector
                 domains={domainCatalog.domains || []}
@@ -544,7 +603,7 @@ export default function Home({ authenticatedUser, onLogout }) {
               />
               </section>
 
-              <section className="flex-1 p-4 lg:min-w-[200px]">
+              <section className="p-4">
               <p className="label mb-3">Audience</p>
               <AudienceControls
                 age={age}
@@ -554,7 +613,7 @@ export default function Home({ authenticatedUser, onLogout }) {
               />
               </section>
 
-              <section className="flex-1 p-4 lg:min-w-[200px]">
+              <section className="p-4">
               <div className="mb-2.5 flex items-baseline justify-between">
                 <p className="label">Results</p>
                 <span className="num text-[11px] font-semibold tabular-nums text-accent">{topK}</span>
@@ -578,14 +637,17 @@ export default function Home({ authenticatedUser, onLogout }) {
               />
               </section>
 
-              <section className="flex-1 p-4 lg:min-w-[200px]">
+              <section className="p-4">
               <p className="label mb-2">Try a query</p>
               <QueryChips onSelect={handleChipSelect} />
               </section>
             </GlassPanel>
 
-            <AISignalsPanel topResult={results[0] ?? null} />
-          </aside>
+                  <AISignalsPanel topResult={results[0] ?? null} />
+                </motion.aside>
+              </>
+            )}
+          </AnimatePresence>
 
           {/* ---------- results ---------- */}
           {/* order-1 below `lg`: under the two-column split the rail stacks,
@@ -686,36 +748,90 @@ export default function Home({ authenticatedUser, onLogout }) {
               </div>
             )}
 
+            {/* ================= homepage =================
+                Shown until the first search. Nothing runs on load any more,
+                so this is the product's actual front door rather than a
+                placeholder behind an auto-fired query. It does three jobs:
+                say what the engine is, show the verticals it covers as
+                something you can enter, and hand over real queries to try. */}
             {!loading && !searched && backendStatus !== 'offline' && (
-              <div className="panel px-6 py-20 text-center">
-                <Search size={28} className="mx-auto text-ink-faint" />
-                <h2 className="display mt-4 text-xl font-bold text-ink">Start with a search</h2>
-                {/* This used to read "not just a keyword", which stopped being
-                    true when retrieval became hybrid: a title, a person and a
-                    keyword are each matched directly now, alongside the
-                    semantic search. Telling someone their query type is not
-                    supported, when it is, costs results. */}
-                <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-ink-muted">
-                  A title, a person, a keyword, or a description — all four work.
-                </p>
-                <div className="mx-auto mt-4 flex max-w-md flex-wrap justify-center gap-1.5">
-                  {[
-                    ['Title', 'Inception'],
-                    ['Person', 'Christopher Nolan'],
-                    ['Keyword', 'time travel'],
-                    ['Description', 'space adventure with aliens'],
-                  ].map(([kind, example]) => (
-                    <button
-                      key={kind}
-                      type="button"
-                      onClick={() => handleSearch(example)}
-                      className="chip transition-colors hover:border-accent hover:text-accent"
-                    >
-                      <span className="font-bold opacity-60">{kind}</span>
-                      {example}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex flex-col gap-10">
+                <section>
+                  <div className="rule-capped mb-3" />
+                  <p className="label">The verticals</p>
+                  <div className="mt-5 grid grid-cols-1 gap-px sm:grid-cols-2 xl:grid-cols-4"
+                       style={{ background: 'var(--line)' }}>
+                    {(domainCatalog.domains || []).map((entry, i) => (
+                      <button
+                        key={entry.name}
+                        type="button"
+                        onClick={() => setDomain(entry.name)}
+                        className="group relative flex flex-col items-start gap-2 p-6 text-left transition-colors"
+                        style={{ background: 'var(--bg)' }}
+                      >
+                        <span
+                          className="display text-[52px] leading-none"
+                          style={{ color: 'var(--line-strong)' }}
+                        >
+                          {String(i + 1).padStart(2, '0')}
+                        </span>
+                        <span className="display text-[24px] leading-tight text-ink">
+                          {entry.label}
+                        </span>
+                        <span className="text-[12.5px] leading-relaxed text-ink-muted">
+                          {entry.description}
+                        </span>
+                        {entry.advisory && (
+                          <span className="label mt-1" style={{ color: 'var(--warn)' }}>
+                            Advisory applies
+                          </span>
+                        )}
+                        <span
+                          className="mt-2 h-0.5 w-0 transition-all duration-300 group-hover:w-12"
+                          style={{ background: 'var(--accent)' }}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                <section>
+                  <div className="rule-capped mb-3" />
+                  <p className="label">Try a query</p>
+                  <p className="mt-3 max-w-xl text-[13.5px] leading-relaxed text-ink-muted">
+                    A title, a person, a keyword or a plain description — retrieval is
+                    hybrid, so all four are matched directly rather than only
+                    semantically.
+                  </p>
+                  <div className="mt-5 flex flex-col" style={{ borderTop: '1px solid var(--line)' }}>
+                    {[
+                      ['Title', 'Breaking Bad'],
+                      ['Person', 'Christopher Nolan'],
+                      ['Keyword', 'time travel'],
+                      ['Franchise', 'marvel cinematic universe'],
+                      ['Description', 'space adventure with aliens'],
+                      ['Vertical', 'how to invest my money'],
+                    ].map(([kind, example]) => (
+                      <button
+                        key={kind}
+                        type="button"
+                        onClick={() => handleSearch(example)}
+                        className="group flex items-baseline gap-5 py-3.5 text-left transition-colors"
+                        style={{ borderBottom: '1px solid var(--line)' }}
+                      >
+                        <span className="label w-24 shrink-0">{kind}</span>
+                        <span className="display flex-1 text-[21px] leading-snug text-ink transition-colors group-hover:text-accent">
+                          {example}
+                        </span>
+                        <ArrowUpRight
+                          size={15}
+                          className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                          style={{ color: 'var(--accent)' }}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </section>
               </div>
             )}
 
@@ -757,9 +873,9 @@ export default function Home({ authenticatedUser, onLogout }) {
 
                   {results.length > 1 && (
                     <>
-                      <div className="flex items-center gap-4">
-                        <span className="label shrink-0">More results</span>
-                        <span className="h-px flex-1" style={{ background: 'var(--line)' }} />
+                      <div>
+                        <div className="rule-capped mb-3" />
+                        <span className="label">More results</span>
                       </div>
 
                       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">

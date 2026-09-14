@@ -1,0 +1,960 @@
+<meta charset="utf-8">
+<title>Panel Prep Brief — Who Explains What</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=JetBrains+Mono:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+:root {
+  --ground:   #FFFFFF;
+  --paper:    #FAF8F8;
+  --sunk:     #F1ECED;
+  --ink:      #16191F;
+  --ink-soft: #3C444E;
+  --slate:    #5C6670;
+  --rule:     #DED7D9;
+  --rule-hi:  #BDB1B4;
+  --maroon:   #A4123F;
+  --maroon-bg:#FBEDF1;
+  --teal:     #0F6F73;
+  --teal-bg:  #E5F1F1;
+  --amber:    #8A5600;
+  --amber-bg: #FAF0DE;
+  --violet:   #4A3A82;
+  --violet-bg:#EDEAF6;
+
+  --f-head: "Archivo", "Segoe UI", Helvetica, Arial, sans-serif;
+  --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 15.5px;
+  line-height: 1.65;
+  margin: 0;
+  padding-inline: 22px;
+  padding-block: 0;
+}
+.wrap { max-width: 820px; margin: 0 auto; }
+
+h1, h2, h3, h4, h5 { font-family: var(--f-head); text-wrap: balance; }
+p { margin: 11px 0; max-width: 68ch; }
+code { font-family: var(--f-mono); font-size: 0.85em; background: var(--sunk); padding: 1px 5px; }
+.mono { font-family: var(--f-mono); font-size: 0.88em; }
+strong, b { font-weight: 600; }
+
+/* ---------- cover ---------- */
+.cover { padding-block: 46px 0; }
+.cover .eyebrow {
+  font-family: var(--f-mono); font-size: 11.5px; font-weight: 700;
+  letter-spacing: 0.13em; text-transform: uppercase; color: var(--maroon);
+}
+.cover h1 {
+  font-size: clamp(30px, 6vw, 44px); font-weight: 700;
+  letter-spacing: -0.025em; line-height: 1.05; margin: 10px 0 0;
+}
+.cover .deck {
+  font-size: 17px; color: var(--ink-soft); margin-top: 12px; max-width: 56ch;
+}
+.cover .meta {
+  font-family: var(--f-mono); font-size: 12px; color: var(--slate);
+  margin-top: 18px; padding-top: 14px; border-top: 2px solid var(--ink);
+  display: flex; flex-wrap: wrap; gap: 6px 26px;
+}
+
+/* ---------- roster ---------- */
+.roster {
+  display: grid; gap: 10px; margin-top: 22px;
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+}
+.rcard { border: 1px solid var(--rule); border-top: 4px solid var(--c); padding: 12px 13px; background: var(--paper); }
+.rcard .slot {
+  font-family: var(--f-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--c);
+}
+.rcard .nm { font-family: var(--f-head); font-weight: 700; font-size: 17px; margin-top: 3px; }
+.rcard .tp { font-size: 13.5px; color: var(--slate); line-height: 1.4; margin-top: 4px; }
+
+/* ---------- sections ---------- */
+h2 {
+  font-size: 23px; font-weight: 700; letter-spacing: -0.015em;
+  margin: 42px 0 0; padding-top: 15px; border-top: 2px solid var(--ink);
+}
+h2 .num {
+  font-family: var(--f-mono); font-size: 13px; color: var(--maroon);
+  display: block; margin-bottom: 3px; letter-spacing: 0.08em;
+}
+h2 + .lede { color: var(--slate); font-size: 16px; margin-top: 7px; }
+
+h4 {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; margin: 26px 0 0; color: var(--ink);
+}
+h4 + * { margin-top: 8px !important; }
+
+ul, ol { max-width: 68ch; padding-left: 21px; margin: 10px 0; }
+li { margin: 7px 0; }
+li::marker { color: var(--rule-hi); }
+
+/* ---------- figures ---------- */
+figure { margin: 20px 0 0; max-width: 100%; }
+figure svg { width: 100%; height: auto; display: block; }
+figcaption {
+  font-family: var(--f-head); font-size: 12.5px; color: var(--slate);
+  margin-top: 8px; line-height: 1.5; max-width: 68ch;
+}
+figcaption b { color: var(--ink); font-weight: 600; }
+
+/* ---------- glossary ---------- */
+.gloss { margin-top: 14px; border-top: 1px solid var(--rule); }
+.gloss > div {
+  display: grid; grid-template-columns: 178px 1fr; gap: 16px;
+  padding: 10px 0; border-bottom: 1px solid var(--rule);
+  break-inside: avoid;
+}
+.gloss dt { font-family: var(--f-head); font-weight: 600; font-size: 14.5px; }
+.gloss dt em { display: block; font-family: var(--f-mono); font-style: normal; font-size: 11.5px; color: var(--slate); font-weight: 400; margin-top: 1px; }
+.gloss dd { margin: 0; font-size: 14.5px; color: var(--ink-soft); }
+
+/* ---------- owner blocks ---------- */
+.owner { break-before: page; }
+.owner h2 { border-top-color: var(--c); }
+.owner h2 .num { color: var(--c); }
+
+.plain {
+  background: var(--cbg); border-left: 4px solid var(--c);
+  padding: 14px 17px; margin-top: 16px; break-inside: avoid;
+}
+.plain .t {
+  font-family: var(--f-head); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.09em; text-transform: uppercase; color: var(--c);
+}
+.plain p { margin: 6px 0 0; font-size: 15.5px; }
+.plain p + p { margin-top: 9px; }
+
+.oneline {
+  border: 1px solid var(--rule-hi); border-left: 4px solid var(--ink);
+  padding: 13px 17px; margin-top: 14px; background: var(--paper);
+  break-inside: avoid;
+}
+.oneline .t {
+  font-family: var(--f-head); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.09em; text-transform: uppercase; color: var(--slate);
+}
+.oneline p { margin: 5px 0 0; font-size: 17px; font-weight: 600; font-family: var(--f-head); line-height: 1.4; }
+
+.facts {
+  display: grid; gap: 1px; background: var(--rule);
+  border: 1px solid var(--rule); margin-top: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  break-inside: avoid;
+}
+.facts div { background: var(--ground); padding: 11px 13px; }
+.facts dt {
+  font-family: var(--f-head); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.09em; text-transform: uppercase; color: var(--slate);
+}
+.facts dd {
+  font-family: var(--f-mono); font-size: 17px; font-weight: 700;
+  margin: 3px 0 0; font-variant-numeric: tabular-nums; color: var(--c);
+}
+.facts dd span { display: block; font-family: var(--f-body); font-size: 12.5px; font-weight: 400; color: var(--slate); line-height: 1.35; margin-top: 2px; }
+
+.warn {
+  background: var(--amber-bg); border-left: 4px solid var(--amber);
+  padding: 13px 17px; margin-top: 12px; break-inside: avoid;
+}
+.warn .t {
+  font-family: var(--f-head); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.09em; text-transform: uppercase; color: var(--amber);
+}
+.warn p { margin: 5px 0 0; }
+
+.script {
+  background: var(--sunk); border: 1px solid var(--rule);
+  padding: 13px 17px; margin-top: 12px; break-inside: avoid;
+}
+.script .t {
+  font-family: var(--f-head); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.09em; text-transform: uppercase; color: var(--slate);
+}
+.script p { margin: 5px 0 0; font-style: italic; font-size: 16px; }
+
+.qa { margin-top: 10px; border-top: 1px solid var(--rule); max-width: 70ch; }
+.qa > div { padding: 11px 0; border-bottom: 1px solid var(--rule); break-inside: avoid; }
+.qa .q { font-family: var(--f-head); font-weight: 600; font-size: 15px; margin: 0; }
+.qa .a { margin: 5px 0 0; font-size: 15px; color: var(--ink-soft); }
+
+/* ---------- tables ---------- */
+.scroll { overflow-x: auto; margin-top: 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 400px; }
+th, td { text-align: left; padding: 7px 13px 7px 0; border-bottom: 1px solid var(--rule); }
+th {
+  font-family: var(--f-head); font-size: 10.5px; font-weight: 600;
+  letter-spacing: 0.07em; text-transform: uppercase; color: var(--slate);
+  border-bottom: 1.5px solid var(--rule-hi); white-space: nowrap;
+}
+td.n { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+td.good { color: var(--teal); font-weight: 700; }
+td.bad  { color: var(--maroon); font-weight: 700; }
+
+/* ---------- checklist ---------- */
+.check { list-style: none; padding: 0; margin-top: 14px; max-width: 70ch; }
+.check li {
+  display: grid; grid-template-columns: 22px 1fr; gap: 11px;
+  padding: 11px 0; border-bottom: 1px solid var(--rule); break-inside: avoid;
+}
+.check .box {
+  width: 15px; height: 15px; border: 1.5px solid var(--rule-hi); margin-top: 5px;
+}
+.check b { font-family: var(--f-head); font-size: 15px; }
+.check .sub { font-size: 14px; color: var(--slate); display: block; margin-top: 2px; }
+
+footer {
+  margin-top: 44px; padding-block: 16px 54px; border-top: 2px solid var(--ink);
+  font-family: var(--f-mono); font-size: 11px; color: var(--slate); line-height: 1.8;
+}
+
+@media (max-width: 560px) {
+  .gloss > div { grid-template-columns: 1fr; gap: 2px; }
+}
+
+@page { margin: 13mm; }
+@media print {
+  body { padding-inline: 0; font-size: 10.5pt; }
+  .wrap { max-width: none; }
+  h2 { break-after: avoid; }
+  figure, .plain, .oneline, .facts, .warn, .script { break-inside: avoid; }
+  a { color: var(--ink); text-decoration: none; }
+}
+</style>
+
+<div class="wrap">
+
+<!-- ================= COVER ================= -->
+<header class="cover">
+  <div class="eyebrow">Phase-2 Panel Review · Tuesday 15 September</div>
+  <h1>Who Explains What</h1>
+  <p class="deck">Four of us, four different parts of the system. This brief tells you exactly which part is yours, what it does in plain English, and what to say when they ask.</p>
+  <div class="meta">
+    <span>23CSE498 Project Phase 2</span>
+    <span>Real-Time Adaptive Cross-Media Recommendation System</span>
+    <span>brief cut 14 Sep</span>
+  </div>
+</header>
+
+<div class="roster">
+  <div class="rcard" style="--c:var(--teal)">
+    <div class="slot">Speaks 1st</div>
+    <div class="nm">Eswara Raj</div>
+    <div class="tp">Finding things — how a search becomes a shortlist</div>
+  </div>
+  <div class="rcard" style="--c:var(--maroon)">
+    <div class="slot">Speaks 2nd</div>
+    <div class="nm">Sanjay</div>
+    <div class="tp">Learning from behaviour — LightGCN and how we measure it</div>
+  </div>
+  <div class="rcard" style="--c:var(--violet)">
+    <div class="slot">Speaks 3rd</div>
+    <div class="nm">Aditya</div>
+    <div class="tp">Reacting instantly — the live feedback loop</div>
+  </div>
+  <div class="rcard" style="--c:var(--amber)">
+    <div class="slot">Speaks 4th</div>
+    <div class="nm">Himaneesh</div>
+    <div class="tp">Deciding who may see what — age and domain filtering</div>
+  </div>
+</div>
+
+<!-- ================= HOW THIS WORKS ================= -->
+<h2><span class="num">Read this first</span>How the presentation works</h2>
+<p class="lede">Last review we each walked through the whole system from start to finish. Four people described the same thing four times, and it sounded repetitive. This time each person owns one piece and only that piece.</p>
+
+<ol>
+  <li><b>Know three things about your part:</b> the formula, the one number, and the one weakness. If you can&rsquo;t say all three from memory, you&rsquo;re not ready yet.</li>
+  <li><b>Only Eswara explains the overall architecture</b>, once, in about 30 seconds at the start. After that, nobody says &ldquo;the pipeline&rdquo; again.</li>
+  <li><b>Every weak point is admitted before they find it.</b> Each section below has the exact words. Saying it first turns a problem into a design decision; being caught turns it into a mistake.</li>
+  <li><b>Each weakness is mentioned once, by one person.</b> If two of us apologise for the same thing, it looks like we never spoke to each other.</li>
+  <li><b>Hand over by naming the next person&rsquo;s topic</b>, not by saying &ldquo;next.&rdquo; For example: <em>&ldquo;…but matching words can&rsquo;t tell us what people actually like. Sanjay.&rdquo;</em></li>
+</ol>
+
+<!-- ================= BIG PICTURE ================= -->
+<h2><span class="num">The big picture</span>The whole system in one diagram</h2>
+<p class="lede">Everything below is colour-coded to whoever owns it. Find your colour — that is your territory, and nothing outside it is your problem.</p>
+
+<figure>
+<svg viewBox="0 0 820 430" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="System diagram showing search flowing through retrieval, five scoring signals, blending and results, with a feedback loop">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5C6670"/>
+    </marker>
+    <marker id="arv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4A3A82"/>
+    </marker>
+  </defs>
+
+  <!-- STAGE LABELS -->
+  <text x="14" y="20" font-family="Archivo, sans-serif" font-size="10.5" font-weight="600" letter-spacing="1.2" fill="#5C6670">SEARCH</text>
+  <text x="150" y="20" font-family="Archivo, sans-serif" font-size="10.5" font-weight="600" letter-spacing="1.2" fill="#8A5600">ELIGIBILITY</text>
+  <text x="330" y="20" font-family="Archivo, sans-serif" font-size="10.5" font-weight="600" letter-spacing="1.2" fill="#0F6F73">FIND CANDIDATES</text>
+  <text x="500" y="20" font-family="Archivo, sans-serif" font-size="10.5" font-weight="600" letter-spacing="1.2" fill="#16191F">SCORE EACH ONE</text>
+  <text x="716" y="20" font-family="Archivo, sans-serif" font-size="10.5" font-weight="600" letter-spacing="1.2" fill="#16191F">RESULT</text>
+
+  <!-- INPUT -->
+  <rect x="14" y="150" width="96" height="54" rx="3" fill="#F1ECED" stroke="#BDB1B4"/>
+  <text x="62" y="172" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12.5" font-weight="600" fill="#16191F">user types</text>
+  <text x="62" y="189" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12.5" font-weight="600" fill="#16191F">a query</text>
+
+  <!-- GATE (amber) -->
+  <rect x="150" y="126" width="150" height="102" rx="3" fill="#FAF0DE" stroke="#8A5600" stroke-width="1.6"/>
+  <text x="225" y="150" text-anchor="middle" font-family="Archivo, sans-serif" font-size="13" font-weight="700" fill="#8A5600">Eligibility gate</text>
+  <text x="225" y="170" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11" fill="#3C444E">age · safe mode · domain</text>
+  <text x="225" y="188" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11" fill="#3C444E">risk tier</text>
+  <text x="225" y="211" text-anchor="middle" font-family="Archivo, sans-serif" font-size="10.5" font-style="italic" fill="#8A5600">blocked items never enter</text>
+
+  <!-- RETRIEVAL (teal) -->
+  <rect x="330" y="106" width="146" height="142" rx="3" fill="#E5F1F1" stroke="#0F6F73" stroke-width="1.6"/>
+  <text x="403" y="129" text-anchor="middle" font-family="Archivo, sans-serif" font-size="13" font-weight="700" fill="#0F6F73">Retrieval</text>
+  <rect x="344" y="140" width="118" height="30" rx="2" fill="#FFFFFF" stroke="#0F6F73" stroke-opacity="0.45"/>
+  <text x="403" y="159" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11" fill="#16191F">word matches</text>
+  <rect x="344" y="176" width="118" height="30" rx="2" fill="#FFFFFF" stroke="#0F6F73" stroke-opacity="0.45"/>
+  <text x="403" y="195" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11" fill="#16191F">meaning matches</text>
+  <text x="403" y="228" text-anchor="middle" font-family="Archivo, sans-serif" font-size="10.5" font-style="italic" fill="#0F6F73">≈ 50 candidates</text>
+
+  <!-- SIGNALS -->
+  <rect x="500" y="52" width="150" height="28" rx="2" fill="#E5F1F1" stroke="#0F6F73"/>
+  <text x="510" y="71" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">meaning match</text>
+  <text x="640" y="71" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="700" fill="#0F6F73">1.00</text>
+
+  <rect x="500" y="88" width="150" height="28" rx="2" fill="#FBEDF1" stroke="#A4123F"/>
+  <text x="510" y="107" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">LightGCN</text>
+  <text x="640" y="107" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="700" fill="#A4123F">0.20</text>
+
+  <rect x="500" y="124" width="150" height="28" rx="2" fill="#EDEAF6" stroke="#4A3A82"/>
+  <text x="510" y="143" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">live taste (EMA)</text>
+  <text x="640" y="143" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="700" fill="#4A3A82">0.15</text>
+
+  <rect x="500" y="160" width="150" height="28" rx="2" fill="#E5F1F1" stroke="#0F6F73"/>
+  <text x="510" y="179" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">name / word overlap</text>
+  <text x="640" y="179" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="700" fill="#0F6F73">0.08</text>
+
+  <rect x="500" y="196" width="150" height="28" rx="2" fill="#FAF0DE" stroke="#8A5600"/>
+  <text x="510" y="215" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">age / job profile</text>
+  <text x="640" y="215" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="700" fill="#8A5600">0.10</text>
+
+  <!-- SUM -->
+  <circle cx="690" cy="138" r="17" fill="#F1ECED" stroke="#16191F" stroke-width="1.4"/>
+  <text x="690" y="144" text-anchor="middle" font-family="Archivo, sans-serif" font-size="15" font-weight="700" fill="#16191F">+</text>
+
+  <!-- RESULT -->
+  <rect x="716" y="106" width="90" height="64" rx="3" fill="#16191F"/>
+  <text x="761" y="132" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">ranked</text>
+  <text x="761" y="149" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">results</text>
+
+  <!-- FLOW ARROWS -->
+  <line x1="110" y1="177" x2="145" y2="177" stroke="#5C6670" stroke-width="1.4" marker-end="url(#ar)"/>
+  <line x1="300" y1="177" x2="325" y2="177" stroke="#5C6670" stroke-width="1.4" marker-end="url(#ar)"/>
+  <line x1="476" y1="177" x2="495" y2="177" stroke="#5C6670" stroke-width="1.4" marker-end="url(#ar)"/>
+  <line x1="650" y1="66"  x2="676" y2="128" stroke="#5C6670" stroke-width="1" marker-end="url(#ar)"/>
+  <line x1="650" y1="102" x2="678" y2="132" stroke="#5C6670" stroke-width="1" marker-end="url(#ar)"/>
+  <line x1="650" y1="138" x2="670" y2="138" stroke="#5C6670" stroke-width="1" marker-end="url(#ar)"/>
+  <line x1="650" y1="174" x2="678" y2="146" stroke="#5C6670" stroke-width="1" marker-end="url(#ar)"/>
+  <line x1="650" y1="210" x2="676" y2="150" stroke="#5C6670" stroke-width="1" marker-end="url(#ar)"/>
+  <line x1="707" y1="138" x2="712" y2="138" stroke="#5C6670" stroke-width="1.4" marker-end="url(#ar)"/>
+
+  <!-- FEEDBACK LOOP -->
+  <path d="M761 170 L761 300 L575 300" fill="none" stroke="#4A3A82" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arv)"/>
+  <rect x="404" y="284" width="168" height="32" rx="2" fill="#EDEAF6" stroke="#4A3A82" stroke-width="1.4"/>
+  <text x="488" y="304" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" font-weight="600" fill="#4A3A82">user likes something</text>
+  <path d="M404 300 L300 300 L300 220" fill="none" stroke="#4A3A82" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <path d="M300 300 L575 300" fill="none" stroke="none"/>
+  <text x="488" y="335" text-anchor="middle" font-family="Archivo, sans-serif" font-size="10.5" font-style="italic" fill="#4A3A82">taste vector updates instantly — no retraining</text>
+
+  <!-- OWNER KEY -->
+  <line x1="14" y1="366" x2="806" y2="366" stroke="#DED7D9" stroke-width="1"/>
+  <rect x="14" y="382" width="11" height="11" fill="#0F6F73"/>
+  <text x="32" y="392" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">Eswara — retrieval &amp; word matching</text>
+  <rect x="264" y="382" width="11" height="11" fill="#A4123F"/>
+  <text x="282" y="392" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">Sanjay — LightGCN &amp; evaluation</text>
+  <rect x="500" y="382" width="11" height="11" fill="#4A3A82"/>
+  <text x="518" y="392" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">Aditya — live feedback</text>
+  <rect x="666" y="382" width="11" height="11" fill="#8A5600"/>
+  <text x="684" y="392" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">Himaneesh — eligibility</text>
+</svg>
+<figcaption><b>How to read it:</b> a search goes left to right. The eligibility gate runs <em>before</em> anything is found, so blocked items never even become candidates. Retrieval narrows 120,747 items down to roughly 50. Those 50 are each given five scores, which are added together with the weights shown. The dashed purple line is the feedback loop — liking something updates the user&rsquo;s taste vector immediately.</figcaption>
+</figure>
+
+<!-- ================= GLOSSARY ================= -->
+<h2><span class="num">Vocabulary</span>Words the panel may use</h2>
+<p class="lede">You don&rsquo;t need all of these — but if one comes up in a question, you shouldn&rsquo;t freeze. Learn the ones in your own section properly.</p>
+
+<dl class="gloss">
+  <div><dt>Embedding <em>e_i</em></dt><dd>A piece of text turned into a list of 384 numbers, arranged so that things meaning similar things get similar lists. &ldquo;Space film&rdquo; and &ldquo;sci-fi movie&rdquo; land close together.</dd></div>
+  <div><dt>Cosine similarity <em>cos(a, b)</em></dt><dd>Measures whether two of those lists point in the same direction. 1 = same direction, 0 = unrelated. This is how we say &ldquo;these two things are alike.&rdquo;</dd></div>
+  <div><dt>Vector search / ANN</dt><dd>Searching by meaning instead of by keyword: encode the query, then find the closest item vectors. ANN = approximate nearest neighbour, a fast way to do it on 120,747 items.</dd></div>
+  <div><dt>Collaborative filtering</dt><dd>Recommending based on behaviour rather than content — &ldquo;people who liked this also liked that.&rdquo; It knows nothing about what the item <em>is</em>.</dd></div>
+  <div><dt>Implicit feedback</dt><dd>We never asked anyone to rate anything. We only know what they clicked, bought or liked — so we have positives but no reliable negatives.</dd></div>
+  <div><dt>Cold start</dt><dd>A brand-new item nobody has interacted with yet. Behaviour-based models can say nothing about it; meaning-based ones still can.</dd></div>
+  <div><dt>Recall@20</dt><dd>Of the things the user actually wanted, how many appeared in our top 20. Higher is better.</dd></div>
+  <div><dt>NDCG@20</dt><dd>Like Recall, but gives extra credit for putting the right thing near the <em>top</em> of the list, not just somewhere in it.</dd></div>
+  <div><dt>Baseline / control</dt><dd>The simple method we must beat to prove the complicated one is worth it. Ours is &ldquo;just recommend the most popular items.&rdquo;</dd></div>
+  <div><dt>Reranking</dt><dd>Retrieval fetches a shortlist; reranking re-sorts that shortlist using extra signals. Our five scores are rerankers.</dd></div>
+  <div><dt>Holdout / leave-last-out</dt><dd>To test fairly, we hide each user&rsquo;s most recent item, train on the rest, then check whether the model puts the hidden one back in the top 20.</dd></div>
+  <div><dt>Sparsity</dt><dd>Almost every user–item pair is empty. Our data is about 0.04% filled, which is why all the scores look small.</dd></div>
+</dl>
+
+<!-- ================= SLOT 1 ================= -->
+<section class="owner" style="--c:var(--teal); --cbg:var(--teal-bg)">
+<h2><span class="num">Speaks 1st · Eswara Raj</span>Finding things</h2>
+<p class="lede">Turning what someone typed into a shortlist of about 50 candidates, out of 120,747 items.</p>
+
+<div class="plain">
+  <div class="t">In plain English</div>
+  <p>When someone searches, we have to narrow the whole catalogue down to a handful worth scoring. We do it two ways at once.</p>
+  <p><b>By meaning:</b> every item&rsquo;s description is converted into a list of 384 numbers that captures what it&rsquo;s <em>about</em>. The search query gets converted the same way. Then we find the items whose numbers point in the most similar direction. This is why searching &ldquo;space adventure with aliens&rdquo; finds <em>Interstellar</em> even though those exact words appear nowhere in it.</p>
+  <p><b>By words:</b> meaning-matching is bad at exact names. Ask for &ldquo;James Cameron&rdquo; and the meaning-based search returns things that <em>feel</em> like James Cameron films. So we also run a plain word-matching search in three tiers — person names first, then titles, then keywords — and put those on top.</p>
+</div>
+
+<div class="oneline">
+  <div class="t">Your one-sentence version</div>
+  <p>&ldquo;We search by meaning and by words at the same time, because each one fails where the other works.&rdquo;</p>
+</div>
+
+<figure>
+<svg viewBox="0 0 820 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram showing text converted to a 384-number vector and similar items clustering together">
+  <text x="14" y="22" font-family="Archivo, sans-serif" font-size="11" font-weight="600" letter-spacing="1.1" fill="#5C6670">STEP 1 — TEXT BECOMES NUMBERS</text>
+
+  <rect x="14" y="38" width="196" height="54" rx="3" fill="#F1ECED" stroke="#BDB1B4"/>
+  <text x="26" y="60" font-family="Archivo, sans-serif" font-size="12" fill="#16191F">&ldquo;space adventure</text>
+  <text x="26" y="78" font-family="Archivo, sans-serif" font-size="12" fill="#16191F">with aliens&rdquo;</text>
+
+  <line x1="212" y1="65" x2="252" y2="65" stroke="#5C6670" stroke-width="1.4" marker-end="url(#ar)"/>
+  <rect x="256" y="44" width="106" height="42" rx="3" fill="#E5F1F1" stroke="#0F6F73" stroke-width="1.5"/>
+  <text x="309" y="62" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" font-weight="700" fill="#0F6F73">SBERT</text>
+  <text x="309" y="77" text-anchor="middle" font-family="Archivo, sans-serif" font-size="10" fill="#3C444E">the encoder</text>
+
+  <line x1="364" y1="65" x2="404" y2="65" stroke="#5C6670" stroke-width="1.4" marker-end="url(#ar)"/>
+  <rect x="408" y="44" width="250" height="42" rx="3" fill="#FFFFFF" stroke="#BDB1B4"/>
+  <text x="420" y="70" font-family="JetBrains Mono, monospace" font-size="12" fill="#16191F">[0.21, −0.06, 0.44, … ]</text>
+  <text x="668" y="70" font-family="Archivo, sans-serif" font-size="11" font-style="italic" fill="#5C6670">384 numbers</text>
+
+  <line x1="14" y1="112" x2="806" y2="112" stroke="#DED7D9"/>
+  <text x="14" y="136" font-family="Archivo, sans-serif" font-size="11" font-weight="600" letter-spacing="1.1" fill="#5C6670">STEP 2 — SIMILAR MEANINGS LAND NEAR EACH OTHER</text>
+
+  <!-- cluster plot -->
+  <rect x="14" y="150" width="470" height="134" rx="3" fill="#FAF8F8" stroke="#DED7D9"/>
+
+  <circle cx="120" cy="205" r="7" fill="#0F6F73"/>
+  <text x="132" y="203" font-family="Archivo, sans-serif" font-size="11" fill="#16191F">Interstellar</text>
+  <text x="132" y="216" font-family="Archivo, sans-serif" font-size="9.5" fill="#5C6670">movie</text>
+
+  <circle cx="196" cy="242" r="7" fill="#0F6F73"/>
+  <text x="208" y="240" font-family="Archivo, sans-serif" font-size="11" fill="#16191F">Project Hail Mary</text>
+  <text x="208" y="253" font-family="Archivo, sans-serif" font-size="9.5" fill="#5C6670">book</text>
+
+  <circle cx="150" cy="175" r="7" fill="#0F6F73"/>
+  <text x="162" y="173" font-family="Archivo, sans-serif" font-size="11" fill="#16191F">The Expanse</text>
+  <text x="162" y="186" font-family="Archivo, sans-serif" font-size="9.5" fill="#5C6670">show</text>
+
+  <circle cx="90" cy="232" r="9" fill="none" stroke="#A4123F" stroke-width="2"/>
+  <text x="46" y="256" font-family="Archivo, sans-serif" font-size="10.5" font-weight="700" fill="#A4123F">the query</text>
+
+  <circle cx="418" cy="190" r="6" fill="#BDB1B4"/>
+  <text x="356" y="178" font-family="Archivo, sans-serif" font-size="10.5" fill="#5C6670">romantic comedy</text>
+  <circle cx="398" cy="252" r="6" fill="#BDB1B4"/>
+  <text x="330" y="268" font-family="Archivo, sans-serif" font-size="10.5" fill="#5C6670">kitchen appliances</text>
+
+  <text x="26" y="170" font-family="Archivo, sans-serif" font-size="10" font-style="italic" fill="#5C6670">close = similar meaning</text>
+
+  <!-- right panel: three tiers -->
+  <rect x="500" y="150" width="306" height="134" rx="3" fill="#E5F1F1" stroke="#0F6F73" stroke-width="1.5"/>
+  <text x="516" y="172" font-family="Archivo, sans-serif" font-size="12" font-weight="700" fill="#0F6F73">Word matching runs too — 3 tiers</text>
+  <rect x="516" y="182" width="274" height="26" rx="2" fill="#FFFFFF" stroke="#0F6F73" stroke-opacity="0.4"/>
+  <text x="527" y="199" font-family="Archivo, sans-serif" font-size="11" fill="#16191F">1 · person or creator name</text>
+  <rect x="516" y="212" width="274" height="26" rx="2" fill="#FFFFFF" stroke="#0F6F73" stroke-opacity="0.4"/>
+  <text x="527" y="229" font-family="Archivo, sans-serif" font-size="11" fill="#16191F">2 · exact title</text>
+  <rect x="516" y="242" width="274" height="26" rx="2" fill="#FFFFFF" stroke="#0F6F73" stroke-opacity="0.4"/>
+  <text x="527" y="259" font-family="Archivo, sans-serif" font-size="11" fill="#16191F">3 · keyword in title or description</text>
+</svg>
+<figcaption><b>Left:</b> text becomes a point in space; things that mean similar things sit near each other, and the search finds the nearest points. <b>Right:</b> word matching runs alongside, because &ldquo;James Cameron&rdquo; needs an exact hit, not a vibe.</figcaption>
+</figure>
+
+<dl class="facts">
+  <div><dt>Catalogue</dt><dd>120,747<span>items searched</span></dd></div>
+  <div><dt>Each item is</dt><dd>384<span>numbers long</span></dd></div>
+  <div><dt>Formula</dt><dd>cos(e_i, q)<span>how aligned two items are</span></dd></div>
+</dl>
+
+<h4>Points to prepare</h4>
+<ul>
+  <li>The encoder is called <b>SBERT</b> (<code>all-MiniLM-L6-v2</code>). It produces 384 numbers per item. We chose a small one on purpose — it keeps the server cheap and fast.</li>
+  <li>Queries, items <em>and</em> user taste vectors all live in the <b>same 384-number space</b>, so we can compare any of them directly. That&rsquo;s why nothing needs converting between stages.</li>
+  <li>We use a database called <b>Qdrant</b> for the search. The important bit: it can apply filters <em>during</em> the search, not after. The old option (FAISS) had to search first and filter afterwards — which would break Himaneesh&rsquo;s guarantee.</li>
+  <li>Word matches are capped at <b>half the page</b>, so one common keyword can&rsquo;t flood the results.</li>
+  <li>Every result records <b>which path found it</b> (word match or meaning match), and the UI shows it. Nice thing to point at live.</li>
+  <li>The small <b>word-overlap score (0.08 weight)</b> exists for names. Our own tests show it scores 0.467 on &ldquo;James Cameron&rdquo; and 0.667 on &ldquo;Taylor Swift&rdquo;, but only 0.250 on a general topic query — it fires exactly when a name is involved.</li>
+  <li><b>Cold start:</b> meaning-based scores are the only ones that work for a brand-new item with no interaction history.</li>
+</ul>
+
+<div class="warn">
+  <div class="t">Your weakness — say it yourself</div>
+  <p>Matching meaning and words tells us what an item <em>is</em>, but nothing about what people actually <em>do</em>. Two films can be described almost identically and be loved by completely different audiences. That is exactly what the next part solves — hand over to Sanjay here.</p>
+</div>
+
+<h4>If they ask about the knowledge graph</h4>
+<div class="script">
+  <div class="t">Say this, then stop</div>
+  <p>&ldquo;Today the knowledge-graph signal is word overlap between the query and the item&rsquo;s title, description, creators and categories, weighted 0.08. The visualizer shows the target structure we&rsquo;re building towards — turning it into a real graph database with path-based explanations is our Review-3 deliverable.&rdquo;</p>
+</div>
+<p>Do not claim there is a live graph with nodes and edges — there isn&rsquo;t one yet, and the deck now says so honestly. If they ask where &ldquo;564 nodes&rdquo; came from, that&rsquo;s Sanjay&rsquo;s to answer, not yours.</p>
+
+<h4>Your demo — about 30 seconds</h4>
+<p>Type one query. Show one result card. Point at the score breakdown bar and the badge showing which path found it. Then stop — personalisation belongs to Aditya.</p>
+
+<h4>Questions they may ask</h4>
+<div class="qa">
+  <div><p class="q">Why Qdrant rather than FAISS?</p><p class="a">Because filters apply inside the search itself. FAISS would need a second lookup afterwards, which would let blocked items be retrieved and then removed — and that breaks the age guarantee.</p></div>
+  <div><p class="q">Why such a small embedding model?</p><p class="a">384 dimensions keeps the whole catalogue in memory and the server CPU-only. A bigger model buys accuracy we haven&rsquo;t yet shown we need.</p></div>
+  <div><p class="q">Isn&rsquo;t keyword search a step backwards?</p><p class="a">It&rsquo;s a complement. Meaning-search is strong on intent and weak on exact names; keyword search is the opposite. Running both in tiers is what makes both kinds of query work.</p></div>
+</div>
+</section>
+
+<!-- ================= SLOT 2 ================= -->
+<section class="owner" style="--c:var(--maroon); --cbg:var(--maroon-bg)">
+<h2><span class="num">Speaks 2nd · Sanjay</span>Learning from behaviour</h2>
+<p class="lede">The part that learns from what people actually did, plus how we prove any of this works. The deepest section — and it owns both of our honest weak spots.</p>
+
+<div class="plain">
+  <div class="t">In plain English</div>
+  <p>Imagine a huge web connecting every user to every item they liked. If you and I both liked the same five films, and you also liked a sixth, that sixth is probably worth showing me — even though nothing in its <em>description</em> says so.</p>
+  <p><b>LightGCN</b> learns that web. It gives every user and every item a list of 64 numbers, then repeatedly lets each one absorb information from its neighbours: users take on the character of items they liked, items take on the character of users who liked them. After three rounds, information has travelled three steps through the web — so it captures &ldquo;people like you liked this&rdquo; without anyone writing that rule.</p>
+  <p>We train it with a trick called <b>BPR</b>. Because we only know what people liked and never what they disliked, we can&rsquo;t teach it to predict a rating. Instead we teach it comparisons: &ldquo;this item the user liked should rank above this random one they didn&rsquo;t touch.&rdquo; Do that a few million times and the ordering becomes correct.</p>
+</div>
+
+<div class="oneline">
+  <div class="t">Your one-sentence version</div>
+  <p>&ldquo;LightGCN learns what people&rsquo;s behaviour has in common, which is something no amount of reading the description can tell you.&rdquo;</p>
+</div>
+
+<figure>
+<svg viewBox="0 0 820 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bipartite graph of users and items with information spreading outward over three layers">
+  <text x="14" y="22" font-family="Archivo, sans-serif" font-size="11" font-weight="600" letter-spacing="1.1" fill="#5C6670">USERS AND ITEMS FORM ONE WEB — INFORMATION SPREADS ALONG IT</text>
+
+  <!-- users -->
+  <circle cx="120" cy="80"  r="19" fill="#FBEDF1" stroke="#A4123F" stroke-width="1.8"/>
+  <text x="120" y="85" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12" font-weight="700" fill="#A4123F">U1</text>
+  <circle cx="120" cy="160" r="19" fill="#FBEDF1" stroke="#A4123F" stroke-width="1.8"/>
+  <text x="120" y="165" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12" font-weight="700" fill="#A4123F">U2</text>
+  <circle cx="120" cy="240" r="19" fill="#FBEDF1" stroke="#A4123F" stroke-width="1.8"/>
+  <text x="120" y="245" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12" font-weight="700" fill="#A4123F">U3</text>
+  <text x="120" y="45" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11" font-weight="600" fill="#5C6670">users</text>
+
+  <!-- items -->
+  <rect x="300" y="60"  width="42" height="40" rx="3" fill="#F1ECED" stroke="#5C6670" stroke-width="1.5"/>
+  <text x="321" y="85" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12" font-weight="700" fill="#16191F">A</text>
+  <rect x="300" y="140" width="42" height="40" rx="3" fill="#F1ECED" stroke="#5C6670" stroke-width="1.5"/>
+  <text x="321" y="165" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12" font-weight="700" fill="#16191F">B</text>
+  <rect x="300" y="220" width="42" height="40" rx="3" fill="#FFF4F7" stroke="#A4123F" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="321" y="245" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12" font-weight="700" fill="#A4123F">C</text>
+  <text x="321" y="45" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11" font-weight="600" fill="#5C6670">items</text>
+
+  <!-- edges -->
+  <line x1="139" y1="80"  x2="300" y2="80"  stroke="#A4123F" stroke-width="1.6"/>
+  <line x1="139" y1="88"  x2="300" y2="152" stroke="#A4123F" stroke-width="1.6"/>
+  <line x1="139" y1="160" x2="300" y2="88"  stroke="#5C6670" stroke-width="1.3"/>
+  <line x1="139" y1="160" x2="300" y2="160" stroke="#5C6670" stroke-width="1.3"/>
+  <line x1="139" y1="168" x2="300" y2="232" stroke="#5C6670" stroke-width="1.3"/>
+  <line x1="139" y1="240" x2="300" y2="240" stroke="#5C6670" stroke-width="1.3"/>
+
+  <text x="364" y="243" font-family="Archivo, sans-serif" font-size="11" font-weight="700" fill="#A4123F">recommended to U1</text>
+  <text x="364" y="259" font-family="Archivo, sans-serif" font-size="10.5" fill="#5C6670">U1 never saw it — but U2 links them</text>
+
+  <!-- layer explanation -->
+  <line x1="540" y1="46" x2="540" y2="268" stroke="#DED7D9"/>
+  <text x="566" y="70" font-family="Archivo, sans-serif" font-size="12" font-weight="700" fill="#16191F">Layer 1</text>
+  <text x="566" y="88" font-family="Archivo, sans-serif" font-size="11" fill="#3C444E">U1 absorbs items it liked</text>
+
+  <text x="566" y="124" font-family="Archivo, sans-serif" font-size="12" font-weight="700" fill="#16191F">Layer 2</text>
+  <text x="566" y="142" font-family="Archivo, sans-serif" font-size="11" fill="#3C444E">…and the other users who</text>
+  <text x="566" y="158" font-family="Archivo, sans-serif" font-size="11" fill="#3C444E">liked those same items</text>
+
+  <text x="566" y="194" font-family="Archivo, sans-serif" font-size="12" font-weight="700" fill="#16191F">Layer 3</text>
+  <text x="566" y="212" font-family="Archivo, sans-serif" font-size="11" fill="#3C444E">…and what <tspan font-weight="700">those</tspan> users liked.</text>
+  <text x="566" y="228" font-family="Archivo, sans-serif" font-size="11" fill="#3C444E">Item C arrives here.</text>
+  <text x="566" y="256" font-family="Archivo, sans-serif" font-size="10.5" font-style="italic" fill="#A4123F">We stop at 3 — go further and</text>
+  <text x="566" y="270" font-family="Archivo, sans-serif" font-size="10.5" font-style="italic" fill="#A4123F">everyone starts to look the same.</text>
+</svg>
+<figcaption><b>Why three layers:</b> each layer lets information hop one more step through the web. Three is enough to reach useful strangers; beyond that everyone&rsquo;s numbers blur together and the model stops telling people apart. That blurring has a name — over-smoothing.</figcaption>
+</figure>
+
+<dl class="facts">
+  <div><dt>Numbers per user/item</dt><dd>64<span>embedding size d</span></dd></div>
+  <div><dt>Layers</dt><dd>3<span>hops through the web</span></dd></div>
+  <div><dt>Trained on</dt><dd>Kaggle T4<span>60 epochs, GPU</span></dd></div>
+</dl>
+
+<h4>How we prove it works — and where it doesn&rsquo;t</h4>
+<p>We tested on <b>Amazon Reviews 2023</b>, a real public dataset, in three different domains. For each one we hide each user&rsquo;s most recent purchase, train on everything else, then check whether the model puts the hidden item back in the top 20. We compare against the simplest possible method: <b>just recommend whatever is most popular.</b></p>
+
+<figure>
+<svg viewBox="0 0 820 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart comparing LightGCN against a popularity baseline on Recall@20 across three domains">
+  <text x="14" y="20" font-family="Archivo, sans-serif" font-size="11" font-weight="600" letter-spacing="1.1" fill="#5C6670">RECALL@20 — LIGHTGCN vs MOST-POPULAR BASELINE</text>
+
+  <!-- legend -->
+  <rect x="560" y="10" width="11" height="11" fill="#BDB1B4"/>
+  <text x="578" y="20" font-family="Archivo, sans-serif" font-size="11" fill="#16191F">most popular</text>
+  <rect x="672" y="10" width="11" height="11" fill="#A4123F"/>
+  <text x="690" y="20" font-family="Archivo, sans-serif" font-size="11" fill="#16191F">LightGCN</text>
+
+  <!-- axes: y from 0 (y=250) to 0.035 (y=50) -->
+  <line x1="86" y1="250" x2="800" y2="250" stroke="#16191F" stroke-width="1.4"/>
+  <line x1="86" y1="44"  x2="86"  y2="250" stroke="#16191F" stroke-width="1.4"/>
+
+  <line x1="86" y1="193" x2="800" y2="193" stroke="#DED7D9" stroke-dasharray="3 3"/>
+  <line x1="86" y1="136" x2="800" y2="136" stroke="#DED7D9" stroke-dasharray="3 3"/>
+  <line x1="86" y1="79"  x2="800" y2="79"  stroke="#DED7D9" stroke-dasharray="3 3"/>
+
+  <text x="78" y="254" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#5C6670">0</text>
+  <text x="78" y="197" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#5C6670">0.010</text>
+  <text x="78" y="140" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#5C6670">0.020</text>
+  <text x="78" y="83"  text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#5C6670">0.030</text>
+
+  <!-- Movies: pop 0.0182 -> h=104 ; lgcn 0.0288 -> h=164 -->
+  <rect x="136" y="146" width="58" height="104" fill="#BDB1B4"/>
+  <rect x="200" y="86"  width="58" height="164" fill="#A4123F"/>
+  <text x="165" y="140" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#5C6670">.0182</text>
+  <text x="229" y="80"  text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700" fill="#A4123F">.0288</text>
+  <text x="197" y="270" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12.5" font-weight="600" fill="#16191F">Movies &amp; TV</text>
+  <text x="197" y="287" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" font-weight="700" fill="#0F6F73">1.59× better</text>
+
+  <!-- Industrial: pop 0.0264 -> h=151 ; lgcn 0.0326 -> h=186 -->
+  <rect x="368" y="99" width="58" height="151" fill="#BDB1B4"/>
+  <rect x="432" y="64" width="58" height="186" fill="#A4123F"/>
+  <text x="397" y="93" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#5C6670">.0264</text>
+  <text x="461" y="58" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700" fill="#A4123F">.0326</text>
+  <text x="429" y="270" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12.5" font-weight="600" fill="#16191F">Industrial</text>
+  <text x="429" y="287" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" font-weight="700" fill="#0F6F73">1.24× better</text>
+
+  <!-- Health: pop 0.0221 -> h=126 ; lgcn 0.0121 -> h=69 -->
+  <rect x="600" y="124" width="58" height="126" fill="#BDB1B4"/>
+  <rect x="664" y="181" width="58" height="69"  fill="#A4123F"/>
+  <text x="629" y="118" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="#5C6670">.0221</text>
+  <text x="693" y="175" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700" fill="#A4123F">.0121</text>
+  <text x="661" y="270" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12.5" font-weight="600" fill="#16191F">Health</text>
+  <text x="661" y="287" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" font-weight="700" fill="#A4123F">0.55× — we lose</text>
+</svg>
+<figcaption><b>Two wins and one loss, shown honestly.</b> On health, simply recommending best-sellers beats our model. Don&rsquo;t hide this — the explanation below is stronger than the result.</figcaption>
+</figure>
+
+<h4>The health result — rehearse this answer</h4>
+<div class="script">
+  <div class="t">Say this before anyone asks</div>
+  <p>&ldquo;LightGCN loses on health, and that is the result. Household goods are commodity purchases — nearly everyone buys the same top sellers, so popularity is a genuinely strong baseline there. It tells us collaborative filtering helps where taste varies between people, and helps less where it doesn&rsquo;t.&rdquo;</p>
+</div>
+
+<h4>The one deep point that will impress them</h4>
+<p>If the conversation goes technical, this is your best material — and we found it by reading our own code.</p>
+<ul>
+  <li>We <b>train</b> the model to compare items using a plain multiplication of the two number-lists (a dot product).</li>
+  <li>But when we <b>use</b> the model, we first shrink every list to the same length before comparing (normalising), which turns it into a cosine.</li>
+  <li>Shrinking the <em>user</em> side changes nothing about the order of results. Shrinking the <em>item</em> side does — because in this kind of model, an item&rsquo;s &ldquo;length&rdquo; quietly encodes how popular it is.</li>
+  <li>So normalising throws away the popularity knowledge the model learned. <b>And health is the one domain where popularity matters most.</b> That may be the whole explanation for the 0.55× result.</li>
+  <li>But it&rsquo;s a genuine trade-off, not a bug: that same normalising is what puts all five scores on the same scale, which is what makes the weights (1.00, 0.20, 0.15, 0.08, 0.10) mean anything at all.</li>
+</ul>
+<p><b>Status to state clearly:</b> it&rsquo;s a scoped experiment, not a finished one. We know exactly what to run and we haven&rsquo;t run it yet.</p>
+
+<div class="warn">
+  <div class="t">Your second weakness — say it before they open the file</div>
+  <p>The trained model file we ship with the running app is a small synthetic test set — 13 users, 347 items. Say: <em>&ldquo;The implementation is complete and tested. The file currently loaded is a synthetic smoke-test, because our own platform has no real user base yet. That is exactly why we benchmark on Amazon Reviews 2023 instead.&rdquo;</em></p>
+  <p>This caveat is <b>yours alone</b>. The knowledge-graph visualizer is built from the same file, so it is one caveat, not two — Eswara will not repeat it.</p>
+</div>
+
+<h4>One detail that looks like a mistake but isn&rsquo;t</h4>
+<p>In our results files, <span class="mono">hit_rate</span> and <span class="mono">recall</span> are <em>identical</em>. That&rsquo;s correct, not copy-paste: we hide exactly one item per user, so &ldquo;did we find it&rdquo; and &ldquo;what fraction did we find&rdquo; are the same question. You can verify live: 0.02884 ÷ 20 = 0.0014422, which is exactly the precision we report.</p>
+
+<h4>Protect the small-looking numbers</h4>
+<p>All the scores look tiny. Explain why before they judge: the data is about <b>0.04% filled</b> — almost every user–item pair is empty. Published results on this kind of data sit in the 0.03–0.08 range. <b>The claim we&rsquo;re testing is &ldquo;LightGCN beats popularity&rdquo;, not &ldquo;the number is large.&rdquo;</b></p>
+
+<h4>Your demo</h4>
+<p>The benchmark table and the Kaggle notebook. No live UI — that&rsquo;s Aditya and Himaneesh.</p>
+
+<h4>Questions they may ask</h4>
+<div class="qa">
+  <div><p class="q">Why LightGCN and not a normal neural network?</p><p class="a">In this problem there are no input features to transform — the numbers <em>are</em> the thing being learned. The original paper showed that removing the transformation layers and activation functions actually improves results, because they only add capacity to overfit.</p></div>
+  <div><p class="q">Why not train it to predict ratings?</p><p class="a">We only have positives — we know what people bought or liked, never what they rejected. So we train on comparisons instead of values, which is what BPR does.</p></div>
+  <div><p class="q">Finance has no result. Why?</p><p class="a">It&rsquo;s the newest domain and the smallest — 3,103 items. The pipeline is identical and only one constant changes, so it&rsquo;s queued, not blocked. It&rsquo;s listed as Review-3 work.</p></div>
+</div>
+</section>
+
+<!-- ================= SLOT 3 ================= -->
+<section class="owner" style="--c:var(--violet); --cbg:var(--violet-bg)">
+<h2><span class="num">Speaks 3rd · Aditya</span>Reacting instantly</h2>
+<p class="lede">The part that makes the word &ldquo;real-time&rdquo; in our project title true. You get the best live demo of the review — take your time with it.</p>
+
+<div class="plain">
+  <div class="t">In plain English</div>
+  <p>LightGCN is powerful but slow to update — retraining it takes hours. So if someone likes three science-fiction films right now, it can&rsquo;t react today.</p>
+  <p>Our fix is deliberately simple. We keep one &ldquo;taste vector&rdquo; per user — the same 384 numbers everything else uses. Every time they like something, we nudge that vector a little towards the thing they liked. Every time they skip something, we nudge it away.</p>
+  <p>The nudge is 25% of the way (&alpha; = 0.25), so roughly the last four things you did shape what you see. It&rsquo;s one write to the database — no model is retrained, no item vectors move, nothing is rebuilt. That&rsquo;s why the results change between one search and the next.</p>
+</div>
+
+<div class="oneline">
+  <div class="t">Your one-sentence version</div>
+  <p>&ldquo;Retraining the graph model takes hours; this takes one write — so the system reacts inside a single session.&rdquo;</p>
+</div>
+
+<figure>
+<svg viewBox="0 0 820 264" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram showing a user taste vector moving stepwise toward liked science fiction items">
+  <text x="14" y="20" font-family="Archivo, sans-serif" font-size="11" font-weight="600" letter-spacing="1.1" fill="#5C6670">THE TASTE VECTOR MOVES A LITTLE WITH EVERY LIKE</text>
+
+  <rect x="14" y="36" width="560" height="180" rx="3" fill="#FAF8F8" stroke="#DED7D9"/>
+
+  <!-- sci-fi cluster -->
+  <circle cx="452" cy="86"  r="8" fill="#4A3A82" opacity="0.85"/>
+  <circle cx="496" cy="122" r="8" fill="#4A3A82" opacity="0.85"/>
+  <circle cx="440" cy="146" r="8" fill="#4A3A82" opacity="0.85"/>
+  <text x="420" y="70" font-family="Archivo, sans-serif" font-size="11.5" font-weight="700" fill="#4A3A82">sci-fi items</text>
+  <text x="420" y="176" font-family="Archivo, sans-serif" font-size="10.5" font-style="italic" fill="#5C6670">the three they liked</text>
+
+  <!-- other cluster -->
+  <circle cx="126" cy="180" r="7" fill="#BDB1B4"/>
+  <circle cx="92"  cy="146" r="7" fill="#BDB1B4"/>
+  <text x="66" y="204" font-family="Archivo, sans-serif" font-size="10.5" fill="#5C6670">everything else</text>
+
+  <!-- trajectory -->
+  <circle cx="150" cy="120" r="9" fill="none" stroke="#16191F" stroke-width="2"/>
+  <text x="118" y="104" font-family="Archivo, sans-serif" font-size="10.5" font-weight="700" fill="#16191F">start</text>
+
+  <line x1="160" y1="118" x2="230" y2="114" stroke="#4A3A82" stroke-width="1.6" marker-end="url(#arv)"/>
+  <circle cx="242" cy="113" r="7" fill="#EDEAF6" stroke="#4A3A82" stroke-width="1.6"/>
+  <text x="232" y="97" font-family="Archivo, sans-serif" font-size="10" fill="#4A3A82">like 1</text>
+
+  <line x1="252" y1="112" x2="312" y2="110" stroke="#4A3A82" stroke-width="1.6" marker-end="url(#arv)"/>
+  <circle cx="324" cy="110" r="7" fill="#EDEAF6" stroke="#4A3A82" stroke-width="1.6"/>
+  <text x="314" y="94" font-family="Archivo, sans-serif" font-size="10" fill="#4A3A82">like 2</text>
+
+  <line x1="334" y1="110" x2="392" y2="112" stroke="#4A3A82" stroke-width="1.6" marker-end="url(#arv)"/>
+  <circle cx="404" cy="113" r="9" fill="#4A3A82"/>
+  <text x="392" y="97" font-family="Archivo, sans-serif" font-size="10" font-weight="700" fill="#4A3A82">like 3</text>
+
+  <!-- formula panel -->
+  <rect x="596" y="36" width="210" height="180" rx="3" fill="#EDEAF6" stroke="#4A3A82" stroke-width="1.5"/>
+  <text x="612" y="62" font-family="Archivo, sans-serif" font-size="12" font-weight="700" fill="#4A3A82">The whole formula</text>
+  <text x="612" y="92" font-family="JetBrains Mono, monospace" font-size="12.5" fill="#16191F">new = 0.25 × item</text>
+  <text x="612" y="112" font-family="JetBrains Mono, monospace" font-size="12.5" fill="#16191F">    + 0.75 × old</text>
+  <text x="612" y="146" font-family="Archivo, sans-serif" font-size="11" fill="#3C444E">That&rsquo;s it. One line.</text>
+  <text x="612" y="170" font-family="Archivo, sans-serif" font-size="11" fill="#3C444E">No training, no rebuild,</text>
+  <text x="612" y="186" font-family="Archivo, sans-serif" font-size="11" fill="#3C444E">nothing else moves.</text>
+</svg>
+<figcaption><b>Each like moves the vector 25% of the way toward that item.</b> After three likes it sits firmly in the sci-fi neighbourhood, so the next search ranks sci-fi higher — without anything being retrained.</figcaption>
+</figure>
+
+<dl class="facts">
+  <div><dt>Nudge size</dt><dd>&alpha; = 0.25<span>25% toward the new item</span></dd></div>
+  <div><dt>Cost per event</dt><dd>1 write<span>vs hours for a retrain</span></dd></div>
+  <div><dt>Weight in blend</dt><dd>0.15<span>of the final score</span></dd></div>
+</dl>
+
+<h4>Points to prepare</h4>
+<ul>
+  <li>The taste vector lives in the <b>same 384-number space</b> as items and queries, so comparing them needs no conversion.</li>
+  <li>It updates <b>the moment the event is logged</b>, not on a schedule. Positive events: like, bookmark, complete, high rating. Negative: skip.</li>
+  <li><b>Why not just retrain the model a bit each time?</b> A retrain updates the model&rsquo;s parameters and moves item vectors, which would disturb results for everyone. One user&rsquo;s vector move affects only that user.</li>
+  <li>Storage is <b>MySQL</b>: one table of interactions and one of user profiles holding the vector. There&rsquo;s an index on <span class="mono">(user_id, timestamp)</span> because reading a user&rsquo;s recent history is the hot path.</li>
+  <li>There&rsquo;s a <b>foreign key</b> from interactions to the catalogue, checked before insert — so a bad item ID returns a clean &ldquo;400 bad request&rdquo; instead of crashing with a 500.</li>
+  <li>If the store is unavailable, <b>this signal switches off and the other four still rank</b>. Nothing breaks.</li>
+</ul>
+
+<div class="warn">
+  <div class="t">Your weakness — say it yourself</div>
+  <p>There&rsquo;s no session boundary and no time decay yet, so one accidental click drifts the vector permanently. Session-scoped vectors and a decay term are Review-3 work.</p>
+</div>
+
+<h4>Your demo — rehearse until it&rsquo;s automatic</h4>
+<ol>
+  <li>Run a search. Read out the top two or three results.</li>
+  <li>Like three sci-fi items.</li>
+  <li>Run <b>the exact same search again.</b></li>
+  <li>Point at the EMA segment now appearing in the score bar, and the ranking having moved.</li>
+  <li>Show the new row in the MySQL interactions table.</li>
+</ol>
+<div class="script">
+  <div class="t">The line that lands it</div>
+  <p>&ldquo;Nothing was retrained between those two searches.&rdquo;</p>
+</div>
+
+<h4>Questions they may ask</h4>
+<div class="qa">
+  <div><p class="q">Why 0.25 specifically?</p><p class="a">It gives roughly a four-interaction memory — fast enough to feel immediate, damped enough that one click doesn&rsquo;t erase an established profile. It&rsquo;s configurable.</p></div>
+  <div><p class="q">Isn&rsquo;t this just a recency trick?</p><p class="a">Yes, deliberately. It covers the time window LightGCN can&rsquo;t: the graph model learns long-term patterns over hours of training, this one covers the current session. Different time scales, not competing methods.</p></div>
+  <div><p class="q">What if a user likes something by accident?</p><p class="a">Right now it sticks, which is the honest limitation above. A decay term fixes it and is planned.</p></div>
+</div>
+</section>
+
+<!-- ================= SLOT 4 ================= -->
+<section class="owner" style="--c:var(--amber); --cbg:var(--amber-bg)">
+<h2><span class="num">Speaks 4th · Himaneesh</span>Deciding who may see what</h2>
+<p class="lede">This is what the faculty asked for on 9 September — age filtering and domains beyond entertainment. It goes last because it&rsquo;s the strongest finish.</p>
+
+<div class="plain">
+  <div class="t">In plain English — and read the next line carefully</div>
+  <p><b>This is not a model.</b> The other three explained things that learn from data. This one is a set of rules that decides what a viewer is allowed to see at all. Nothing here is trained; it&rsquo;s about 550 lines of ordinary logic.</p>
+  <p>The important design choice: we check eligibility <b>before</b> searching, not after. The age and domain rules are built into the database query itself. So an item a child shouldn&rsquo;t see is never even fetched — it can&rsquo;t be found, can&rsquo;t be scored, and no other part of the system can push it back up.</p>
+  <p>We used to do it the other way: unsuitable items got a score penalty that pushed them down. That failed, because the four scoring signals could simply push them back up again. Moving the check <em>before</em> the search is what turned it from &ldquo;usually works&rdquo; into &ldquo;cannot fail.&rdquo;</p>
+</div>
+
+<div class="oneline">
+  <div class="t">Your opening sentence — use it exactly</div>
+  <p>&ldquo;The other three presented scoring models. This is not a model — it&rsquo;s a filtering stage, and the fact that it <em>can&rsquo;t</em> be a model is the point.&rdquo;</p>
+</div>
+
+<figure>
+<svg viewBox="0 0 820 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two pipelines compared: filtering after scoring lets blocked items return, filtering before search makes it impossible">
+  <!-- OLD WAY -->
+  <text x="14" y="20" font-family="Archivo, sans-serif" font-size="11" font-weight="700" letter-spacing="1" fill="#A4123F">THE OLD WAY — PENALISE AFTERWARDS · FAILS</text>
+
+  <rect x="14" y="34" width="104" height="42" rx="3" fill="#F1ECED" stroke="#BDB1B4"/>
+  <text x="66" y="60" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">search all</text>
+
+  <line x1="120" y1="55" x2="150" y2="55" stroke="#5C6670" stroke-width="1.4" marker-end="url(#ar)"/>
+  <rect x="154" y="34" width="128" height="42" rx="3" fill="#FFF4F7" stroke="#A4123F" stroke-width="1.5"/>
+  <text x="218" y="53" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">unsuitable item</text>
+  <text x="218" y="68" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">gets −0.25</text>
+
+  <line x1="284" y1="55" x2="314" y2="55" stroke="#5C6670" stroke-width="1.4" marker-end="url(#ar)"/>
+  <rect x="318" y="34" width="150" height="42" rx="3" fill="#F1ECED" stroke="#BDB1B4"/>
+  <text x="393" y="53" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">other signals add</text>
+  <text x="393" y="68" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">+0.20, +0.15…</text>
+
+  <line x1="470" y1="55" x2="500" y2="55" stroke="#A4123F" stroke-width="1.6" marker-end="url(#ar)"/>
+  <rect x="504" y="30" width="172" height="50" rx="3" fill="#A4123F"/>
+  <text x="590" y="50" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12" font-weight="700" fill="#FFFFFF">it climbs back up</text>
+  <text x="590" y="67" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11" fill="#FFFFFF">child sees it anyway</text>
+
+  <text x="690" y="61" font-family="JetBrains Mono, monospace" font-size="15" font-weight="700" fill="#A4123F">1.000</text>
+  <text x="690" y="76" font-family="Archivo, sans-serif" font-size="9.5" fill="#5C6670">violation rate</text>
+
+  <line x1="14" y1="112" x2="806" y2="112" stroke="#DED7D9" stroke-width="1"/>
+
+  <!-- NEW WAY -->
+  <text x="14" y="146" font-family="Archivo, sans-serif" font-size="11" font-weight="700" letter-spacing="1" fill="#0F6F73">THE NEW WAY — FILTER BEFORE SEARCHING · CANNOT FAIL</text>
+
+  <rect x="14" y="162" width="104" height="42" rx="3" fill="#FAF0DE" stroke="#8A5600" stroke-width="1.6"/>
+  <text x="66" y="181" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" font-weight="600" fill="#8A5600">age gate</text>
+  <text x="66" y="196" text-anchor="middle" font-family="Archivo, sans-serif" font-size="10" fill="#3C444E">built into query</text>
+
+  <line x1="120" y1="183" x2="150" y2="183" stroke="#5C6670" stroke-width="1.4" marker-end="url(#ar)"/>
+  <rect x="154" y="162" width="128" height="42" rx="3" fill="#E5F1F1" stroke="#0F6F73" stroke-width="1.5"/>
+  <text x="218" y="181" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">search runs on</text>
+  <text x="218" y="196" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">allowed items only</text>
+
+  <line x1="284" y1="183" x2="314" y2="183" stroke="#5C6670" stroke-width="1.4" marker-end="url(#ar)"/>
+  <rect x="318" y="162" width="150" height="42" rx="3" fill="#F1ECED" stroke="#BDB1B4"/>
+  <text x="393" y="181" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">signals score</text>
+  <text x="393" y="196" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11.5" fill="#16191F">what remains</text>
+
+  <line x1="470" y1="183" x2="500" y2="183" stroke="#0F6F73" stroke-width="1.6" marker-end="url(#ar)"/>
+  <rect x="504" y="158" width="172" height="50" rx="3" fill="#0F6F73"/>
+  <text x="590" y="178" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12" font-weight="700" fill="#FFFFFF">nothing to climb</text>
+  <text x="590" y="195" text-anchor="middle" font-family="Archivo, sans-serif" font-size="11" fill="#FFFFFF">it was never fetched</text>
+
+  <text x="690" y="189" font-family="JetBrains Mono, monospace" font-size="15" font-weight="700" fill="#0F6F73">0.000</text>
+  <text x="690" y="204" font-family="Archivo, sans-serif" font-size="9.5" fill="#5C6670">violation rate</text>
+
+  <rect x="14" y="236" width="792" height="46" rx="3" fill="#FAF0DE" stroke="#8A5600" stroke-width="1.2"/>
+  <text x="30" y="256" font-family="Archivo, sans-serif" font-size="12" font-weight="700" fill="#8A5600">The line to land:</text>
+  <text x="30" y="273" font-family="Archivo, sans-serif" font-size="12.5" font-style="italic" fill="#16191F">&ldquo;Zero isn&rsquo;t a good score — it&rsquo;s a guarantee. There is nothing for the other signals to promote.&rdquo;</text>
+</svg>
+<figcaption><b>Same rules, two places to apply them, completely different outcome.</b> This one picture carries your whole section — the panel will remember it.</figcaption>
+</figure>
+
+<dl class="facts">
+  <div><dt>Violation rate</dt><dd>0.000<span>with the filter on</span></dd></div>
+  <div><dt>Without it</dt><dd>1.000<span>every result unsuitable</span></dd></div>
+  <div><dt>Learned parameters</dt><dd>0<span>it&rsquo;s rules, not a model</span></dd></div>
+</dl>
+
+<h4>Why it must be rules and not a model — your core argument</h4>
+<div class="script">
+  <div class="t">Say this</div>
+  <p>&ldquo;A trained safety classifier is wrong sometimes by definition — you can measure the error rate, tune it, and it will still let things through in ways you can&rsquo;t predict. A rule compiled into the query is wrong zero times by construction. For age-appropriateness we want the guarantee, not the accuracy score.&rdquo;</p>
+</div>
+
+<h4>What we measured</h4>
+<div class="scroll">
+<table>
+  <thead><tr><th>Viewer</th><th>Age used</th><th>Catalogue they can see</th><th>Filter on</th><th>Filter off</th></tr></thead>
+  <tbody>
+    <tr><td>Child</td><td class="n">8</td><td class="n">4.1% (4,987)</td><td class="n good">0.000</td><td class="n bad">1.000</td></tr>
+    <tr><td>Teen</td><td class="n">15</td><td class="n">54.5% (65,824)</td><td class="n good">0.000</td><td class="n bad">1.000</td></tr>
+    <tr><td>Adult</td><td class="n">25</td><td class="n">100% (120,747)</td><td class="n good">0.000</td><td class="n">0.000</td></tr>
+    <tr><td>Adult, safe mode</td><td class="n">7</td><td class="n">4.1% (4,987)</td><td class="n good">0.000</td><td class="n bad">1.000</td></tr>
+    <tr><td>No age given</td><td class="n">13</td><td class="n">54.5% (65,824)</td><td class="n good">0.000</td><td class="n bad">1.000</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h4>The rules — every one of them fails safe</h4>
+<ul>
+  <li><b>No age given is not treated as an adult.</b> It caps at 13. Guessing high would be the dangerous default.</li>
+  <li><b>Safe mode caps below a real adult age</b>, so an adult can deliberately ask for family-appropriate results.</li>
+  <li><b>An item with missing metadata</b> falls back to its content type&rsquo;s default, never to &ldquo;unrestricted.&rdquo;</li>
+  <li><b>Risk tiers:</b> 0 = ordinary, 1 = show an advisory, 2 = needs a licensed professional and is withheld by default.</li>
+  <li><b>Health and finance are product discovery only</b> — never diagnosis, treatment, or investment advice. Say this sentence out loud; it&rsquo;s the responsible-scoping answer they&rsquo;re listening for.</li>
+</ul>
+
+<h4>Domains — the generality claim</h4>
+<ul>
+  <li>Everything domain-specific lives in one config file. The search engine itself only ever sees text and a type label.</li>
+  <li><b>Adding a new vertical is a config entry, not new code.</b> TV shows were added exactly that way — that&rsquo;s your proof, not a promise.</li>
+  <li>Current spread: entertainment 77,644 · health 20,000 · industry 20,000 · finance 3,103.</li>
+</ul>
+
+<h4>The one score you do own</h4>
+<p>The age/job profile signal (weight 0.10) is yours — simple keyword matching with fixed weights. It&rsquo;s the <b>only hand-set, non-learned score of the five</b>, which is a neat contrast to draw against Sanjay&rsquo;s section.</p>
+
+<div class="warn">
+  <div class="t">Your weakness — say it yourself</div>
+  <p>These are <b>keyword rules, not certified age ratings</b>. Where a real rating already exists on an item we keep it; everything else is derived from keywords. Proper certified ratings and an audit log of blocked items are Review-3 work.</p>
+</div>
+
+<h4>Your demo — the finish</h4>
+<p>Run the same search at <b>age 8</b> and <b>age 25</b>, side by side. Then switch domains. Point out that the domain list is fetched live from the server — so a vertical added in the config file appears in the interface with no front-end change at all.</p>
+
+<h4>Questions they may ask</h4>
+<div class="qa">
+  <div><p class="q">Aren&rsquo;t you just hiding content?</p><p class="a">Yes — that&rsquo;s the intended behaviour, and it&rsquo;s measurable. A child sees 4.1% of the catalogue, an adult sees 100%. We report the cost as well as the protection.</p></div>
+  <div><p class="q">How do you know the age tags are right?</p><p class="a">We don&rsquo;t claim they&rsquo;re certified. Where a real rating exists we keep it; otherwise it&rsquo;s a keyword heuristic that can only restrict, never relax. That direction matters — errors fail safe.</p></div>
+  <div><p class="q">Could you give medical advice with this?</p><p class="a">No, and that&rsquo;s deliberate. Health and finance are scoped to product discovery, an advisory is shown, and anything requiring a licensed professional is withheld by default.</p></div>
+</div>
+</section>
+
+<!-- ================= TONIGHT ================= -->
+<h2><span class="num">Before tomorrow</span>Checklist</h2>
+
+<ul class="check">
+  <li><span class="box"></span><div><b>Everyone: learn your three things</b><span class="sub">Your formula, your one number, your one weakness — from memory, no notes.</span></div></li>
+  <li><span class="box"></span><div><b>Everyone: rehearse your weakness sentence out loud</b><span class="sub">These are written word-for-word above. Said confidently they sound like judgement; read hesitantly they sound like excuses.</span></div></li>
+  <li><span class="box"></span><div><b>Two full run-throughs together, timed</b><span class="sub">Especially the handovers. That&rsquo;s where the repetition crept in last time.</span></div></li>
+  <li><span class="box"></span><div><b>Sanjay: fix the finance number in the deck</b><span class="sub">It says 725 items; the catalogue now has 3,103.</span></div></li>
+  <li><span class="box"></span><div><b>Sanjay: commit the working tree</b><span class="sub">Config, four test files, six front-end files and the catalogue builder are all modified but uncommitted. Do this before anyone demos from another laptop.</span></div></li>
+  <li><span class="box"></span><div><b>Aditya: run the like-then-search demo three times</b><span class="sub">It&rsquo;s the best live moment we have and the one most likely to go wrong under pressure.</span></div></li>
+  <li><span class="box"></span><div><b>Himaneesh: check the age 8 / age 25 demo works end to end</b><span class="sub">Including the domain switcher pulling its list from the server.</span></div></li>
+</ul>
+
+<h2><span class="num">If they ask what this project is</span>The one-line answer</h2>
+<p style="font-size:17.5px; max-width:64ch; font-family:var(--f-head); font-weight:600; line-height:1.45">A domain-agnostic recommendation engine — pluggable domains, five ranking signals, a live feedback loop, and a hard eligibility layer — shown working across four different verticals and measured against a popularity baseline on three public datasets.</p>
+<p style="color:var(--slate); max-width:64ch">Not &ldquo;a film recommender that also does health.&rdquo; <b>The fact that it generalises is the contribution.</b></p>
+
+<footer>
+Prep brief · 14 September 2026 · figures verified against the repository<br>
+Catalogue 120,747 items × 20 columns · embeddings 120,747 × 384 · 207 tests across 11 suites · 8 API endpoints · 19 front-end components<br>
+Benchmarks from reports/benchmarks/ · eligibility table from reports/constraint_evaluation.md
+</footer>
+
+</div>

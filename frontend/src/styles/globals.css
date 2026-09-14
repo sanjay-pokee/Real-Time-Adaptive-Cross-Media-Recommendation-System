@@ -4,129 +4,112 @@
 @tailwind utilities;
 
 /* ============================================================
-   NEXUS — "PRESS"
-   Editorial light-first. Warm paper, deep ink, one hot accent.
+   NEXUS — "GALLERY"
+   Ink wall, bone type, vermillion, acid lime.
 
-   The previous surface language was liquid glass over an
-   iridescent field: every panel was translucent and took its
-   colour from whatever drifted behind it. This is the opposite
-   idea and the tokens are inverted to match.
+   Two surfaces came before this one and both failed the same
+   way: they were themes, not designs. Liquid glass tinted every
+   panel from whatever drifted behind it; the cream press surface
+   repainted the dashboard without moving anything.
 
-     paper     an off-white with warmth in it, never #fff. Pure
-               white next to a poster looks like a bug.
-     ink       warm near-black, never #000, so text sits *on*
-               the paper rather than punching a hole in it.
-     accent    a single burnt orange. One hot colour on a warm
-               neutral is what makes a page read as editorial
-               rather than as a dashboard; a second accent hue
-               competing with it is what made the old surface
-               look tinted at random.
-     cobalt    reserved for the analytical furniture - score
-               bars, signals, links - so data never borrows the
-               accent and dilute it.
+   This one is built around three rules rather than a palette:
 
-   Depth comes from hairline rules and layered soft shadows,
-   not from blur. Blur on a light ground turns to grey mud.
+     1. Controls are not on the page. Everything that used to sit
+        in a rail lives in a slide-over, so the results are the
+        only permanent content.
+     2. Rank is typography. The engine asserts an order; a grid
+        of identical cards throws that away, so #1 runs as a lead
+        and its position is set as an oversized numeral.
+     3. Corners are near-square (4px) and colour arrives in
+        blocks. Soft rounded tinted cards are what made the last
+        two surfaces read as a dashboard.
    ============================================================ */
 
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
 
+  /* ---- GALLERY -------------------------------------------------------
+     Ink ground, bone type, vermillion accent, acid lime for data.
+     Not the old slate-and-glass, and not the cream press surface: a gallery
+     wall. Colour is used in blocks rather than as tint, which is what lets
+     oversized numerals and rules act as graphic furniture instead of
+     decoration sitting on top of a card. */
   :root {
-    color-scheme: light;
+    color-scheme: dark;
 
-    /* ---- paper ---------------------------------------------------- */
-    --paper:         oklch(97.6% 0.008 85);
-    --paper-2:       oklch(95.4% 0.010 80);
-    --paper-3:       oklch(92.6% 0.012 78);
-    --bg:            var(--paper);
-    --surface:       oklch(100% 0 0);
+    --ink-ground:    oklch(15.5% 0.012 70);
+    --paper:         oklch(19% 0.014 68);
+    --paper-2:       oklch(23% 0.016 66);
+    --paper-3:       oklch(27.5% 0.018 64);
+    --bg:            var(--ink-ground);
+    --surface:       oklch(19.5% 0.014 68);
     --surface-2:     var(--paper-2);
     --surface-3:     var(--paper-3);
-    --surface-hover: oklch(94% 0.014 76);
+    --surface-hover: oklch(31% 0.020 62);
 
-    /* ---- ink ------------------------------------------------------ */
-    --ink:        oklch(22% 0.018 62);
-    --ink-muted:  oklch(45% 0.016 65);
-    --ink-faint:  oklch(62% 0.012 68);
-    --ink-invert: var(--paper);
+    --ink:        oklch(95% 0.014 85);
+    --ink-muted:  oklch(74% 0.014 80);
+    --ink-faint:  oklch(56% 0.014 76);
+    --ink-invert: var(--ink-ground);
 
-    /* ---- the one hot accent --------------------------------------- */
-    --accent:       oklch(56% 0.168 42);
-    --accent-hover: oklch(50% 0.172 40);
-    --accent-soft:  oklch(93% 0.045 55);
-    --accent-ink:   oklch(100% 0 0);
-    --accent-2:     oklch(45% 0.145 258);   /* cobalt: data only */
+    --accent:       oklch(66% 0.195 35);
+    --accent-hover: oklch(72% 0.190 37);
+    --accent-soft:  oklch(30% 0.085 35);
+    --accent-ink:   oklch(14% 0.012 70);
+    --accent-2:     oklch(84% 0.185 122);
     --tint:         var(--accent);
 
-    /* ---- lines & shadow ------------------------------------------- */
-    --line:        oklch(22% 0.018 62 / 0.13);
-    --line-strong: oklch(22% 0.018 62 / 0.26);
+    --line:        oklch(95% 0.014 85 / 0.15);
+    --line-strong: oklch(95% 0.014 85 / 0.34);
     --glass:       var(--surface);
 
-    --shadow-1: 0 1px 2px oklch(22% 0.02 62 / 0.05);
-    --shadow-2: 0 2px 4px oklch(22% 0.02 62 / 0.05),
-                0 6px 14px oklch(22% 0.02 62 / 0.05);
-    --shadow-3: 0 3px 6px oklch(22% 0.02 62 / 0.06),
-                0 12px 28px oklch(22% 0.02 62 / 0.09);
-    --shadow-4: 0 6px 12px oklch(22% 0.02 62 / 0.07),
-                0 26px 60px oklch(22% 0.02 62 / 0.14);
-    --shadow-accent: 0 8px 24px oklch(56% 0.168 42 / 0.28);
+    --shadow-1: 0 1px 2px oklch(0% 0 0 / 0.5);
+    --shadow-2: 0 2px 6px oklch(0% 0 0 / 0.45), 0 8px 20px oklch(0% 0 0 / 0.4);
+    --shadow-3: 0 4px 10px oklch(0% 0 0 / 0.5), 0 16px 38px oklch(0% 0 0 / 0.45);
+    --shadow-4: 0 8px 18px oklch(0% 0 0 / 0.55), 0 34px 74px oklch(0% 0 0 / 0.6);
+    --shadow-accent: 0 10px 30px oklch(66% 0.195 35 / 0.38);
 
-    /* ---- content types --------------------------------------------
-       Distinct hues at a shared lightness/chroma, so no single type
-       shouts louder than the rest in a mixed result list. */
-    --type-movie:      oklch(52% 0.152 28);
-    --type-show:       oklch(52% 0.140 350);
-    --type-book:       oklch(48% 0.120 150);
-    --type-music:      oklch(50% 0.150 300);
-    --type-health:     oklch(52% 0.130 195);
-    --type-industrial: oklch(48% 0.090 240);
-    --type-finance:    oklch(50% 0.110 110);
+    --type-movie:      oklch(72% 0.185 35);
+    --type-show:       oklch(74% 0.160 350);
+    --type-book:       oklch(80% 0.170 122);
+    --type-music:      oklch(74% 0.165 305);
+    --type-health:     oklch(78% 0.135 195);
+    --type-industrial: oklch(74% 0.100 240);
+    --type-finance:    oklch(82% 0.140 95);
 
-    /* ---- domains ---- */
     --dom-entertainment: var(--accent);
     --dom-health:        var(--type-health);
     --dom-industry:      var(--type-industrial);
     --dom-finance:       var(--type-finance);
 
-    /* ---- maturity ---- */
-    --mat-all:        oklch(52% 0.120 150);
-    --mat-child:      oklch(54% 0.120 170);
-    --mat-teen:       oklch(54% 0.120 235);
-    --mat-adult:      oklch(54% 0.150 45);
-    --mat-restricted: oklch(50% 0.170 20);
+    --mat-all:        oklch(80% 0.160 122);
+    --mat-child:      oklch(78% 0.140 165);
+    --mat-teen:       oklch(76% 0.130 232);
+    --mat-adult:      oklch(74% 0.170 55);
+    --mat-restricted: oklch(68% 0.195 25);
 
-    /* ---- ranking signals: all cobalt-family, never the accent ---- */
-    --sig-semantic: oklch(45% 0.145 258);
-    --sig-profile:  oklch(52% 0.120 290);
-    --sig-ema:      oklch(56% 0.115 215);
-    --sig-graph:    oklch(50% 0.100 180);
+    --sig-semantic: oklch(84% 0.185 122);
+    --sig-profile:  oklch(74% 0.160 305);
+    --sig-ema:      oklch(78% 0.130 215);
+    --sig-graph:    oklch(74% 0.110 180);
 
-    /* ---- status ---- */
-    --ok:   oklch(50% 0.130 150);
-    --warn: oklch(58% 0.140 75);
-    --bad:  oklch(52% 0.170 25);
+    --ok:   oklch(80% 0.160 122);
+    --warn: oklch(82% 0.150 85);
+    --bad:  oklch(68% 0.195 25);
 
-    /* ---- the ambient field ----------------------------------------
-       Two very wide, very pale washes. On paper the field's job is to
-       stop a full-bleed cream page looking flat under a projector, not
-       to be seen in its own right. */
-    --field-a: oklch(88% 0.055 45 / 0.55);
-    --field-b: oklch(90% 0.045 235 / 0.45);
-    --field-c: oklch(93% 0.030 120 / 0.40);
-    --field-d: oklch(91% 0.040 320 / 0.35);
+    --field-a: oklch(44% 0.130 35 / 0.42);
+    --field-b: oklch(42% 0.110 300 / 0.32);
+    --field-c: oklch(46% 0.110 150 / 0.26);
+    --field-d: oklch(40% 0.100 250 / 0.28);
 
-    /* ---- type ---- */
     --font-display: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
     --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
     --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
 
-    --radius:    14px;
-    --radius-lg: 22px;
-    --radius-sm: 9px;
+    --radius:    4px;
+    --radius-lg: 6px;
+    --radius-sm: 3px;
 
-    /* ---- motion ---- */
     --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     --dur-fast: 160ms;
@@ -134,68 +117,65 @@
     --dur-slow: 620ms;
   }
 
-  /* ---- dark variant -----------------------------------------------
-     Kept because the header toggle ships it. Same editorial structure,
-     inverted ground: espresso rather than slate, so the accent still
-     reads as warm rather than neon. */
-  :root[data-theme='dark'] {
-    color-scheme: dark;
+  /* ---- light alternate: same gallery, lit wall --------------------- */
+  :root[data-theme='light'] {
+    color-scheme: light;
 
-    --paper:         oklch(18% 0.012 60);
-    --paper-2:       oklch(21% 0.014 58);
-    --paper-3:       oklch(25% 0.016 56);
-    --bg:            oklch(15% 0.012 60);
-    --surface:       oklch(21% 0.014 58);
-    --surface-2:     oklch(24% 0.016 56);
-    --surface-3:     oklch(28% 0.018 54);
-    --surface-hover: oklch(31% 0.020 54);
+    --paper:         oklch(96.5% 0.010 85);
+    --paper-2:       oklch(93.5% 0.012 82);
+    --paper-3:       oklch(90% 0.014 80);
+    --bg:            oklch(97.5% 0.008 85);
+    --surface:       oklch(100% 0 0);
+    --surface-2:     var(--paper-2);
+    --surface-3:     var(--paper-3);
+    --surface-hover: oklch(92% 0.016 78);
 
-    --ink:        oklch(95% 0.010 85);
-    --ink-muted:  oklch(76% 0.012 80);
-    --ink-faint:  oklch(58% 0.012 75);
-    --ink-invert: oklch(15% 0.012 60);
+    --ink:        oklch(18% 0.018 62);
+    --ink-muted:  oklch(42% 0.016 65);
+    --ink-faint:  oklch(60% 0.012 68);
+    --ink-invert: oklch(99% 0.005 85);
 
-    --accent:       oklch(68% 0.165 48);
-    --accent-hover: oklch(74% 0.160 50);
-    --accent-soft:  oklch(32% 0.070 45);
-    --accent-ink:   oklch(15% 0.012 60);
-    --accent-2:     oklch(70% 0.130 250);
+    --accent:       oklch(53% 0.195 33);
+    --accent-hover: oklch(47% 0.200 31);
+    --accent-soft:  oklch(93% 0.055 40);
+    --accent-ink:   oklch(100% 0 0);
+    --accent-2:     oklch(52% 0.150 128);
 
-    --line:        oklch(95% 0.01 85 / 0.14);
-    --line-strong: oklch(95% 0.01 85 / 0.30);
+    --line:        oklch(18% 0.018 62 / 0.16);
+    --line-strong: oklch(18% 0.018 62 / 0.34);
 
-    --shadow-1: 0 1px 2px oklch(0% 0 0 / 0.4);
-    --shadow-2: 0 2px 4px oklch(0% 0 0 / 0.35), 0 6px 14px oklch(0% 0 0 / 0.35);
-    --shadow-3: 0 3px 6px oklch(0% 0 0 / 0.4),  0 12px 28px oklch(0% 0 0 / 0.45);
-    --shadow-4: 0 6px 12px oklch(0% 0 0 / 0.45), 0 26px 60px oklch(0% 0 0 / 0.55);
+    --shadow-1: 0 1px 2px oklch(18% 0.02 62 / 0.06);
+    --shadow-2: 0 2px 5px oklch(18% 0.02 62 / 0.06), 0 8px 18px oklch(18% 0.02 62 / 0.06);
+    --shadow-3: 0 4px 9px oklch(18% 0.02 62 / 0.08), 0 16px 34px oklch(18% 0.02 62 / 0.10);
+    --shadow-4: 0 8px 16px oklch(18% 0.02 62 / 0.09), 0 32px 70px oklch(18% 0.02 62 / 0.16);
 
-    --type-movie:      oklch(72% 0.150 30);
-    --type-show:       oklch(72% 0.140 350);
-    --type-book:       oklch(72% 0.115 152);
-    --type-music:      oklch(72% 0.145 300);
-    --type-health:     oklch(74% 0.120 196);
-    --type-industrial: oklch(72% 0.085 242);
-    --type-finance:    oklch(74% 0.105 112);
+    --type-movie:      oklch(50% 0.185 33);
+    --type-show:       oklch(50% 0.150 350);
+    --type-book:       oklch(46% 0.140 128);
+    --type-music:      oklch(48% 0.160 305);
+    --type-health:     oklch(50% 0.125 195);
+    --type-industrial: oklch(46% 0.095 240);
+    --type-finance:    oklch(48% 0.120 95);
 
-    --mat-all:        oklch(72% 0.115 152);
-    --mat-child:      oklch(74% 0.115 172);
-    --mat-teen:       oklch(72% 0.115 236);
-    --mat-adult:      oklch(74% 0.145 48);
-    --mat-restricted: oklch(70% 0.165 22);
+    --mat-all:        oklch(48% 0.140 128);
+    --mat-child:      oklch(50% 0.125 165);
+    --mat-teen:       oklch(50% 0.125 232);
+    --mat-adult:      oklch(52% 0.160 55);
+    --mat-restricted: oklch(48% 0.185 25);
 
-    --sig-semantic: oklch(70% 0.130 250);
-    --sig-profile:  oklch(72% 0.115 292);
-    --sig-ema:      oklch(74% 0.110 216);
-    --sig-graph:    oklch(70% 0.095 182);
+    --sig-semantic: oklch(46% 0.150 128);
+    --sig-profile:  oklch(48% 0.150 305);
+    --sig-ema:      oklch(50% 0.120 215);
+    --sig-graph:    oklch(48% 0.100 180);
 
-    --ok:   oklch(72% 0.120 152);
-    --warn: oklch(78% 0.130 78);
-    --bad:  oklch(70% 0.160 26);
+    --ok:   oklch(46% 0.140 128);
+    --warn: oklch(56% 0.140 80);
+    --bad:  oklch(50% 0.185 25);
 
-    --field-a: oklch(45% 0.090 45 / 0.35);
-    --field-b: oklch(42% 0.080 250 / 0.32);
-    --field-c: oklch(40% 0.060 150 / 0.22);
-    --field-d: oklch(44% 0.070 320 / 0.22);
+    --field-a: oklch(86% 0.070 35 / 0.55);
+    --field-b: oklch(89% 0.050 300 / 0.40);
+    --field-c: oklch(91% 0.045 130 / 0.40);
+    --field-d: oklch(90% 0.040 250 / 0.34);
   }
 
   html { -webkit-text-size-adjust: 100%; }
@@ -506,8 +486,20 @@
     overflow: hidden;
   }
 
-  /* toggle -------------------------------------------------------- */
+  /* toggle --------------------------------------------------------
+     These are real <input type="checkbox"> elements, so the reset is not
+     optional: without `appearance: none` the browser paints its own square
+     checkbox on top of the pill, which is exactly what it did - a white box
+     with a native tick where the switch should be. `flex: none` stops the
+     surrounding flex row from squashing it, and the `:checked` rule is what
+     actually moves the knob; a checkbox has no `aria-checked` or `data-on`,
+     so styling only those left the toggle visually dead when clicked. */
   .switch {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: none;
+    display: inline-block;
+    margin: 0;
     position: relative;
     width: 42px;
     height: 24px;
@@ -530,8 +522,10 @@
     box-shadow: var(--shadow-1);
     transition: translate var(--dur) var(--ease-spring);
   }
+  .switch:checked,
   .switch[data-on='true'],
   .switch[aria-checked='true'] { background: var(--accent); border-color: transparent; }
+  .switch:checked::after,
   .switch[data-on='true']::after,
   .switch[aria-checked='true']::after { translate: 18px 0; }
 
@@ -768,4 +762,64 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+
+/* ============================================================
+   GRAPHIC FURNITURE
+   Rank set as type rather than as a badge. The engine's whole
+   claim is an ordering, so the position is drawn at display
+   scale and bled off the edge of the frame - it reads as a
+   compositional element rather than as a chip sitting on the
+   artwork.
+   ============================================================ */
+.rank-mark {
+  position: absolute;
+  left: -0.06em;
+  bottom: -0.30em;
+  font-family: var(--font-display);
+  font-size: clamp(78px, 11vw, 168px);
+  line-height: 0.72;
+  letter-spacing: -0.055em;
+  color: transparent;
+  -webkit-text-stroke: 1.5px oklch(100% 0 0 / 0.62);
+  pointer-events: none;
+  user-select: none;
+  z-index: 2;
+}
+.rank-mark-sm {
+  font-size: 62px;
+  -webkit-text-stroke-width: 1.2px;
+}
+
+/* A solid vermillion block behind the lead's meta column. Colour as a
+   block, not as a tint on a card - this is what stops the surface
+   reading as another dashboard panel. */
+.block-accent {
+  position: relative;
+}
+.block-accent::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--accent);
+}
+
+/* Section rule with a solid cap, the way a section front marks a break. */
+.rule-capped {
+  position: relative;
+  height: 1px;
+  background: var(--line);
+}
+.rule-capped::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -1px;
+  width: 56px;
+  height: 3px;
+  background: var(--accent);
 }

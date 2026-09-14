@@ -194,9 +194,13 @@ export default function RecommendationCard({
         <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/12 to-transparent transition-transform duration-[900ms] ease-out group-hover:translate-x-full" />
 
         <span className="absolute left-3 top-3 flex items-center gap-2">
-          <span className="num rounded-lg bg-black/55 px-2 py-0.5 text-[11px] font-bold tabular-nums text-white/95 backdrop-blur-sm">
-            #{index + 1}
+          {/* Rank as a graphic mark. See .rank-mark: outlined, oversized and
+              bled off the frame, so the ordering is part of the composition
+              rather than a chip floating on the artwork. */}
+          <span className={`rank-mark ${isLead ? '' : 'rank-mark-sm'}`} aria-hidden="true">
+            {String(index + 1).padStart(2, '0')}
           </span>
+          <span className="sr-only">Rank {index + 1}</span>
           {/* Only when retrieval was lexical. A semantic hit is the default and
               a badge on every card would say nothing. */}
           {matchLabel && (

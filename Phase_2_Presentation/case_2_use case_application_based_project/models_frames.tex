@@ -10,15 +10,22 @@
 %  HEIGHT BUDGET -- READ THIS BEFORE ADDING A LINE.
 %  A 16:9 frame gives ~6.8cm of body once title, subtitle and footline
 %  are paid for. That is about 20 lines at \scriptsize, 27 at \tiny.
-%  A display equation \[..\] costs ~3 lines. Beamer does NOT shrink to
-%  fit -- it silently runs off the bottom edge. If you add an equation,
-%  delete a bullet to pay for it.
+%  A display equation \[..\] costs ~3 lines.
+%
+%  Every card carries [shrink=15]: beamer measures the frame and scales
+%  it down ONLY if it would overflow, up to 15%. A frame that already
+%  fits is untouched. This is a SAFETY NET, not a licence to overfill --
+%  past 15% the content runs off the bottom edge silently, exactly as it
+%  did before. If you add an equation, delete a bullet to pay for it.
+%
+%  Overleaf prints "Overfull \vbox" for any frame that needed shrinking;
+%  that warning is the signal to cut a line, not to raise the 15%.
 %
 %  All figures measured from the repository, 14 Sep 2026.
 % =====================================================================
 
 % ---------------------------------------------------------------------
-\begin{frame}{2. Model Inventory --- Five Scoring Heads and One Gate}
+\begin{frame}[shrink=15]{2. Model Inventory --- Five Scoring Heads and One Gate}
 \framesubtitle{Each is a different model class, defined where the others are not}
 \vspace{1mm}
 \begin{center}
@@ -49,7 +56,7 @@ head must degrade the ranking, never break it.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{2. Model 1 --- SBERT Semantic Encoder}
+\begin{frame}[shrink=15]{2. Model 1 --- SBERT Semantic Encoder}
 \framesubtitle{Algorithm $\cdot$ equation $\cdot$ measured result}
 \vspace{1mm}
 \resizebox{\linewidth}{!}{%
@@ -94,7 +101,7 @@ path --- one shared space, no projection layer.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{2. Model 2 --- LightGCN Graph Collaborative Filtering}
+\begin{frame}[shrink=15]{2. Model 2 --- LightGCN Graph Collaborative Filtering}
 \framesubtitle{Algorithm $\cdot$ equation $\cdot$ measured result}
 \vspace{1mm}
 \begin{columns}[T]
@@ -148,7 +155,7 @@ is not rank-preserving, and that norm carries the popularity prior.}
 % ---------------------------------------------------------------------
 %  PANEL RECOMMENDATION 1 -- NCF: position, architecture and plan
 % ---------------------------------------------------------------------
-\begin{frame}{2. Panel Recommendation --- Neural Collaborative Filtering}
+\begin{frame}[shrink=15]{2. Panel Recommendation --- Neural Collaborative Filtering}
 \framesubtitle{What NCF is, how it differs from LightGCN, and how we will test it}
 \vspace{1mm}
 \begin{columns}[T]
@@ -206,7 +213,7 @@ The MLP tower models \textbf{non-linear} interaction --- which our inner product
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{2. Model 3 --- Real-Time EMA User Vector}
+\begin{frame}[shrink=15]{2. Model 3 --- Real-Time EMA User Vector}
 \framesubtitle{Algorithm $\cdot$ equation $\cdot$ measured result}
 \vspace{1mm}
 \begin{columns}[T]
@@ -252,7 +259,7 @@ $v$ maps to $(v-3)/2$. Then with $\alpha = 0.25$:
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{2. Model 4 --- Knowledge-Graph Overlap Head}
+\begin{frame}[shrink=15]{2. Model 4 --- Knowledge-Graph Overlap Head}
 \framesubtitle{Algorithm $\cdot$ equation $\cdot$ measured result}
 \vspace{1mm}
 \begin{columns}[T]
@@ -314,7 +321,7 @@ The $\max(3,\cdot)$ floor stops a one-word query scoring 1.0 on one incidental m
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{2. Model 5 --- Profile Head and the Eligibility Gate}
+\begin{frame}[shrink=15]{2. Model 5 --- Profile Head and the Eligibility Gate}
 \framesubtitle{Algorithm $\cdot$ equation $\cdot$ measured result}
 \vspace{1mm}
 \begin{columns}[T]
