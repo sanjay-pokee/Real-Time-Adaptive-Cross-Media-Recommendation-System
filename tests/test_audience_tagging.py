@@ -447,3 +447,32 @@ class TestPornWholeWordTier:
     ])
     def test_xxx_is_not_used_as_a_signal(self, title):
         assert maturity_for_row("movie", title) not in ("restricted",)
+
+
+class TestMusicKeywordsMayOnlyRestrict:
+    """Music declares `maturity_source: explicit_flag`, but the source ships no
+    explicit-lyrics column, so the flag never fires and a genre is all there is.
+    A genre says nothing about audience, so a keyword must never relax music
+    below its `teen` default - it may only push it up."""
+
+    @pytest.mark.parametrize("title", [
+        "Kids in America", "Sour Patch Kids", "Cool Kids", "Children",
+        "Family Matters", "family ties (with Kendrick Lamar)",
+    ])
+    def test_a_title_word_cannot_relax_music_below_teen(self, title):
+        assert maturity_for_row("music", f"pop, dance pop {title}") == "teen"
+
+    def test_music_can_still_be_escalated(self):
+        # Escalation is the half that must keep working.
+        assert maturity_for_row("music", "gangster rap, horrorcore") == "adult"
+        assert maturity_for_row("music", "pornographic industrial") == "restricted"
+
+    def test_books_are_unaffected_and_may_still_relax(self):
+        # Books rate from `category`, where "Juvenile fiction" is a real
+        # audience signal rather than an accident of the title.
+        assert maturity_for_row("book", "Juvenile fiction, picture book") == "all_ages"
+
+    def test_movies_keep_their_existing_guard(self):
+        # Movies were already covered: "animation" is a production technique,
+        # not an audience, and must not relax a film below the teen default.
+        assert maturity_for_row("movie", "Animation, Science Fiction") == "teen"

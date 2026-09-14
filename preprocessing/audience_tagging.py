@@ -218,7 +218,17 @@ def _restrict_only(
     """
     domain = registry.domains.get(spec.domain)
     is_regulated = domain is not None and domain.is_regulated
-    if not is_regulated and spec.maturity_source != "certification":
+    # `explicit_flag` is the third case, and it is the weakest of them: the
+    # source ships no explicit-lyrics column, so the flag never fires and music
+    # has no authoritative rating at all - only a genre, which says nothing
+    # about audience. That let a title word relax 48 tracks from the `teen`
+    # default down to `all_ages`: "Kids in America", "Sour Patch Kids", and -
+    # the ones that matter - Drake's "Family Matters" and Baby Keem's "family
+    # ties", both explicit rap, served to a child because their titles contain
+    # "family". Escalation still works, so an explicit genre can still push a
+    # track up.
+    has_no_real_rating = spec.maturity_source in ("certification", "explicit_flag")
+    if not is_regulated and not has_no_real_rating:
         return derived
     if registry.minimum_age(derived) < registry.minimum_age(spec.default_maturity):
         return spec.default_maturity

@@ -169,6 +169,90 @@ def _slug(artist: str, title: str) -> str:
     return "".join(ch if ch.isalnum() else "-" for ch in raw).strip("-")[:120]
 
 
+def artist_top_tag(
+    session: requests.Session, key: str, artist: str, cache: dict[str, str]
+) -> str:
+    """The artist's single most-applied tag, as a genre fallback.
+
+    `track.getInfo` returns no tags for most tracks - coverage measured at 63%
+    for the top popularity band and 0% for the bottom, so a deep fetch ends up
+    mostly genre-less, which leaves both search and the maturity rules with
+    nothing to work from. Genre is really an artist property anyway, and
+    `artist.getTopTags` answered for 10 of 10 artists whose tracks returned
+    nothing.
+
+    Only the top tag is used. Tag counts do not separate genuine tags from
+    vandalism: Justin Bieber's "black metal" scores 58, above Coldplay's
+    legitimate "indie" at 21, so no threshold picks one without the other. The
+    top tag is always the most-applied one (count 100) and was correct for
+    every artist sampled - pop, rock, k-pop, hip-hop.
+
+    Cached per artist: 2,345 genre-less rows came from 1,003 distinct artists.
+    """
+    lowered = artist.strip().lower()
+    if not lowered:
+        return ""
+    if lowered in cache:
+        return cache[lowered]
+
+    payload = _call(session, key, "artist.getTopTags", artist=artist, autocorrect=1)
+    tags = [
+        str(tag.get("name") or "").strip().lower()
+        for tag in (((payload or {}).get("toptags") or {}).get("tag") or [])
+    ]
+    # Drop numeric year tags and tags that are just the artist's own name
+    # ("justin bieber", "nct dream") - neither is a genre.
+    tags = [t for t in tags if t and not t.isdigit() and t != lowered]
+
+    cache[lowered] = tags[0] if tags else ""
+    return cache[lowered]
+
+
+def backfill_genres(
+    session: requests.Session, key: str, path: Path, rate: float
+) -> None:
+    """Fill the genre on rows that have none, in an existing CSV.
+
+    A re-fetch would also fix coverage, but it rebuilds the track list, and a
+    track that drops out takes its track_id with it - which the MySQL load then
+    prunes, cascading away any interaction against it. This only writes
+    `playlist_genre` on rows where it is empty, so every id survives.
+    """
+    if not path.exists():
+        raise SystemExit(f"No file at {path}. Fetch first, or pass --out.")
+
+    frame = pd.read_csv(path, dtype=str, keep_default_na=False)
+    missing = frame.playlist_genre.str.strip() == ""
+    artists = sorted({a.strip().lower() for a in frame.track_artist[missing] if a.strip()})
+
+    print(f"{missing.sum():,} of {len(frame):,} rows have no genre")
+    print(f"{len(artists):,} distinct artists to look up "
+          f"(~{len(artists) * rate / 60:.0f} min)\n")
+
+    cache: dict[str, str] = {}
+    for index, artist in enumerate(artists, start=1):
+        started = time.monotonic()
+        artist_top_tag(session, key, artist, cache)
+        if index % 100 == 0:
+            found = sum(1 for v in cache.values() if v)
+            print(f"  {index:,}/{len(artists):,} looked up ({found:,} tagged)", flush=True)
+        elapsed = time.monotonic() - started
+        if elapsed < rate:
+            time.sleep(rate - elapsed)
+
+    filled = frame.track_artist.str.strip().str.lower().map(cache).fillna("")
+    frame.loc[missing, "playlist_genre"] = filled[missing]
+
+    still_empty = (frame.playlist_genre.str.strip() == "").sum()
+    frame.to_csv(path, index=False, encoding="utf-8")
+
+    print()
+    print(f"wrote {path}")
+    print(f"  genre coverage {100 * (1 - still_empty / len(frame)):.1f}% "
+          f"({len(frame) - still_empty:,} of {len(frame):,})")
+    print(f"  {still_empty:,} still have none (the artist carries no tags either)")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Fetch current tracks from Last.fm.")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
@@ -178,6 +262,14 @@ def main() -> None:
                         help="Tracks per year tag (Last.fm pages these at 1000 max)")
     parser.add_argument("--rate", type=float, default=0.22,
                         help="Seconds between requests (default ~4.5/sec)")
+    parser.add_argument("--no-artist-genre-fallback", action="store_true",
+                        help="Leave a track genre-less when track.getInfo returns "
+                             "no tags, instead of using the artist's top tag.")
+    parser.add_argument("--backfill-genres", action="store_true",
+                        help="Do not fetch. Read --out and fill only the rows that "
+                             "have no genre, using the artist's top tag, then write "
+                             "it back. Touches no other column, so no track_id "
+                             "changes and nothing downstream is pruned.")
     parser.add_argument("--keep-adult-listings", action="store_true",
                         help="Skip the adult-video filter. Year tags carry porn "
                              "scene uploads, and music rows have no genre text "
@@ -194,6 +286,10 @@ def main() -> None:
         )
 
     session = _session()
+
+    if args.backfill_genres:
+        backfill_genres(session, key, args.out, args.rate)
+        return
 
     # 1. Collect (artist, title, year) triples from each year tag.
     seen: dict[tuple[str, str], str] = {}
@@ -221,6 +317,7 @@ def main() -> None:
     print(f"\nenriching {len(seen):,} tracks at ~{1/args.rate:.1f}/sec "
           f"(~{len(seen) * args.rate / 60:.0f} min)")
     rows: list[dict] = []
+    artist_tag_cache: dict[str, str] = {}
     pairs = [(artist, title, year) for (artist, title), year in
              ((k, v) for k, v in seen.items())]
     # `seen` keys are lowercased for dedup; re-fetch gives the canonical casing.
@@ -234,6 +331,12 @@ def main() -> None:
         tags = [str(t.get("name") or "").strip().lower()
                 for t in ((track.get("toptags") or {}).get("tag") or [])]
         tags = [t for t in tags if t and not t.isdigit()]
+        # Most tracks come back with no tags at all. Fall back to the artist's
+        # top tag rather than leaving the row genre-less; see artist_top_tag.
+        if not tags and not args.no_artist_genre_fallback:
+            fallback = artist_top_tag(session, key, artist, artist_tag_cache)
+            if fallback:
+                tags = [fallback]
         rows.append({
             "track_id": _slug(artist, name),
             "track_name": name,
@@ -280,10 +383,22 @@ def main() -> None:
     print(f"  {len(frame):,} tracks, {frame.track_album_release_date.nunique()} years")
     print(f"  with a genre tag: {(frame.playlist_genre.str.strip() != '').sum():,}")
     print()
-    print("Rebuild to apply:")
+    print("Rebuild to apply - all of these, in order, stopping at the first failure:")
     print("  python -m preprocessing.build_content_catalog")
     print("  python -m embeddings.build_embeddings")
+    print("  python -m embeddings.build_faiss_index")
     print("  python -m embeddings.build_qdrant_collection")
+    print("  python -m scripts.load_catalog_mysql")
+    print("  python -m scripts.seed_demo_interactions")
+    print("  python -m scripts.rebuild_ema_profiles")
+    print()
+    print("Stop the API server first: embedded Qdrant takes a single-process")
+    print("lock, and it needs a few seconds after the process dies before the")
+    print("storage file is actually released.")
+    print()
+    print("build_faiss_index is not optional - backend/recommender.py serves")
+    print("from content_faiss.index, so skipping it leaves FAISS and Qdrant")
+    print("disagreeing about what exists.")
 
 
 if __name__ == "__main__":
