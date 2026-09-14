@@ -76,14 +76,21 @@ def genre_map(session: requests.Session, key: str) -> dict[int, str]:
     return {int(g["id"]): str(g["name"]) for g in response.json().get("genres", [])}
 
 
-def fetch_year(
+def fetch_slice(
     session: requests.Session,
     key: str,
-    year: int,
+    label: str,
+    slice_params: dict,
     min_votes: int,
     genres: dict[int, str],
     rate: float,
 ) -> list[dict]:
+    """One /discover sweep over a slice of the catalogue.
+
+    A slice is whatever keeps the result set under the 500-page cap: a release
+    year for the general sweep, or an original language for the regional
+    top-up, where the whole pool is a few hundred titles and needs no slicing.
+    """
     rows: list[dict] = []
     page = 1
     total_pages = 1
@@ -92,14 +99,14 @@ def fetch_year(
         started = time.monotonic()
         response = session.get(f"{API}/discover/movie", params={
             "api_key": key,
-            "primary_release_year": year,
             "vote_count.gte": min_votes,
             "sort_by": "popularity.desc",
             "include_adult": "false",
             "page": page,
+            **slice_params,
         }, timeout=30)
         if response.status_code != 200:
-            print(f"  {year}: HTTP {response.status_code}, stopping this year")
+            print(f"  {label}: HTTP {response.status_code}, stopping this slice")
             break
 
         payload = response.json()
@@ -132,7 +139,7 @@ def fetch_year(
             time.sleep(rate - elapsed)
 
     if total_pages > MAX_PAGE:
-        print(f"  {year}: {total_pages} pages available, capped at {MAX_PAGE}")
+        print(f"  {label}: {total_pages} pages available, capped at {MAX_PAGE}")
     return rows
 
 
@@ -145,6 +152,14 @@ def main() -> None:
     parser.add_argument("--to-year", type=int, default=2026)
     parser.add_argument("--rate", type=float, default=0.1,
                         help="Seconds between requests (default 0.1, i.e. 10/sec)")
+    parser.add_argument("--original-language", action="append", dest="languages",
+                        metavar="CODE",
+                        help="ISO-639-1 code; repeatable. Sweeps by language "
+                             "instead of by year, for a regional top-up. Use with "
+                             "a lower --min-votes and --merge.")
+    parser.add_argument("--merge", action="store_true",
+                        help="Fold results into the existing --out file instead of "
+                             "replacing it. Existing rows win, so no TMDb id moves.")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     args = parser.parse_args()
 
@@ -161,24 +176,47 @@ def main() -> None:
     print(f"fetching {args.from_year}-{args.to_year}, vote_count >= {args.min_votes}")
     print()
 
+    if args.languages:
+        slices = [(code, {"with_original_language": code}) for code in args.languages]
+    else:
+        slices = [(str(y), {"primary_release_year": y})
+                  for y in range(args.from_year, args.to_year + 1)]
+
     all_rows: list[dict] = []
-    for year in range(args.from_year, args.to_year + 1):
-        rows = fetch_year(session, key, year, args.min_votes, genres, args.rate)
+    for label, slice_params in slices:
+        rows = fetch_slice(session, key, label, slice_params,
+                           args.min_votes, genres, args.rate)
         all_rows.extend(rows)
         if rows:
-            print(f"  {year}: {len(rows):>4} titles   (running total {len(all_rows):,})")
+            print(f"  {label}: {len(rows):>4} titles   (running total {len(all_rows):,})")
 
     frame = pd.DataFrame(all_rows, columns=OUTPUT_COLUMNS)
     before = len(frame)
     frame = frame.drop_duplicates(subset=["id"])
     frame = frame[frame["title"].astype(str).str.strip() != ""]
 
+    previous = 0
+    if args.merge and args.out.exists():
+        # dtype=str on both sides. A merge that lets pandas infer types will
+        # rewrite an int id column as floats the moment one value is blank,
+        # turning every "550" into "550.0" - the same way a bare-year column
+        # broke the book catalogue's release dates.
+        existing = pd.read_csv(args.out, dtype=str, keep_default_na=False)
+        previous = len(existing)
+        fetched = frame.astype(str)
+        frame = pd.concat([existing, fetched], ignore_index=True)
+        # Existing rows win, so no TMDb id moves and nothing downstream is pruned.
+        frame = frame.drop_duplicates(subset=["id"], keep="first")
+
     args.out.parent.mkdir(parents=True, exist_ok=True)
     frame.to_csv(args.out, index=False)
 
     print()
     print(f"wrote {args.out}")
-    print(f"  {len(frame):,} titles ({before - len(frame):,} duplicates dropped)")
+    if args.merge:
+        print(f"  {previous:,} already on disk + {len(frame) - previous:,} new "
+              f"(of {before:,} fetched; the rest were already present)")
+    print(f"  {len(frame):,} titles total")
     print(f"  all have an overview and a poster URL")
     print()
     print("Point config/datasets.yaml movies.path at this file, then:")

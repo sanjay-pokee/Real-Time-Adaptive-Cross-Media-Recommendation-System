@@ -56,7 +56,8 @@ domains:
   finance:
     label: Personal & Business Finance
     description: >-
-      Personal-finance, accounting and tax software discovery. Information and
+      Personal-finance, accounting and tax discovery - software, and books on
+      investing, accounting, taxation and money management. Information and
       product discovery only.
     risk_tier: 1
     advisory: >-

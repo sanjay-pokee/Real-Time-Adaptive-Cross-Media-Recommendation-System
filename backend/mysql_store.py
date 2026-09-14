@@ -146,7 +146,12 @@ class MySQLStore:
         if not catalog_path.exists():
             raise FileNotFoundError(f"Content catalog not found: {catalog_path}")
 
-        catalog = pd.read_csv(catalog_path)
+        # low_memory=False is required, not cosmetic. The default reads the file in
+        # chunks and types each chunk independently, so a run of rows whose
+        # release_date is a bare year - the finance books are contiguous - comes
+        # back as float64 and every "2010" becomes 2010.0. That reached the Qdrant
+        # payload and 500'd every finance query on response validation.
+        catalog = pd.read_csv(catalog_path, low_memory=False)
         rows = []
         for _, row in catalog.iterrows():
             rows.append((

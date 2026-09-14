@@ -55,7 +55,12 @@ def build_qdrant_collection(
         ) from exc
 
     _assert_inputs(catalog_path, npy_path, index_path)
-    catalog = pd.read_csv(catalog_path)
+    # low_memory=False is required, not cosmetic. The default reads the file in
+    # chunks and types each chunk independently, so a run of rows whose
+    # release_date is a bare year - the finance books are contiguous - comes
+    # back as float64 and every "2010" becomes 2010.0. That reached the Qdrant
+    # payload and 500'd every finance query on response validation.
+    catalog = pd.read_csv(catalog_path, low_memory=False)
     embedding_index = pd.read_csv(index_path)
     vectors = np.load(npy_path).astype(np.float32, copy=False)
     _validate_inputs(catalog, embedding_index, vectors)

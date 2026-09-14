@@ -163,6 +163,60 @@ datasets:
       - categories
       - description
 
+  # Finance books, alongside the Amazon software rows below rather than
+  # replacing them. Finance is not one of Amazon's 28 top-level categories, so
+  # the Software > Accounting & Finance subtree is the whole of what that source
+  # can give: 725 rows, against 20,000 each for health and industry. Office
+  # Products was the obvious next source and does not work - its "Forms,
+  # Recordkeeping & Money Handling" node is mostly clipboards, key cabinets and
+  # award certificates, and only ~90 of 365 sampled rows were financial at all.
+  #
+  # Open Library carries over a million finance-subject works, needs no key, and
+  # its rows already normalize through `books`. This is a config entry rather
+  # than new code:
+  #   python -m scripts.fetch_openlibrary_books --subject "personal finance" ...
+  #     --per-subject 400 --out datasets/books/openlibrary_finance.csv
+  #     --require-category-term "financ|money|invest|account|tax|bank|budget|..."
+  #
+  # That last flag matters. Open Library subjects are user-contributed, so a
+  # vertical sweep drags in mis-tagged works: 6.4% of the finance rows had no
+  # finance term in their subjects at all, including "Tropic of Cancer" and
+  # "Girl, Woman, Other". Filtering on subjects rather than titles keeps the
+  # genuine juvenile-finance books ("Smart Money Smart Kids") while dropping
+  # the novels. A second pass then drops what survived it:
+  #     --exclude-category-term "(?i)^(?=.*(?:fiction|romance|novel|fantasy))(?!.*(?:financ|money|invest|account|tax|bank|budget|econom|wealth|debt|credit|saving|business|entrepreneur|commerce)).*"
+  # A novel can carry one stray on-topic subject and clear the require pass -
+  # a Depression-era novel tagged "Stock Market Crash" was sitting in the
+  # finance vertical - so the lookahead reads "fiction, unless it also has a
+  # real finance subject".
+  #
+  # content_type `finance` puts these in the finance domain pack, so they carry
+  # its risk_tier 1 advisory and its `adult` default. Any book_id already in the
+  # books catalogue is dropped from this file, so no work appears under two
+  # content types.
+  finance_books:
+    content_type: finance
+    normalizer: books
+    source: openlibrary_api
+    path: datasets/books/openlibrary_finance.csv
+    id_column: book_id
+    title_column: title
+    description_column: description
+    category_columns:
+      - categories
+      - search_category
+    creator_columns:
+      - authors
+    release_date_column: published_date
+    popularity_column: ratings_count
+    rating_column: average_rating
+    metadata_columns:
+      - title
+      - subtitle
+      - authors
+      - categories
+      - description
+
   finance:
     content_type: finance
     normalizer: amazon_meta

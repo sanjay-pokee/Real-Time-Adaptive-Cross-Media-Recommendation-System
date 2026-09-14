@@ -31,14 +31,19 @@ from backend.schemas import (
 )
 
 
-def _audience_for(payload: RecommendRequest | ItemRecommendRequest) -> AudienceContext | None:
-    """Build the eligibility context, or None when the caller declared no audience.
+def _audience_for(payload: RecommendRequest | ItemRecommendRequest) -> AudienceContext:
+    """Build the eligibility context for this request.
 
-    A request that says nothing about its viewer is left unconstrained so existing
-    clients keep working; constraints apply exactly when the caller asks for them.
+    Always builds one, including when the caller declares nothing. A request
+    that says nothing about its viewer is not a request from an adult, and
+    ``AudienceContext.effective_age`` already encodes that: an absent age
+    resolves to ``UNKNOWN_AGE_CEILING`` (teen) rather than to unrestricted.
+
+    Returning None here skipped that policy entirely, so an undeclared viewer
+    was served 18+ items - while the UI sat above them stating "it caps at the
+    teen ceiling and fails closed". The constraint layer was right; this was
+    the only thing standing between it and the request.
     """
-    if payload.age is None and not payload.safe_mode and payload.domain is None:
-        return None
     return AudienceContext(
         age=payload.age,
         domain=payload.domain,

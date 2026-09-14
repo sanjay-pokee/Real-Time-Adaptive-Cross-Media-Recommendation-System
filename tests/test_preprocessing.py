@@ -275,3 +275,40 @@ class TestCleanReleaseDate:
 
     def test_non_date_text_is_left_alone(self):
         assert clean_release_date("n/a") == "n/a"
+
+
+class TestCatalogueReadsAreChunkSafe:
+    """`pd.read_csv` defaults to low_memory=True, which types each chunk of the
+    file independently. A contiguous run of rows whose release_date is a bare
+    year - the finance books - then comes back as float64, turning "2010" into
+    2010.0. That reached the Qdrant payload and 500'd every finance query on
+    response validation, so every catalogue read must pass low_memory=False.
+    """
+
+    def test_every_catalogue_read_disables_chunked_typing(self):
+        import re
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[1]
+        offenders = []
+        for rel in [
+            "embeddings/build_qdrant_collection.py",
+            "backend/qdrant_recommender.py",
+            "backend/mysql_store.py",
+        ]:
+            source = (root / rel).read_text(encoding="utf-8")
+            for call in re.findall(r"pd\.read_csv\([^)]*catalog[^)]*\)", source):
+                if "low_memory=False" not in call:
+                    offenders.append(f"{rel}: {call}")
+        assert not offenders, "catalogue read without low_memory=False: " + "; ".join(offenders)
+
+    def test_a_bare_year_column_round_trips_as_text(self, tmp_path):
+        path = tmp_path / "catalog.csv"
+        # Enough rows that a chunked read would split them.
+        frame = pd.DataFrame({
+            "release_date": ["1960-06-22"] * 5 + ["2010"] * 5,
+            "title": [f"T{i}" for i in range(10)],
+        })
+        frame.to_csv(path, index=False)
+        back = pd.read_csv(path, low_memory=False)
+        assert not any(isinstance(v, float) for v in back.release_date)

@@ -163,3 +163,31 @@ def test_predicate_agrees_with_the_compiled_range(age, item_min_age_value):
     range_allows = item_min_age_value <= conditions["audience_min_age"].range.lte
 
     assert is_eligible(item, context) == range_allows
+
+
+class TestUndeclaredViewerFailsClosed:
+    """A request that declares nothing is not a request from an adult.
+
+    The UI states this on screen ("it caps at the teen ceiling and fails
+    closed") and AudienceContext.effective_age implements it, but the API used
+    to build no context at all when age/domain/safe_mode were all absent -
+    so an undeclared viewer was served 18+ items underneath that caption.
+    """
+
+    def test_absent_age_resolves_to_the_teen_ceiling(self):
+        assert AudienceContext().effective_age == 13
+
+    def test_an_adult_item_is_not_eligible_for_an_undeclared_viewer(self):
+        item = {"maturity": "adult", "audience_min_age": 18, "risk_tier": 0,
+                "domain": "entertainment"}
+        assert not is_eligible(item, AudienceContext())
+
+    def test_a_teen_item_is_still_eligible(self):
+        item = {"maturity": "teen", "audience_min_age": 13, "risk_tier": 0,
+                "domain": "entertainment"}
+        assert is_eligible(item, AudienceContext())
+
+    def test_declaring_an_adult_age_still_opens_it_up(self):
+        item = {"maturity": "adult", "audience_min_age": 18, "risk_tier": 0,
+                "domain": "entertainment"}
+        assert is_eligible(item, AudienceContext(age=25))

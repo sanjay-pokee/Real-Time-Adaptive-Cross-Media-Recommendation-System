@@ -369,6 +369,23 @@ def main() -> None:
                              "represents new releases, which have few ratings yet.")
     parser.add_argument("--to-year", type=int, default=None,
                         help="Only books first published in or before this year")
+    parser.add_argument("--require-category-term", default=None, metavar="REGEX",
+                        help="Keep only books whose subjects match this regex. "
+                             "Open Library subjects are user-contributed and a "
+                             "vertical sweep drags in mis-tagged works - a "
+                             "finance sweep returned 'Tropic of Cancer' and "
+                             "'Girl, Woman, Other' (6.4% of rows had no finance "
+                             "term in their subjects at all). Filtering on the "
+                             "subjects rather than the title is what keeps the "
+                             "genuine on-topic ones.")
+    parser.add_argument("--exclude-category-term", default=None, metavar="REGEX",
+                        help="Drop books whose subjects match this regex, after "
+                             "--require-category-term has run. Needed because a "
+                             "novel can carry one stray on-topic subject and "
+                             "survive the require pass: a Depression-era novel "
+                             "tagged 'Stock Market Crash' sat in the finance "
+                             "vertical. A lookahead lets you express 'fiction "
+                             "unless it also has a real finance subject'.")
     parser.add_argument("--merge", action="store_true",
                         help="Fold results into the existing --out file instead of "
                              "replacing it. Existing rows win, so global_ids do not move.")
@@ -415,6 +432,23 @@ def main() -> None:
     # A work indexed under several subjects comes back once per subject. First
     # wins, so `search_category` names the subject that ranked it highest.
     frame = frame.drop_duplicates(subset=["book_id"])
+
+    if args.require_category_term:
+        required = re.compile(args.require_category_term, re.IGNORECASE)
+        on_topic = frame["categories"].fillna("").apply(lambda t: bool(required.search(t)))
+        if (~on_topic).any():
+            print(f"  dropped {(~on_topic).sum()} book(s) whose subjects never "
+                  f"match {args.require_category_term!r}")
+        frame = frame[on_topic]
+
+    if args.exclude_category_term:
+        banned = re.compile(args.exclude_category_term)
+        off_topic = frame["categories"].fillna("").apply(lambda t: bool(banned.search(t)))
+        if off_topic.any():
+            print(f"  dropped {off_topic.sum()} book(s) whose subjects match "
+                  f"{args.exclude_category_term!r}")
+        frame = frame[~off_topic]
+
     fetched = len(frame)
 
     previous = 0
