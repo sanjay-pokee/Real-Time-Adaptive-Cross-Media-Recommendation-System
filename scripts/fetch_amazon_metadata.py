@@ -12,6 +12,7 @@ rather than gigabytes and needs no local disk for the original.
 Usage:
     python -m scripts.fetch_amazon_metadata --category Industrial_and_Scientific
     python -m scripts.fetch_amazon_metadata --category Health_and_Household --limit 20000
+    python -m scripts.fetch_amazon_metadata --category Movies_and_TV         --asins-from /kaggle/working/prepared_movies_and_tv_50000.parquet
 
 The printed path is what you register under ``path:`` in config/datasets.yaml.
 """
@@ -106,7 +107,14 @@ def fetch_metadata(
     out_dir: Path,
     category_filter: str | None = None,
     out_name: str | None = None,
+    wanted: set[str] | None = None,
 ) -> Path:
+    """Stream ``category``'s metadata to CSV.
+
+    With ``wanted`` the job is different: collect text for exactly those
+    parent ASINs (the items of a benchmark graph), so ``limit`` and the
+    usability filter are ignored and the scan stops once every one is found.
+    """
     remote = "raw/meta_categories/meta_" + category + ".jsonl"
     url = hf_hub_url(REPO_ID, remote, repo_type="dataset")
     print("streaming " + remote)
@@ -131,9 +139,14 @@ def fetch_metadata(
                     record = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                if not _matches_categories(record, pattern):
+                if wanted is not None:
+                    asin = _flatten(record.get("parent_asin"))
+                    if asin not in wanted:
+                        continue
+                    wanted.discard(asin)
+                elif not _matches_categories(record, pattern):
                     continue
-                if not _is_usable(record):
+                elif not _is_usable(record):
                     continue
                 # description and features are both prose about the product;
                 # concatenating them gives the embedder more to work with.
@@ -160,7 +173,10 @@ def fetch_metadata(
                 kept += 1
                 if kept % 2500 == 0:
                     print("  kept " + str(kept) + " of " + str(seen) + " scanned")
-                if kept >= limit:
+                if wanted is not None:
+                    if not wanted:
+                        break
+                elif kept >= limit:
                     break
     finally:
         response.close()
@@ -170,6 +186,8 @@ def fetch_metadata(
     print("wrote " + str(out_path))
     print("  rows: " + str(kept) + "  (scanned " + str(seen) + " records)")
     print("  size: " + format(size_mb, ".1f") + " MB")
+    if wanted:
+        print("  not found in metadata: " + str(len(wanted)) + " items")
     return out_path
 
 
@@ -193,10 +211,24 @@ def main() -> None:
         default=None,
         help="Output stem, when the carved vertical is not the category name.",
     )
+    parser.add_argument(
+        "--asins-from",
+        type=Path,
+        default=None,
+        help="Prepared interactions file (models.graph.datasets --out); fetch "
+             "metadata for exactly its items instead of the first --limit rows.",
+    )
     args = parser.parse_args()
 
+    wanted = None
+    if args.asins_from:
+        from models.graph.datasets import read_prepared_cache
+
+        wanted = set(read_prepared_cache(args.asins_from)["entity_id"].astype(str))
+        print("looking for " + str(len(wanted)) + " items")
+
     fetch_metadata(args.category, args.limit, args.out,
-                   args.category_filter, args.out_name)
+                   args.category_filter, args.out_name, wanted)
 
 
 if __name__ == "__main__":
