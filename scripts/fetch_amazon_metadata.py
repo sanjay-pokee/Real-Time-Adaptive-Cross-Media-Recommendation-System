@@ -12,7 +12,8 @@ rather than gigabytes and needs no local disk for the original.
 Usage:
     python -m scripts.fetch_amazon_metadata --category Industrial_and_Scientific
     python -m scripts.fetch_amazon_metadata --category Health_and_Household --limit 20000
-    python -m scripts.fetch_amazon_metadata --category Movies_and_TV         --asins-from /kaggle/working/prepared_movies_and_tv_50000.parquet
+    python -m scripts.fetch_amazon_metadata --category Movies_and_TV \
+        --asins-from /kaggle/working/prepared_movies_and_tv_50000.parquet
 
 The printed path is what you register under ``path:`` in config/datasets.yaml.
 """
