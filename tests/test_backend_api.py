@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 import numpy as np
 import pandas as pd
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -12,7 +13,11 @@ from backend.qdrant_recommender import QdrantRecommender
 
 
 class FakeRecommender:
-    def recommend(self, query, top_k=10, content_type=None):
+    def __init__(self):
+        self.audiences = []
+
+    def recommend(self, query, top_k=10, content_type=None, user_id=None, audience=None):
+        self.audiences.append(audience)
         return [
             {
                 "global_id": "movie:test:1",
@@ -46,7 +51,8 @@ def test_recommend_endpoint_returns_results():
     app.dependency_overrides.clear()
     if hasattr(get_recommender, 'cache_clear'):
         get_recommender.cache_clear()
-    app.dependency_overrides[get_recommender] = lambda: FakeRecommender()
+    fake = FakeRecommender()
+    app.dependency_overrides[get_recommender] = lambda: fake
     client = TestClient(app)
 
     response = client.post(
@@ -65,8 +71,72 @@ def test_recommend_endpoint_returns_results():
     assert body["results"][0]["title"] == "Test Movie"
     assert body["results"][0]["semantic_score"] == 0.9
     assert body["results"][0]["graph_score"] == 0.45
+    # A request that declares no age still reaches the recommender gated, at
+    # the teen ceiling, rather than as an unrestricted adult.
+    assert len(fake.audiences) == 1
+    assert fake.audiences[0] is not None
+    assert fake.audiences[0].age is None
+    assert fake.audiences[0].effective_age == 13
 
     app.dependency_overrides.clear()
+
+
+ADULT_ROW = {
+    "global_id": "movie:test:18",
+    "content_type": "movie",
+    "source": "test",
+    "source_id": "18",
+    "title": "Adults Only",
+    "maturity": "adult",
+    "audience_min_age": 18,
+    "risk_tier": 0,
+    "score": 0.9,
+}
+
+
+class GatedPathBugRecommender:
+    """Fails inside the gated search; would serve an 18+ row if called ungated.
+
+    Stands in for a real bug in the recommender: the old endpoints caught that
+    TypeError and retried without ``audience``, which returned ADULT_ROW to an
+    eight-year-old with a 200.
+    """
+
+    def __init__(self):
+        self.audiences = []
+
+    def recommend(self, query, top_k=10, content_type=None, user_id=None, audience=None):
+        return self._respond(audience)
+
+    def recommend_from_item(self, global_id, top_k=10, content_type=None, user_id=None, audience=None):
+        return self._respond(audience)
+
+    def _respond(self, audience):
+        self.audiences.append(audience)
+        if audience is not None:
+            raise TypeError("simulated bug inside the gated search path")
+        return [dict(ADULT_ROW)]
+
+
+@pytest.mark.parametrize(
+    ("path", "body"),
+    [
+        ("/recommend", {"query": "dark violent thriller", "top_k": 5, "age": 8}),
+        ("/recommend/item", {"global_id": "movie:test:1", "top_k": 5, "age": 8}),
+    ],
+)
+def test_internal_error_is_not_retried_without_the_eligibility_gate(path, body):
+    fake = GatedPathBugRecommender()
+    app.dependency_overrides[get_recommender] = lambda: fake
+    client = TestClient(app, raise_server_exceptions=False)
+    try:
+        response = client.post(path, json=body)
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 500
+    # Exactly one call, and it carried the viewer's gate.
+    assert [audience.age for audience in fake.audiences] == [8]
 
 class FakeModel:
     def encode(self, values, convert_to_numpy=True, normalize_embeddings=True):

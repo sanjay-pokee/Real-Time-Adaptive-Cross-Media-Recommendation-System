@@ -88,10 +88,20 @@
 \hyphenpenalty=2000
 \tolerance=1500
 
-\newcommand{\blk}[1]{{\footnotesize\textbf{#1}}\par\vspace{0.9mm}}
+% --- Tight display-equation skips.
+%     A font-size change resets \abovedisplayskip, so these must be set
+%     INSIDE each sized block, not once in the preamble. Call \eqs right
+%     after \scriptsize in any block that holds a \[ ... \] display.
+\newcommand{\eqs}{%
+  \setlength{\abovedisplayskip}{3pt}%
+  \setlength{\belowdisplayskip}{3pt}%
+  \setlength{\abovedisplayshortskip}{2pt}%
+  \setlength{\belowdisplayshortskip}{2pt}}
+
+\newcommand{\blk}[1]{{\scriptsize\eqs\textbf{#1}}\par\vspace{0.9mm}}
 
 % --- Bulleted list with room to breathe ---
-\newenvironment{tight}{\begin{itemize}\footnotesize\setlength{\itemsep}{3.2pt}}{\end{itemize}}
+\newenvironment{tight}{\begin{itemize}\scriptsize\setlength{\itemsep}{3.2pt}}{\end{itemize}}
 
 % --- Screenshot macro: degrades to a labelled capture instruction -----
 %  #1 = file base name (NO UNDERSCORES -- it is typeset in the fallback
@@ -129,11 +139,11 @@
     \IfFileExists{logo.png}{\includegraphics[width=2.4cm]{logo.png}\\[0.1cm]}{\vspace{0.3cm}}
 
     {\large\textbf{\textcolor{amritaMaroon}{Real-Time Adaptive Cross-Media Recommendation System}}}\\[0.10cm]
-    {\scriptsize\itshape A Domain-Agnostic Recommendation Substrate: Semantic Retrieval,\\
+    {\scriptsize\eqs\itshape A Domain-Agnostic Recommendation Substrate: Semantic Retrieval,\\
      Graph Collaborative Learning and a Constraint / Eligibility Layer}\\[0.22cm]
-    {\footnotesize\textbf{23CSE498 -- Project Phase 2 (Panel Review 2)} \ \ | \ \ \textbf{Team \teamnumber}}\\[0.22cm]
+    {\footnotesize\eqs\textbf{23CSE498 -- Project Phase 2 (Panel Review 2)} \ \ | \ \ \textbf{Team \teamnumber}}\\[0.22cm]
 
-    {\footnotesize
+    {\footnotesize\eqs
     \renewcommand{\arraystretch}{1.12}
     \begin{tabular}{|c|c|l|}
         \hline
@@ -149,8 +159,8 @@
         \hline
     \end{tabular}}\\[0.24cm]
 
-    {\footnotesize Guides: \textbf{Dr.~Bagavathi Sivakumar P.} \ \& \ \textbf{Dr.~Krishna Priya G.}, Dept.\ of CSE}\\[0.08cm]
-    {\scriptsize Amrita School of Computing, Coimbatore \ \ | \ \ \today}
+    {\footnotesize\eqs Guides: \textbf{Dr.~Bagavathi Sivakumar P.} \ \& \ \textbf{Dr.~Krishna Priya G.}, Dept.\ of CSE}\\[0.08cm]
+    {\scriptsize\eqs Amrita School of Computing, Coimbatore \ \ | \ \ \today}
 \end{frame}
 
 % =====================================================================
@@ -167,7 +177,7 @@
 \vspace{3mm}
 \begin{center}
 \begin{minipage}{0.94\linewidth}
-{\footnotesize
+{\footnotesize\eqs
 \textbf{\textcolor{amritaMaroon}{1. Neural Collaborative Filtering (NCF)}}\\[1.2mm]
 \textit{"The panel suggested we explore Neural Collaborative Filtering as an enhancement to our
 current LightGCN-based collaborative filtering pipeline. NCF's use of multi-layer perceptrons to
@@ -187,7 +197,7 @@ one is delivered and measured, one is scoped with a benchmark plan.}}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}[shrink=15]{Previous Panel Review --- How Each Comment Was Addressed}
+\begin{frame}[shrink]{Previous Panel Review --- How Each Comment Was Addressed}
 \framesubtitle{Recommendation 1 is scoped and planned; recommendation 2 is delivered and measured}
 \vspace{1mm}
 \begin{center}
@@ -245,7 +255,7 @@ Test evidence
 % =====================================================================
 \section{Implementation Progress}
 
-\begin{frame}[shrink=15]{2. Implementation Progress ($\approx$75\%)}
+\begin{frame}[shrink]{2. Implementation Progress ($\approx$75\%)}
 \framesubtitle{Rubric: Backend, Frontend, Database \& Core Modules Functional (8 Marks)}
 \vspace{0.5mm}
 \begin{center}
@@ -287,7 +297,7 @@ Remaining 25\%  & LightGCN at catalog scale, Neo4j KG, Docker and CI, latency st
 % =====================================================================
 \section{Architecture \& Module Design}
 
-\begin{frame}[shrink=15]{1. Software Architecture \& Module Design}
+\begin{frame}[shrink]{1. Software Architecture \& Module Design}
 \framesubtitle{Rubric: Architecture, Module Interaction, APIs, DB Schema \& Deployment (5 Marks)}
 \vspace{0.5mm}
 \begin{center}
@@ -312,18 +322,18 @@ training to serving --- one \texttt{.npz} file --- which is why the API stays CP
 \blk{Module breakdown}
 {\tiny
 \renewcommand{\arraystretch}{1.34}
-\begin{tabular}{p{1.5cm} p{2.3cm} p{1.95cm}}
+\begin{tabular}{p{1.35cm} p{1.95cm} p{2.45cm}}
 \toprule
 \textbf{Module} & \textbf{Responsibility} & \textbf{Location}\\
 \midrule
 Data layer      & Mapping, cleaning, catalog build & \texttt{preprocessing/}\\
 Domain registry & Packs, risk tiers, advisories    & \texttt{domains.py}\\
 Embedding       & SBERT encode, hash cache         & \texttt{embeddings/}\\
-Retrieval       & ANN search, 3-tier lexical       & \texttt{qdrant\_rec.py}\\
+Retrieval       & ANN search, 3-tier lexical       & \texttt{qdrant\_recommender}\\
 Audience        & Eligibility filter, maturity     & \texttt{audience.py}\\
-Adaptation      & EMA vector update, scoring       & \texttt{ema\_rec.py}\\
-Graph CF        & LightGCN train, export, rerank   & \texttt{models/graph/}\\
-Knowledge graph & Token overlap, profile scoring   & \texttt{knowledge\_g.py}\\
+Adaptation      & EMA vector update, scoring       & \texttt{ema\_recommender}\\
+Graph CF        & LightGCN train, then rerank      & \texttt{models/graph/},\newline\texttt{graph\_recommender}\\
+Knowledge graph & Token overlap, profile scoring   & \texttt{knowledge\_graph}\\
 Persistence     & Catalog, profiles, events        & \texttt{mysql\_store.py}\\
 API + UI        & Validation, DI, React SPA        & \texttt{app.py}\\
 \bottomrule
@@ -341,7 +351,7 @@ POST /recommend
   "results":[ { "global_id","title","score",
     "semantic_score","graph_score","ema_score",
     "kg_score","profile_score","maturity",
-    "match_kind","match_tier" } ] }
+    "match_kind" } ] }
 \end{verbatim}}
 \vspace{-2mm}
 \blk{Schema (MySQL 8)}
@@ -352,8 +362,10 @@ POST /recommend
   \item \texttt{user\_interactions}(\underline{id}, user\_id, entity\_id FK, event\_type, timestamp) --- \textit{idx} \texttt{(user\_id, timestamp)}
 \end{itemize}
 \vspace{1mm}
-{\tiny\textbf{Deployment.} Qdrant in Docker; MySQL 8; Uvicorn workers; Vite static build, same
-origin. GPU training on Kaggle T4 --- only the \texttt{.npz} ships back, so the API is CPU-only.}
+{\tiny\textbf{Deployment.} Qdrant \textbf{embedded} (local storage at \texttt{QDRANT\_PATH}); MySQL 8;
+Uvicorn workers; Vite static build, same origin. A server-mode URL is supported but unused today.
+GPU training on Kaggle T4 --- only the \texttt{.npz} ships back, so the API is CPU-only.
+\textbf{Docker Compose is Review 3.}}
 \end{columns}
 \end{frame}
 
@@ -362,7 +374,7 @@ origin. GPU training on Kaggle T4 --- only the \texttt{.npz} ships back, so the 
 % =====================================================================
 \section{Retrieval \& Knowledge Graph}
 
-\begin{frame}[shrink=15]{2. Data Layer --- Sources and Scale on Disk}
+\begin{frame}[shrink]{2. Data Layer --- Sources and Scale on Disk}
 \framesubtitle{Rubric: Implementation Progress (8 Marks) $\cdot$ how large the data actually is}
 \vspace{0.5mm}
 \begin{columns}[T]
@@ -388,7 +400,7 @@ Finance       & Amazon, Open Library  &  3{,}103\\
 
 \column{0.435\textwidth}
 \blk{Disk footprint}
-{\tiny
+{\tiny\eqs
 \renewcommand{\arraystretch}{1.40}
 \begin{tabular}{p{3.5cm} r}
 \toprule
@@ -415,26 +427,26 @@ Only the artwork URL is read; it reaches no model.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{2. Retrieval --- Hybrid Lexical and Semantic}
+\begin{frame}[shrink]{2. Retrieval --- Hybrid Lexical and Semantic}
 \framesubtitle{Candidate generation: dense vectors for meaning, a lexical path for exact names}
 \vspace{2mm}
 \begin{columns}[T]
 \column{0.485\textwidth}
 \blk{Why one path was not enough}
-\begin{itemize}\small\setlength{\itemsep}{5pt}
+\begin{itemize}\scriptsize\setlength{\itemsep}{4pt}
   \item Dense retrieval \emph{smears} exact names: the vector for "James Cameron" sits near every
         other director, so a name query returned topically similar films rather than his.
   \item The lexical path was restored \emph{beside} the vector path --- three tiers in order:
         \textbf{creator}, \textbf{title}, \textbf{keyword}.
   \item Lexical hits are capped at half the page, so an exact match never crowds out the semantic
         result set.
-  \item Every result carries \texttt{match\_kind} and \texttt{match\_tier}, so the UI can show
+  \item Every result carries \texttt{match\_kind}, so the UI can show
         \emph{which field} matched.
 \end{itemize}
 
 \column{0.485\textwidth}
 \blk{Trade-offs}
-\begin{itemize}\small\setlength{\itemsep}{5pt}
+\begin{itemize}\scriptsize\setlength{\itemsep}{4pt}
   \item \textbf{Qdrant over FAISS.} Payload filtering happens \emph{inside} the ANN search. With
         FAISS the audience filter would have been a post-filter --- a correctness problem, not
         merely a slower path.
@@ -461,7 +473,7 @@ model adds.}
 % =====================================================================
 \section{Learning to Rank \& Evaluation}
 
-\begin{frame}{2. Model Design --- Multi-Signal Ranking Pipeline}
+\begin{frame}[shrink]{2. Model Design --- Multi-Signal Ranking Pipeline}
 \framesubtitle{One query becomes an explainable ranked list spanning four domains}
 \vspace{1mm}
 \begin{center}
@@ -487,7 +499,7 @@ slide --- algorithm, equation and measured result.}
 % =====================================================================
 \section{Constraint \& Eligibility}
 
-\begin{frame}[shrink=15]{2. Constraint \& Eligibility --- Domain Packs and Audience}
+\begin{frame}[shrink]{2. Constraint \& Eligibility --- Domain Packs and Audience}
 \framesubtitle{Eligibility first, relevance second}
 \vspace{1mm}
 \begin{columns}[T]
@@ -514,7 +526,7 @@ slide --- algorithm, equation and measured result.}
 
 \column{0.455\textwidth}
 \blk{Measured --- what it enforces, what it costs}
-{\tiny
+{\tiny\eqs
 \renewcommand{\arraystretch}{1.38}
 \begin{tabular}{p{1.95cm} c c c}
 \toprule
@@ -541,7 +553,7 @@ too --- a child profile sees 4.1\% of the catalog.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}[shrink=15]{2. System in Action --- Audience Filtering}
+\begin{frame}[shrink]{2. System in Action --- Audience Filtering}
 \framesubtitle{The same query, the same profile, age 8 against age 25}
 \vspace{0.5mm}
 \begin{columns}[T]
@@ -584,7 +596,7 @@ too --- a child profile sees 4.1\% of the catalog.}
 % =====================================================================
 \section{Technical Knowledge}
 
-\begin{frame}[shrink=15]{3. Technical Knowledge \& Engineering Decisions}
+\begin{frame}[shrink]{3. Technical Knowledge \& Engineering Decisions}
 \framesubtitle{Rubric: Software Architecture, Implementation, Integration \& Tech Stack (5 Marks)}
 \vspace{1mm}
 \begin{columns}[T]
@@ -626,7 +638,7 @@ too --- a child profile sees 4.1\% of the catalog.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}[shrink=15]{3. Is Each Module Justified?}
+\begin{frame}[shrink]{3. Is Each Module Justified?}
 \framesubtitle{Why it matters $\cdot$ what breaks without it $\cdot$ is the current build defensible}
 \vspace{1mm}
 \begin{center}
@@ -657,61 +669,112 @@ the interaction transaction.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}[shrink=15]{3. Comparison with Existing Solutions}
-\framesubtitle{Where this sits against production systems and published baselines}
+\begin{frame}[shrink]{3. Comparison --- What They Run, and Why We Chose Differently}
+\framesubtitle{The algorithm behind each production system, and why it does not transfer to our problem}
 \vspace{1mm}
 \begin{center}
-{\scriptsize
-\renewcommand{\arraystretch}{1.25}
-\begin{tabular}{L{3.1cm} c c c c}
+{\tiny
+\renewcommand{\arraystretch}{1.22}
+\begin{tabular}{L{1.9cm} L{3.9cm} L{2.35cm} L{4.05cm}}
 \toprule
-\textbf{System / approach} & \textbf{Cross-} & \textbf{Cold} & \textbf{Real-time} & \textbf{Eligibility}\\
-                           & \textbf{domain} & \textbf{start}& \textbf{adaptation}& \textbf{layer}\\
+\textbf{System} & \textbf{Core algorithm (published)} & \textbf{Learns from} & \textbf{Why it does not fit our problem}\\
 \midrule
-Netflix / Prime      & No     & Weak & Batch   & Ratings only\\
-Spotify              & No     & Weak & Session & Explicit flag\\
-Amazon item-to-item  & Partly & No   & Batch   & Category\\
-LightFM / hybrid CF  & No     & Yes  & No      & No\\
-Published LightGCN   & No     & No   & No      & No\\
+Netflix / Prime
+ & Matrix factorisation, then deep ranking ensembles; bandits for artwork
+ & user $\times$ item ID matrix, billions of events
+ & An ID matrix has \emph{no shared vocabulary} across film, book and finance --- it cannot cross a domain.\\
+YouTube
+ & Two-stage deep candidate generation + ranking network \textit{(Covington, RecSys'16)}
+ & watch-history IDs, context
+ & We adopt the same two-stage split, but their candidate net is ID-based, so it is undefined for a cold item.\\
+Amazon
+ & Item-to-item collaborative filtering \textit{(Linden et al., 2003)}
+ & co-purchase counts
+ & Needs dense co-purchase history. \textbf{99.8\%} of our catalogue has none.\\
+Spotify
+ & CF + CNN over audio spectrograms \textit{(van den Oord, NIPS'13)}
+ & listening logs, raw audio
+ & Audio features have no analogue for a book or a tax package.\\
+LightFM
+ & Hybrid MF with feature embeddings \textit{(Kula, 2015)}
+ & interactions + side features
+ & No graph propagation and no in-session update.\\
 \midrule
-\textbf{This project} & \textbf{Yes, 4} & \textbf{Yes} & \textbf{Yes} & \textbf{Yes, hard}\\
+\textbf{This project}
+ & \textbf{SBERT dense retrieval $\rightarrow$ LightGCN rerank + EMA + KG + profile, behind a hard eligibility gate}
+ & \textbf{item text in one shared 384-d space}
+ & ---\\
 \bottomrule
 \end{tabular}}
 \end{center}
-\vspace{2mm}
-\begin{columns}[T]
-\column{0.485\textwidth}
-\blk{Where ours is genuinely better}
-\begin{itemize}\tiny\setlength{\itemsep}{2.5pt}
-  \item \textbf{One query spans four unrelated domains.} A Netflix query cannot return a finance
-        book; ours can, because namespaces are shared rather than bridged.
-  \item \textbf{Eligibility is a hard pre-filter.} The systems above filter metadata \emph{after}
-        retrieval; ours cannot retrieve an ineligible item at all.
-  \item \textbf{Adding a vertical is a config change} --- no retraining, no new code path.
-\end{itemize}
-
-\column{0.485\textwidth}
-\blk{Where we are behind}
-\begin{itemize}\tiny\setlength{\itemsep}{2.5pt}
-  \item \textbf{Data scale.} 914\,k interactions against their billions, so absolute recall is not
-        comparable and we do not claim it is.
-  \item \textbf{No online A/B evidence} --- every number here is offline or scenario-based.
-  \item \textbf{The served LightGCN artifact is synthetic.} The benchmarks are real; the deployment
-        is not yet.
-\end{itemize}
-\end{columns}
 \vspace{1.5mm}
-{\tiny\textbf{The fair claim} is not "better than Netflix". It is that the combination --- cross-domain
-retrieval, cold-start coverage, real-time adaptation and hard eligibility in one serving path ---
-is not something the systems above provide together.}
+{\scriptsize\textbf{Why we chose differently --- it is a data-regime argument, not a claim of cleverness.}
+Collaborative filtering dominates \emph{at their scale}: with billions of interactions the ID matrix is
+dense enough to carry the signal alone. We have \textbf{914k}. Our graph head is defined for
+\textbf{0.20\%} of the catalogue, so an ID-only model would rank nothing for the other 99.8\% --- which is
+why the \emph{semantic} head is the dominant term and CF is only a reranker.}
 \end{frame}
+
+\begin{frame}[shrink]{3. Comparison --- How Much Better, Measured}
+\framesubtitle{Capabilities they do not provide together, and the numbers behind each claim}
+\vspace{1mm}
+\begin{columns}[T]
+\column{0.50\textwidth}
+\blk{Capability matrix}
+{\tiny
+\renewcommand{\arraystretch}{1.20}
+\begin{tabular}{L{2.0cm} c c c c}
+\toprule
+\textbf{System} & \textbf{Cross-} & \textbf{Cold} & \textbf{Real-time} & \textbf{Eligib.}\\
+                & \textbf{domain} & \textbf{start}& \textbf{adapt}    & \textbf{layer}\\
+\midrule
+Netflix / Prime & No     & Weak & Batch   & Ratings\\
+YouTube         & No     & Weak & Batch   & Policy\\
+Amazon          & Partly & No   & Batch   & Category\\
+Spotify         & No     & Weak & Session & Flag\\
+LightFM         & No     & Yes  & No      & No\\
+\midrule
+\textbf{Ours}   & \textbf{Yes, 4} & \textbf{Yes} & \textbf{Yes} & \textbf{Hard}\\
+\bottomrule
+\end{tabular}}
+\vspace{2mm}
+
+{\scriptsize\textbf{The fair claim.} Not "better than Netflix" --- at 914k interactions our absolute
+recall is not comparable and we do not claim it is. It is that this \emph{combination} is not
+something the systems above provide together.}
+
+\column{0.47\textwidth}
+\blk{Measured advantage}
+{\tiny
+\renewcommand{\arraystretch}{1.26}
+\begin{tabular}{L{2.4cm} L{1.5cm} L{1.5cm} c}
+\toprule
+\textbf{Measure} & \textbf{Ours} & \textbf{Baseline} & \textbf{Delta}\\
+\midrule
+R@20 Movies \& TV   & 0.0288 & 0.0182 pop. & \textbf{1.59$\times$}\\
+R@20 Industrial     & 0.0326 & 0.0264 pop. & \textbf{1.24$\times$}\\
+R@20 Health         & 0.0121 & 0.0221 pop. & \textcolor{amritaMaroon}{\textbf{0.55$\times$}}\\
+\midrule
+Violations@20       & \textbf{0.000} & 1.000 unfiltered & \textbf{eliminated}\\
+Catalogue scorable  & \textbf{100\%} & 0.20\% CF-only & \textbf{500$\times$}\\
+Adaptation latency  & \textbf{39\,$\mu$s} & hours (retrain) & \textbf{$10^{8}\times$}\\
+Domains per query   & \textbf{4} & 1 & \textbf{4$\times$}\\
+\bottomrule
+\end{tabular}}
+\vspace{1.5mm}
+
+{\scriptsize\textbf{We report the loss too.} Health is \textbf{0.55$\times$} --- LightGCN is beaten by
+popularity there, and the normalisation hypothesis on the LightGCN slide is the test we plan to run.}
+\end{columns}
+\end{frame}
+
 
 % =====================================================================
 % 4. TECHNICAL ENRICHMENT
 % =====================================================================
 \section{Technical Enrichment}
 
-\begin{frame}{4. Technical Enrichment Activity Choices}
+\begin{frame}[shrink]{4. Technical Enrichment Activity Choices}
 \framesubtitle{Professional Online Certification Details (Individual Mandatory: 10--20 Hours)}
 \vspace{2mm}
 \begin{center}
@@ -761,71 +824,4 @@ is not something the systems above provide together.}
     {\Huge\textbf{\textcolor{amritaMaroon}{Thank You}}}\\[0.7cm]
     {\footnotesize\textcolor{amritaSlate}{Questions \& Panel Feedback}}
 \end{frame}
-
-% =====================================================================
-% APPENDIX -- backup slides for Q&A, not presented
-% =====================================================================
-\section{Appendix}
-
-\begin{frame}[shrink=15]{Appendix --- Scenario Evaluation Across All Four Domains}
-\framesubtitle{Backup slide: measured end-to-end behaviour}
-\vspace{1mm}
-\begin{center}
-{\scriptsize
-\renewcommand{\arraystretch}{1.38}
-\begin{tabular}{p{2.6cm} p{3.3cm} c c p{2.4cm}}
-\toprule
-\textbf{Scenario} & \textbf{Query} & \textbf{Hit@5} & \textbf{KG@5} & \textbf{Domains in top-10}\\
-\midrule
-Actor / director   & "James Cameron"               & 5/5 & 0.667 & book, movie\\
-Singer / artist    & "Taylor Swift"                & 5/5 & 0.667 & music\\
-Profession-aware   & "business analytics"          & --- & 1.000 & book, finance\\
-Family-safe        & "fun animation adventure"     & --- & 1.000 & movie\\
-Cross-media intent & "space adventure with aliens" & --- & 1.000 & book, movie\\
-Health discovery   & "joint pain supplements"      & --- & 1.000 & health\\
-Industrial lookup  & "protective safety gloves"    & --- & 0.900 & health, industrial\\
-Finance literacy   & "personal budgeting"          & --- & 0.900 & finance\\
-\bottomrule
-\end{tabular}}
-\end{center}
-\vspace{2.5mm}
-{\scriptsize\textbf{Reading this table.} \texttt{Hit@5} applies only to the two named-entity
-queries --- for a topical query there is no single correct person to hit, so the cell is
-deliberately blank rather than zero. \textbf{Four of eight} scenarios returned more than one media
-type in the top-10, which is the cross-domain claim measured rather than asserted.}
-\end{frame}
-
-\begin{frame}[shrink=15]{Appendix --- Known Limitations and Next Steps}
-\framesubtitle{Backup slide}
-\vspace{1mm}
-\begin{columns}[T]
-\column{0.485\textwidth}
-\blk{Open, in priority order}
-\begin{enumerate}\scriptsize\setlength{\itemsep}{3.5pt}
-  \item \textbf{The served LightGCN artifact is synthetic} --- 13 users, 347 items. The three
-        domain benchmarks are real Kaggle runs; the artifact the API reranks with is not.
-        Retraining at catalog scale is the highest-value next run.
-  \item \textbf{The no-normalisation ablation is unrun.} It is the direct test of the
-        health-regression hypothesis.
-  \item \textbf{Finance has no benchmark row} --- Amazon has no finance category, so there is no
-        interaction dataset for that vertical.
-  \item \textbf{Maturity is heuristic} outside film, where TMDb certifications are fetched.
-\end{enumerate}
-
-\column{0.485\textwidth}
-\blk{Planned for Review 3}
-\begin{tight}
-  \item Full-catalog LightGCN training, then the normalisation ablation on top of it.
-  \item Neo4j-backed knowledge graph, so multi-hop paths are queried rather than approximated by
-        token overlap.
-  \item Per-session EMA vectors with a half-life decay term.
-  \item Certified ratings extended from film to television and books.
-  \item Docker Compose and CI; P95 latency under concurrent load.
-\end{tight}
-\vspace{2mm}
-{\scriptsize The knowledge-graph and LightGCN caveats are one fact with two symptoms: the
-visualizer's recommendation edges are built from that same synthetic artifact.}
-\end{columns}
-\end{frame}
-
 \end{document}

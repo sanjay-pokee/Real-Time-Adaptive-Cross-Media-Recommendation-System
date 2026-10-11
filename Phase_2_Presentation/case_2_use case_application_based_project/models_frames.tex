@@ -12,7 +12,7 @@
 %  are paid for. That is about 20 lines at \scriptsize, 27 at \tiny.
 %  A display equation \[..\] costs ~3 lines.
 %
-%  Every card carries [shrink=15]: beamer measures the frame and scales
+%  Every card carries [shrink]: beamer measures the frame and scales
 %  it down ONLY if it would overflow, up to 15%. A frame that already
 %  fits is untouched. This is a SAFETY NET, not a licence to overfill --
 %  past 15% the content runs off the bottom edge silently, exactly as it
@@ -25,7 +25,7 @@
 % =====================================================================
 
 % ---------------------------------------------------------------------
-\begin{frame}[shrink=15]{2. Model Inventory --- Five Scoring Heads and One Gate}
+\begin{frame}[shrink]{2. Model Inventory --- Five Scoring Heads and One Gate}
 \framesubtitle{Each is a different model class, defined where the others are not}
 \vspace{1mm}
 \begin{center}
@@ -46,17 +46,17 @@ $S_{\mathit{profile}}$ & Weighted term matcher & Declared-profile alignment     
 \end{tabular}}
 \end{center}
 \vspace{1mm}
-{\scriptsize
+{\scriptsize\eqs
 \[ S(q,u,i) = S_{\mathit{sem}} + 0.20\,S_{\mathit{graph}} + 0.15\,S_{\mathit{ema}} + 0.08\,S_{\mathit{kg}} + 0.10\,S_{\mathit{profile}} \]}
-\vspace{-3mm}
-{\scriptsize\textbf{Why coverage is the column that matters.} The graph head is our strongest signal
+\vspace{0.5mm}
+{\scriptsize\eqs\textbf{Why coverage is the column that matters.} The graph head is our strongest signal
 and is defined for \textbf{0.20\%} of the catalog; every other head is defined everywhere. That is
 why the blend is additive with a dominant semantic term rather than a learned gate --- a missing
 head must degrade the ranking, never break it.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}[shrink=15]{2. Model 1 --- SBERT Semantic Encoder}
+\begin{frame}[shrink]{2. Model 1 --- SBERT Semantic Encoder}
 \framesubtitle{Algorithm $\cdot$ equation $\cdot$ measured result}
 \vspace{1mm}
 \begin{center}
@@ -66,7 +66,7 @@ head must degrade the ranking, never break it.}
 \begin{columns}[T]
 \column{0.485\textwidth}
 \blk{Algorithm and equation}
-{\scriptsize \texttt{all-MiniLM-L6-v2} --- a 6-layer distilled BERT, mean pooling over token states.
+{\scriptsize\eqs \texttt{all-MiniLM-L6-v2} --- a 6-layer distilled BERT, mean pooling over token states.
 \[ \mathbf{e}_i = \frac{\mathrm{MeanPool}(\mathrm{MiniLM}(t_i))}{\lVert\cdot\rVert_2}, \quad
    S_{\mathit{sem}} = \mathbf{e}_i^{\top}\mathbf{q} \]
 Both vectors are unit length, so cosine \emph{is} the inner product. The query takes the identical
@@ -85,19 +85,19 @@ path --- one shared space, no projection layer.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}[shrink=15]{2. Model 2 --- LightGCN Graph Collaborative Filtering}
+\begin{frame}[shrink]{2. Model 2 --- LightGCN Graph Collaborative Filtering}
 \framesubtitle{Algorithm $\cdot$ equation $\cdot$ measured result}
 \vspace{1mm}
 \begin{columns}[T]
 \column{0.45\textwidth}
 \blk{Algorithm}
-{\scriptsize LightGCN (He et al., SIGIR 2020) --- a \emph{linear} convolution on the user--item
-bipartite graph. Unlike NGCF there is \textbf{no feature transform and no nonlinearity}; the only
-learned parameters are the layer-0 embeddings.}
+{\scriptsize LightGCN (He et al., SIGIR 2020) --- a \emph{linear} convolution on the
+user--item bipartite graph. Unlike NGCF there is \textbf{no feature transform and no
+nonlinearity}: the only learned parameters are the layer-0 embeddings.}
 \vspace{1.5mm}
 
 \blk{Equations, as implemented}
-{\scriptsize
+{\scriptsize\eqs
 With $\tilde{A} = D^{-1/2} A D^{-1/2}$, propagate and take the layer mean:
 \[ \mathbf{E}^{(\ell)} = \tilde{A}\mathbf{E}^{(\ell-1)}, \quad
    \mathbf{E} = \tfrac{1}{L+1}\textstyle\sum_{\ell=0}^{L}\mathbf{E}^{(\ell)} \]
@@ -106,30 +106,21 @@ Score, and train by the BPR pairwise objective:
 \[ \mathcal{L} = -\!\sum \ln\sigma(\hat y_{ui}-\hat y_{uj}) + \lambda\lVert\mathbf{E}^{(0)}\rVert^2 \]}
 \vspace{-1mm}
 {\tiny\textbf{Config:} $d{=}64$, $L{=}3$, lr $10^{-3}$, decay $10^{-4}$, batch \textbf{4096},
-60 epochs, seed 42, Kaggle T4.}
+60 epochs, seed 42, Kaggle T4.}\\[1.5mm]
+{\tiny\textbf{$\mathtt{recall}=\mathtt{hit\_rate}$ is correct, not a bug:} leave-last-out gives one
+relevant item, so Recall@$K \equiv$ HitRate@$K$. Check: $0.0288/20 = 0.00144$.}
 
 \column{0.52\textwidth}
 \blk{Measured --- against a popularity control}
-{\tiny
-\renewcommand{\arraystretch}{1.15}
-\begin{tabular}{L{1.4cm} l c c c c}
-\toprule
-\textbf{Domain} & \textbf{Model} & \textbf{R@20} & \textbf{N@20} & \textbf{MRR} & \textbf{Lift}\\
-\midrule
-Movies \& TV & LightGCN & \textbf{0.0288} & \textbf{0.0125} & \textbf{0.0080} & \\
-             & popular  & 0.0182 & 0.0080 & 0.0052 & \textbf{1.59$\times$}\\
-\midrule
-Industrial   & LightGCN & \textbf{0.0326} & \textbf{0.0138} & \textbf{0.0087} & \\
-             & popular  & 0.0264 & 0.0111 & 0.0070 & \textbf{1.24$\times$}\\
-\midrule
-Health       & LightGCN & 0.0121 & 0.0046 & 0.0025 & \\
-             & popular  & \textbf{0.0221} & \textbf{0.0093} & \textbf{0.0059} & \textcolor{amritaMaroon}{\textbf{0.55$\times$}}\\
-\bottomrule
-\end{tabular}}\\[1.5mm]
+\vspace{-1mm}
+\begin{center}
+  \includegraphics[width=\linewidth,keepaspectratio]{benchmark}
+\end{center}
+\vspace{1mm}
+{\tiny\textbf{NDCG@20} 0.0125 / 0.0138 / 0.0046 \quad $\cdot$ \quad
+\textbf{MRR@20} 0.0080 / 0.0087 / 0.0025}\\[1.5mm]
 {\tiny\textbf{Protocol.} Ratings $\geq 4$ as implicit positives; 10-core (Industrial keeps the
 source 5-core floor); leave-last-out; 49{,}958 / 33{,}929 / 50{,}000 users evaluated.}\\[1.5mm]
-{\tiny\textbf{$\mathtt{recall}=\mathtt{hit\_rate}$ is correct, not a bug:} leave-last-out gives one
-relevant item, so Recall@$K \equiv$ HitRate@$K$. Check: $0.0288/20 = 0.00144$.}\\[1.5mm]
 {\tiny\textcolor{amritaMaroon}{\textbf{Health regresses.}} BPR trains on the raw inner product, but
 evaluation and serving both $L_2$-normalise and rank by cosine --- dividing by the \emph{item} norm
 is not rank-preserving, and that norm carries the popularity prior.}
@@ -139,95 +130,109 @@ is not rank-preserving, and that norm carries the popularity prior.}
 % ---------------------------------------------------------------------
 %  PANEL RECOMMENDATION 1 -- NCF: position, architecture and plan
 % ---------------------------------------------------------------------
-\begin{frame}[shrink=15]{2. Panel Recommendation --- Neural Collaborative Filtering}
-\framesubtitle{What NCF is, how it differs from LightGCN, and how we will test it}
+\begin{frame}[shrink]{2. Panel Recommendation --- Neural Collaborative Filtering}
+\framesubtitle{Panel recommendation 1 --- \textbf{not implemented today}; here is why, and what we will run}
 \vspace{1mm}
+{\scriptsize\colorbox{amritaAmber!12}{\parbox{0.975\linewidth}{\textbf{\textcolor{amritaAmber}{STATUS: NOT IMPLEMENTED.}} The collaborative head in the running system is \textbf{LightGCN only}.}}}
+\vspace{2mm}
 \begin{columns}[T]
-\column{0.475\textwidth}
+\column{0.50\textwidth}
 \blk{What the panel asked for}
-{\scriptsize NCF (He et al., WWW 2017) replaces the \emph{fixed} inner product with a \emph{learned}
-similarity. NeuMF runs two towers and fuses them:
-\[ \hat y^{\mathit{GMF}} = \mathbf{p}_u \odot \mathbf{q}_i, \quad
-   \hat y^{\mathit{MLP}} = \phi_L(\cdots\phi_1([\mathbf{p}'_u \| \mathbf{q}'_i])) \]
-\[ \hat y_{ui} = \sigma\big(\mathbf{h}^{\top}[\,\hat y^{\mathit{GMF}} \,\|\, \hat y^{\mathit{MLP}}\,]\big) \]
-The MLP tower models \textbf{non-linear} interaction --- which our inner product cannot.}
-\vspace{1.5mm}
+{\scriptsize\eqs NCF (He et al., WWW 2017) replaces our \emph{fixed} inner product
+$\hat y_{ui} = \mathbf{e}_u^{\top}\mathbf{e}_i$ with a \emph{learned} similarity --- an MLP over the
+concatenated user and item embeddings, fused with a linear term:
+\[ \hat y_{ui} = \sigma\big(\mathbf{h}^{\top}[\,\mathbf{p}_u \odot \mathbf{q}_i \;\|\; \phi_L(\cdots\phi_1([\mathbf{p}'_u \| \mathbf{q}'_i]))\,]\big) \]
+The MLP is what buys \textbf{non-linear} user--item interaction, which a dot product cannot express.}
+\vspace{2mm}
 
-\blk{How it differs from what we run}
-\begin{tight}
-  \item \textbf{LightGCN is graph-based:} it propagates over the bipartite graph, so a user is
-        informed by items three hops away. \textbf{NCF has no graph} --- it learns a similarity on
-        ids alone. They are complementary, not substitutes.
-\end{tight}
+\blk{Why we did not simply bolt it on}
+\begin{itemize}\scriptsize\setlength{\itemsep}{3.5pt}
+  \item \textbf{It is not automatically an upgrade.} Rendle et al.\ (RecSys 2020) re-ran exactly this
+        comparison and found a \emph{well-tuned dot product matches or beats} the learned MLP, at a
+        fraction of the cost.
+  \item \textbf{It does not fix our actual bottleneck.} NeuMF is \textbf{ID-based, exactly like
+        LightGCN} --- undefined for an item with no interactions. \textbf{99.8\%} of our catalogue is
+        cold, so NCF would rank nothing there. Our cold-start coverage comes from the \emph{semantic}
+        head, and NCF does not touch it.
+  \item \textbf{Adopting it untested} would swap a measured component for an unmeasured one.
+\end{itemize}
 
-\column{0.495\textwidth}
-\vspace{-2mm}
-\begin{center}
-  \includegraphics[width=\linewidth,height=4.9cm,keepaspectratio]{ncf}
-\end{center}
-\vspace{1mm}
+\column{0.47\textwidth}
+\blk{Where the two actually differ}
+{\scriptsize
+\renewcommand{\arraystretch}{1.30}
+\begin{tabular}{L{2.05cm} L{2.0cm} L{1.85cm}}
+\toprule
+ & \textbf{LightGCN} & \textbf{NeuMF}\\
+\midrule
+Similarity      & fixed dot product        & learned MLP\\
+Uses the graph  & \textbf{yes}, 3-hop      & no\\
+Parameters      & layer-0 embeddings only  & embeddings + MLP\\
+Cold items      & undefined                & \textbf{also undefined}\\
+Our status      & trained, benchmarked     & planned\\
+\bottomrule
+\end{tabular}}
+\vspace{2.5mm}
 
-\blk{Our position, and the plan}
-\begin{tight}
-  \item Rendle et al.\ (RecSys 2020) revisited this comparison and found a \textbf{well-tuned dot
-        product matches or beats} the learned MLP, at far lower cost --- so we will run NeuMF as a
-        \emph{measured baseline}, not adopt it as an assumed upgrade.
-  \item The harness already runs three domains on fixed splits, so NeuMF slots in behind the same
-        interface; then report popularity / LightGCN / NeuMF side by side.
-\end{tight}
+\blk{The experiment we will run}
+\begin{itemize}\scriptsize\setlength{\itemsep}{3.5pt}
+  \item Add NeuMF behind the same trainer interface, reusing the \textbf{identical} 10-core,
+        leave-last-out splits --- so the comparison is like-for-like.
+  \item Report \textbf{popularity / LightGCN / NeuMF} side by side on all three domains.
+  \item Adopt only if it wins. If it does, it joins as a \textbf{sixth head} under the same additive
+        blend --- no architectural change.
+\end{itemize}
 \end{columns}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}[shrink=15]{2. Model 3 --- Real-Time EMA User Vector}
+\begin{frame}[shrink]{2. Model 3 --- Real-Time EMA User Vector}
 \framesubtitle{Algorithm $\cdot$ equation $\cdot$ measured result}
 \vspace{1mm}
 \begin{columns}[T]
-\column{0.515\textwidth}
+\column{0.50\textwidth}
 \blk{Algorithm}
-{\scriptsize A \textbf{signed, strength-scaled} exponential moving average in the same 384-d space
+{\scriptsize\eqs A \textbf{signed, strength-scaled} exponential moving average in the same 384-d space
 as the items. Not a plain average: a negative event pushes the user vector \emph{away} from the
 item, and the step scales with how strong the event was.}
 \vspace{1.5mm}
 
 \blk{Equations, as implemented}
-{\scriptsize
-Event weight $w$: $+1.2$ complete, $+1.0$ like, $+0.6$ click, $+0.4$ view, $-1.0$ skip; a rating
-$v$ maps to $(v-3)/2$. Then with $\alpha = 0.25$:
+{\scriptsize\eqs
 \[ d=\operatorname{sign}(w),\ \ s=\min(|w|,1),\ \ \eta=\operatorname{clip}(\alpha s,0,1) \]
 \[ \mathbf{u}_{t+1} = \frac{(1-\eta)\mathbf{u}_t + \eta\,d\,\mathbf{e}_i}{\lVert\cdot\rVert_2},
    \ \ S_{\mathit{ema}} = \mathbf{u}_t^{\top}\mathbf{e}_i \]}
+\vspace{-1mm}
+{\scriptsize $\alpha = 0.25$. The event weights $w$ are in the panel opposite.}
 
-\column{0.46\textwidth}
+\column{0.47\textwidth}
 \vspace{-3mm}
 \begin{center}
-  \includegraphics[width=\linewidth,height=5.5cm,keepaspectratio]{ema}
+  \includegraphics[width=\linewidth,height=4.5cm,keepaspectratio]{ema}
 \end{center}
 \vspace{1mm}
-
 \blk{Measured}
 \begin{tight}
-  \item \textbf{39.0\,$\mu$s} per update, \textbf{16.7\,$\mu$s} per score (1{,}000 ops, 384-d).
-  \item Against \textbf{hours} for a retrain --- five orders of magnitude. This is the "real-time"
-        in the project title, as a number.
-  \item \textbf{Limitation:} no session boundary or time decay, so one misclick persists.
+  \item \textbf{39.0\,$\mu$s} per update, \textbf{16.7\,$\mu$s} per score.
+  \item Against \textbf{hours} for a retrain --- five orders of magnitude.
+  \item \textbf{Limitation:} no session boundary or time decay.
 \end{tight}
 \end{columns}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}[shrink=15]{2. Model 4 --- Knowledge-Graph Overlap Head}
+\begin{frame}[shrink]{2. Model 4 --- Knowledge-Graph Overlap Head}
 \framesubtitle{Algorithm $\cdot$ equation $\cdot$ measured result}
 \vspace{1mm}
 \begin{columns}[T]
-\column{0.47\textwidth}
+\column{0.44\textwidth}
 \blk{Algorithm and equation}
-{\scriptsize A \textbf{zero-parameter set-overlap scorer} over shared entity namespaces. Nothing is
+{\scriptsize\eqs A \textbf{zero-parameter set-overlap scorer} over shared entity namespaces. Nothing is
 trained, so nothing drifts --- and it is defined precisely where the graph model is not. With
 $T(i)$ the token set over \{title, description, creators, categories, type\}:
 \[ S_{\mathit{kg}} = \min\!\left(1,\ \frac{|T(q)\cap T(i)|}{\max(3,|T(q)|)}\right) \]
 The $\max(3,\cdot)$ floor stops a one-word query scoring 1.0 on one incidental match.}
-\vspace{1.5mm}
+\vspace{2mm}
 
 \blk{Measured}
 \begin{tight}
@@ -236,56 +241,46 @@ The $\max(3,\cdot)$ floor stops a one-word query scoring 1.0 on one incidental m
   \item \textbf{Coverage 100\%} --- it reads metadata, not behaviour.
 \end{tight}
 
-\column{0.50\textwidth}
+\column{0.53\textwidth}
 \vspace{-3mm}
 \begin{center}
-  \includegraphics[width=\linewidth,height=5.7cm,keepaspectratio]{kg}
+  \includegraphics[width=\linewidth,height=5.4cm,keepaspectratio]{kg}
 \end{center}
-\vspace{1mm}
-
-{\scriptsize\textcolor{amritaMaroon}{\textbf{Bold path:}} a \emph{movie} preference reaches a
-\emph{book} through a shared Genre node --- no movie-to-book edge exists anywhere.}\\[1mm]
-{\tiny\textbf{Scope.} At request time this is the overlap function above; the 663-node figure is the
-\emph{target schema} from a 100-item example, not a runtime graph. Neo4j is Review 3.}
 \end{columns}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}[shrink=15]{2. Model 5 --- Profile Head and the Eligibility Gate}
+\begin{frame}[shrink]{2. Model 5 --- Profile Head and the Eligibility Gate}
 \framesubtitle{Algorithm $\cdot$ equation $\cdot$ measured result}
 \vspace{1mm}
 \begin{columns}[T]
 \column{0.53\textwidth}
 \blk{Profile head --- a score}
-{\footnotesize A \textbf{weighted term matcher} against the declared profile; avoid-terms subtract
-at nearly twice the weight of a positive match.
+{\scriptsize\eqs A \textbf{weighted term matcher} against the declared profile; avoid-terms subtract at
+nearly twice the weight of a positive match.
 \[ S_{\mathit{profile}} = \operatorname{clip}\big(0.16|P\cap i| - 0.25|A\cap i| + 0.15\cdot\mathbf{1}[\tau_i \in \Pi]\big) \]}
-\vspace{-3mm}
-{\scriptsize $P$ = interests $\cup$ likes $\cup$ skills $\cup$ role $\cup$ age terms; \ $A$ = avoid
-terms; \ $\Pi$ = preferred types; clipped to $[-1,1]$.}
-\vspace{3mm}
+\vspace{-2mm}
+{\tiny\eqs $P$ = interests $\cup$ likes $\cup$ skills $\cup$ role $\cup$ age terms; \ $A$ = avoid terms;
+\ $\Pi$ = preferred types; clipped to $[-1,1]$.}
+\vspace{2mm}
 
 \blk{Eligibility --- a predicate, not a score}
-{\footnotesize
-\[ \mathrm{elig}(i\,|\,c) = \mathbf{1}\big[a_{\mathit{eff}} \geq \mathrm{minage}(i)\big] \wedge \mathbf{1}\big[\tau_i \in \mathcal{T}(d)\big] \]
-Compiled \emph{into} the Qdrant query, so an ineligible item is never retrieved, never scored, and
-cannot be promoted back by any head.}
-\vspace{2mm}
-
-{\footnotesize\textbf{Fail-closed.} No age supplied caps at teen, not adult. Unknown metadata falls
-back to the content-type default, never to unrestricted. Health and finance are \textbf{discovery
-only, never advice}.}
-
-\column{0.445\textwidth}
+{\scriptsize\eqs
+\[ \mathrm{elig}(i\,|\,c) = \mathbf{1}\big[a_{\mathit{eff}} \geq \mathrm{minage}(i)\big] \wedge \mathbf{1}\big[\tau_i \in \mathcal{T}(d)\big] \]}
 \vspace{-2mm}
+{\scriptsize \textbf{Fail-closed:} no age supplied caps at teen, not adult; health and finance are
+\textbf{discovery only, never advice}.}
+
+\column{0.44\textwidth}
+\vspace{-3mm}
 \begin{center}
-  \includegraphics[width=\linewidth,height=5.9cm,keepaspectratio]{gate}
+  \includegraphics[width=\linewidth,height=4.8cm,keepaspectratio]{gate}
 \end{center}
-\vspace{2mm}
+\vspace{1mm}
 \blk{Measured}
 \begin{tight}
-  \item Mean \textbf{profile@5 $=$ 0.957}; \textbf{8 of 8} scenarios fully profile-positive.
-  \item Violations \textbf{0.000} on, \textbf{1.000} off, across \textbf{9} viewer profiles.
+  \item Mean \textbf{profile@5 $=$ 0.957}; \textbf{8 of 8} scenarios profile-positive.
+  \item Violations \textbf{0.000} on, \textbf{1.000} off, across \textbf{9} profiles.
 \end{tight}
 \end{columns}
 \end{frame}

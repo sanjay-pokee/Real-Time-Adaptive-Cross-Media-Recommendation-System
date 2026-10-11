@@ -256,22 +256,20 @@ def recommend(
     payload: RecommendRequest,
     recommender: QdrantRecommender = Depends(get_recommender),
 ) -> RecommendResponse:
+    # Deliberately no retry without ``audience``. A fallback used to catch
+    # TypeError and call recommend(query, top_k, content_type) again, so any
+    # TypeError raised *inside* the recommender re-ran the search with no
+    # eligibility gate and served the unfiltered page with a 200. An internal
+    # error has to surface as a 500, never as unfiltered results.
     try:
         audience = _audience_for(payload)
-        try:
-            results = recommender.recommend(
-                payload.query,
-                top_k=payload.top_k,
-                content_type=payload.content_type,
-                user_id=payload.user_id,
-                audience=audience,
-            )
-        except TypeError:
-            results = recommender.recommend(
-                payload.query,
-                top_k=payload.top_k,
-                content_type=payload.content_type,
-            )
+        results = recommender.recommend(
+            payload.query,
+            top_k=payload.top_k,
+            content_type=payload.content_type,
+            user_id=payload.user_id,
+            audience=audience,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except FileNotFoundError as exc:
@@ -296,22 +294,16 @@ def recommend_from_item(
     payload: ItemRecommendRequest,
     recommender: QdrantRecommender = Depends(get_recommender),
 ) -> ItemRecommendResponse:
+    # No retry without ``audience`` - see recommend() above.
     try:
         audience = _audience_for(payload)
-        try:
-            results = recommender.recommend_from_item(
-                payload.global_id,
-                top_k=payload.top_k,
-                content_type=payload.content_type,
-                user_id=payload.user_id,
-                audience=audience,
-            )
-        except TypeError:
-            results = recommender.recommend_from_item(
-                payload.global_id,
-                top_k=payload.top_k,
-                content_type=payload.content_type,
-            )
+        results = recommender.recommend_from_item(
+            payload.global_id,
+            top_k=payload.top_k,
+            content_type=payload.content_type,
+            user_id=payload.user_id,
+            audience=audience,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except FileNotFoundError as exc:
