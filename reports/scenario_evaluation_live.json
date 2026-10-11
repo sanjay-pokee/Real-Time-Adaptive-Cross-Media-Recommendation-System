@@ -1,0 +1,480 @@
+[
+  {
+    "scenario": "Actor/director lookup",
+    "query": "James Cameron",
+    "user_id": "user_scifi",
+    "age": 20,
+    "domain": null,
+    "person_hits@5": 4,
+    "profile_aligned@5": 5,
+    "avg_kg@5": 0.667,
+    "avg_profile@5": 0.98,
+    "domains@10": [
+      "finance",
+      "movie",
+      "show"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 0,
+    "top_result": "James Cameron's Story of Science Fiction",
+    "top10": [
+      [
+        "show",
+        "James Cameron's Story of Science Fiction"
+      ],
+      [
+        "movie",
+        "Avatar"
+      ],
+      [
+        "movie",
+        "Avatar: Fire and Ash"
+      ],
+      [
+        "movie",
+        "Terminator 2: Judgment Day"
+      ],
+      [
+        "movie",
+        "The Terminator"
+      ],
+      [
+        "movie",
+        "Titanic"
+      ],
+      [
+        "movie",
+        "Ghosts of the Abyss"
+      ],
+      [
+        "movie",
+        "Side by Side"
+      ],
+      [
+        "movie",
+        "Avatar: Creating the World of Pandora"
+      ],
+      [
+        "finance",
+        "The Historical Epic and Contemporary Hollywood"
+      ]
+    ]
+  },
+  {
+    "scenario": "Singer/artist lookup",
+    "query": "Taylor Swift",
+    "user_id": "user_music_pop",
+    "age": 20,
+    "domain": null,
+    "person_hits@5": 5,
+    "profile_aligned@5": 5,
+    "avg_kg@5": 0.667,
+    "avg_profile@5": 0.63,
+    "domains@10": [
+      "book",
+      "movie",
+      "music"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 0,
+    "top_result": "The Tortured Poets Department",
+    "top10": [
+      [
+        "music",
+        "The Tortured Poets Department"
+      ],
+      [
+        "music",
+        "The Fate of Ophelia"
+      ],
+      [
+        "music",
+        "I Can Do It with a Broken Heart"
+      ],
+      [
+        "music",
+        "Bejeweled"
+      ],
+      [
+        "music",
+        "Wi$h Li$t"
+      ],
+      [
+        "movie",
+        "TAYLOR SWIFT | THE ERAS TOUR"
+      ],
+      [
+        "movie",
+        "Taylor Swift: Reputation Stadium Tour"
+      ],
+      [
+        "movie",
+        "Taylor Swift: The 1989 World Tour - Live"
+      ],
+      [
+        "music",
+        "The Joker and the Queen (feat. Taylor Swift)"
+      ],
+      [
+        "book",
+        "LikeWar"
+      ]
+    ]
+  },
+  {
+    "scenario": "Profession-aware learning",
+    "query": "business analytics and learning",
+    "user_id": "user_books_learning",
+    "age": 30,
+    "domain": null,
+    "person_hits@5": null,
+    "profile_aligned@5": 5,
+    "avg_kg@5": 0.65,
+    "avg_profile@5": 1.0,
+    "domains@10": [
+      "book",
+      "finance"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 0,
+    "top_result": "Big Data Analytics",
+    "top10": [
+      [
+        "book",
+        "Big Data Analytics"
+      ],
+      [
+        "finance",
+        "Financial Business Intelligence"
+      ],
+      [
+        "finance",
+        "Business Analysis with QuickBooks"
+      ],
+      [
+        "book",
+        "Lean Analytics"
+      ],
+      [
+        "finance",
+        "Business Analysis with Microsoft Excel"
+      ],
+      [
+        "finance",
+        "Data Science for Business"
+      ],
+      [
+        "book",
+        "Statistics for management"
+      ],
+      [
+        "book",
+        "Financial Intelligence A Managers Guide To Knowing What The Numbers Really Mean"
+      ],
+      [
+        "finance",
+        "Learning QuickBooks 2015 [Online Code]"
+      ],
+      [
+        "finance",
+        "Fundamental Analysis For Dummies"
+      ]
+    ]
+  },
+  {
+    "scenario": "Family-safe profile",
+    "query": "fun animation adventure",
+    "user_id": "user_family",
+    "age": 8,
+    "domain": null,
+    "person_hits@5": null,
+    "profile_aligned@5": 5,
+    "avg_kg@5": 0.667,
+    "avg_profile@5": 1.0,
+    "domains@10": [
+      "movie"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 0,
+    "top_result": "The Ice Age Adventures of Buck Wild",
+    "top10": [
+      [
+        "movie",
+        "The Ice Age Adventures of Buck Wild"
+      ],
+      [
+        "movie",
+        "Spellbound"
+      ],
+      [
+        "movie",
+        "Trouble"
+      ],
+      [
+        "movie",
+        "Chickenhare and the Hamster of Darkness"
+      ],
+      [
+        "movie",
+        "Strange World"
+      ],
+      [
+        "movie",
+        "Drifting Home"
+      ],
+      [
+        "movie",
+        "Bubble"
+      ],
+      [
+        "movie",
+        "Gnome Alone"
+      ],
+      [
+        "movie",
+        "Onward"
+      ],
+      [
+        "movie",
+        "Epic Tails"
+      ]
+    ]
+  },
+  {
+    "scenario": "Cross-media semantic intent",
+    "query": "space adventure with aliens",
+    "user_id": "user_scifi",
+    "age": 20,
+    "domain": null,
+    "person_hits@5": null,
+    "profile_aligned@5": 5,
+    "avg_kg@5": 0.6,
+    "avg_profile@5": 0.896,
+    "domains@10": [
+      "movie",
+      "show"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 0,
+    "top_result": "Aliens in the Attic",
+    "top10": [
+      [
+        "movie",
+        "Aliens in the Attic"
+      ],
+      [
+        "show",
+        "Alien: Earth"
+      ],
+      [
+        "movie",
+        "Alien: Covenant"
+      ],
+      [
+        "movie",
+        "Spaceman"
+      ],
+      [
+        "movie",
+        "Almost Home"
+      ],
+      [
+        "show",
+        "Buzz Lightyear of Star Command"
+      ],
+      [
+        "movie",
+        "Alien Nation"
+      ],
+      [
+        "movie",
+        "Rim of the World"
+      ],
+      [
+        "movie",
+        "Xeno"
+      ],
+      [
+        "show",
+        "Mystery Science Theater 3000"
+      ]
+    ]
+  },
+  {
+    "scenario": "Health product discovery",
+    "query": "joint pain supplements and mobility support",
+    "user_id": "user_health_caregiver",
+    "age": 30,
+    "domain": "health",
+    "person_hits@5": null,
+    "profile_aligned@5": 5,
+    "avg_kg@5": 0.9,
+    "avg_profile@5": 1.0,
+    "domains@10": [
+      "health"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 0,
+    "top_result": "Research Verified Joint Support - 100% Natural Glucosamine, MSM, Turmeric, Boswellia, BioPerine - Vegan - 90 Capsules -1 Month Supply",
+    "top10": [
+      [
+        "health",
+        "Research Verified Joint Support - 100% Natural Glucosamine, MSM, Turmeric, Boswellia, BioPerine - Vegan - 90 Capsules -1 Month Supply"
+      ],
+      [
+        "health",
+        "WODFitters WOD Flex Joint Support Supplement - Glucosamine 1500 mg + Chondroitin + MSM + Other Natural Ingredients Help with Joint Health and Sports Performance (90 Capsules)"
+      ],
+      [
+        "health",
+        "Huge Supplements Joint Support, Science-Backed Formula to Optimize Joint Comfort with Chondroitin, MSM, Glucosamine, Boswellia Extract for Men & Women, 30 Servings"
+      ],
+      [
+        "health",
+        "Terraform Nutrition Extra Strength Joint Support Gummies with Glucosamine & Vitamin E - 60 Count"
+      ],
+      [
+        "health",
+        "Kaya Naturals Joint Flex Aid | Joint Support Supplement for Men and Women | Turmeric Capsules with Glucosamine Sulfate, Boswellia Serrata and MSM | For Overall Knee Support and Joint Health (30 Count)"
+      ],
+      [
+        "health",
+        "Iceland Health Joint Relief Formula, 60 Count"
+      ],
+      [
+        "health",
+        "21st Century Glucosamine Chondroitin 750/600mg - Triple Strength, Tablets, 150 Count"
+      ],
+      [
+        "health",
+        "5% Nutrition Rich Piana Joint Defender Maximum Joint Support Supplement | Collagen, Glucosamine, Chondroitin, Turmeric Curcumin with Black Pepper, MSM, Hyaluronic Acid | 200 Capsules, 25 Servings"
+      ],
+      [
+        "health",
+        "Zenkgo Advanced Joint Support Supplement, formulated with Vitamin C, MSM, Turmeric, Black Pepper, Collagen (Hydrolyzed, Type II), Chondroitin Sulfate, Boswellia, Bromelain, Hyaluronic Acid(60Ct/30Day)"
+      ],
+      [
+        "health",
+        "Force Factor Better Turmeric Joint Support Supplement Featuring HydroCurc Turmeric Curcumin with Black Pepper for Superior Absorption, Clinical Strength Joint Support, 120 Tablets, White Packaging"
+      ]
+    ]
+  },
+  {
+    "scenario": "Industrial supply lookup",
+    "query": "protective safety gloves for the lab",
+    "user_id": "user_industry_engineer",
+    "age": 30,
+    "domain": "industry",
+    "person_hits@5": null,
+    "profile_aligned@5": 5,
+    "avg_kg@5": 0.767,
+    "avg_profile@5": 0.694,
+    "domains@10": [
+      "industrial"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 1,
+    "top_result": "Blue Vinyl Disposable Gloves Large 50 Pack - Latex Free, Powder Free Medical Exam Gloves - Surgical, Home, Cleaning, and Food Gloves - 3 Mil Thickness",
+    "top10": [
+      [
+        "industrial",
+        "Blue Vinyl Disposable Gloves Large 50 Pack - Latex Free, Powder Free Medical Exam Gloves - Surgical, Home, Cleaning, and Food Gloves - 3 Mil Thickness"
+      ],
+      [
+        "industrial",
+        "Raven Powder Free Nitrile Disposable Gloves | 7 Mil - Med | Latex Free, Chemical + Puncture Resistant, Textured Grip, Single Use | for Automotive, Industrial, Janitorial, MRO, Food Service | 66517"
+      ],
+      [
+        "industrial",
+        "SupplyMaster - SMCVE4L-BX - Medical Vinyl Gloves - Disposable, Powder Free, Exam, 4 mil, Large, Clear (Box of 100)"
+      ],
+      [
+        "industrial",
+        "SAS Safety 6604 Thickster X-Large Textured Exam Grade Latex Gloves, Blue"
+      ],
+      [
+        "industrial",
+        "SupplyMaster Vinyl Exam Disposable Gloves - 4 Mil, Powder Free, Non-Sterile, Latex Free, Smooth, Ambidextrous, XLarge, Case of 400"
+      ],
+      [
+        "industrial",
+        "The Safety Zone GNEP-XL-1P Nitrile Exam Gloves 3-Pack"
+      ],
+      [
+        "industrial",
+        "Basic Medical Clear Vinyl Exam Gloves - Latex-Free & Powder-Free - VGPF-3003 (Case of 1,000), Large"
+      ],
+      [
+        "industrial",
+        "Concentric Nitrile Exam Gloves (Box of 100 - Large) - Black, Powder Free, Latex Free & Disposable -for Medical Facility, Lab, Food or Beauty Business, Waterproof Synthetic Rubber Gloves, 4 Mil"
+      ],
+      [
+        "industrial",
+        "LW Concept - Black Nitrile Examination Gloves - Latex & Powder-Free, Disposable, Strong, Healthcare, Food Handling (Medium)"
+      ],
+      [
+        "industrial",
+        "Microflex MidKnight MK-296 Disposable Nitrile Gloves for Automotive, Law Enforcement w/Full Texture - Black"
+      ]
+    ]
+  },
+  {
+    "scenario": "Finance literacy discovery",
+    "query": "personal budgeting and bookkeeping",
+    "user_id": "user_finance_planner",
+    "age": 30,
+    "domain": "finance",
+    "person_hits@5": null,
+    "profile_aligned@5": 5,
+    "avg_kg@5": 0.7,
+    "avg_profile@5": 0.938,
+    "domains@10": [
+      "finance"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 0,
+    "top_result": "Budgeting 101",
+    "top10": [
+      [
+        "finance",
+        "Budgeting 101"
+      ],
+      [
+        "finance",
+        "Bookkeeping for dummies"
+      ],
+      [
+        "finance",
+        "You Need A Budget - Personal Finance Software v3 [Download]"
+      ],
+      [
+        "finance",
+        "You Need A Budget (YNAB) - Personal Finance Software"
+      ],
+      [
+        "finance",
+        "Managing money"
+      ],
+      [
+        "finance",
+        "Bookkeeper 2008 [OLD VERSION]"
+      ],
+      [
+        "finance",
+        "Fun Money Budgeting Software for Windows - Personal Finance [Download]"
+      ],
+      [
+        "finance",
+        "Big E-Z Home Budget Manager for Microsoft Excel [OLD VERSION]"
+      ],
+      [
+        "finance",
+        "Budget Planner [Download]"
+      ],
+      [
+        "finance",
+        "You Need A Budget - Personal Finance Software v3 - for Mac [Download]"
+      ]
+    ]
+  }
+]
