@@ -7,6 +7,7 @@
     "domain": null,
     "person_hits@5": 4,
     "profile_aligned@5": 5,
+    "profile_negative@10": 0,
     "avg_kg@5": 0.667,
     "avg_profile@5": 0.98,
     "domains@10": [
@@ -68,6 +69,7 @@
     "domain": null,
     "person_hits@5": 5,
     "profile_aligned@5": 5,
+    "profile_negative@10": 0,
     "avg_kg@5": 0.667,
     "avg_profile@5": 0.63,
     "domains@10": [
@@ -129,6 +131,7 @@
     "domain": null,
     "person_hits@5": null,
     "profile_aligned@5": 5,
+    "profile_negative@10": 0,
     "avg_kg@5": 0.65,
     "avg_profile@5": 1.0,
     "domains@10": [
@@ -189,6 +192,7 @@
     "domain": null,
     "person_hits@5": null,
     "profile_aligned@5": 5,
+    "profile_negative@10": 0,
     "avg_kg@5": 0.667,
     "avg_profile@5": 1.0,
     "domains@10": [
@@ -248,6 +252,7 @@
     "domain": null,
     "person_hits@5": null,
     "profile_aligned@5": 5,
+    "profile_negative@10": 0,
     "avg_kg@5": 0.6,
     "avg_profile@5": 0.896,
     "domains@10": [
@@ -308,6 +313,7 @@
     "domain": "health",
     "person_hits@5": null,
     "profile_aligned@5": 5,
+    "profile_negative@10": 0,
     "avg_kg@5": 0.9,
     "avg_profile@5": 1.0,
     "domains@10": [
@@ -367,6 +373,7 @@
     "domain": "industry",
     "person_hits@5": null,
     "profile_aligned@5": 5,
+    "profile_negative@10": 0,
     "avg_kg@5": 0.767,
     "avg_profile@5": 0.694,
     "domains@10": [
@@ -426,6 +433,7 @@
     "domain": "finance",
     "person_hits@5": null,
     "profile_aligned@5": 5,
+    "profile_negative@10": 0,
     "avg_kg@5": 0.7,
     "avg_profile@5": 0.938,
     "domains@10": [

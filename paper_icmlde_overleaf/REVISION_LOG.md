@@ -6,7 +6,7 @@ point-by-point response appended to `1343_revised_version.pdf`.
 - **Internal deadline:** Wed 14 Oct 2026 (faculty) · **Conference deadline:** 7 days from notice
 - **Status key:** ✅ done · 🔄 in progress · ⏳ pending
 - **Locations** are section / table / figure / equation numbers and **page numbers of the revised
-  10-page PDF** (local build of 2026-10-11 with pdfLaTeX's exact txfonts metrics, matching Overleaf's page count; re-check after the final Overleaf
+  10-page PDF** (verified against the final Overleaf PDF of 2026-10-11: all 10 page boundaries and every section/table/figure page identical; re-check after the final Overleaf
   compile, since a page boundary can shift by a few lines).
 - **Revised layout:** §1 Introduction p.1–2 · §2 Related Work p.2–3 (Table 1 p.3) · §3 Implementation
   p.3–6 (Fig. 1 p.3, §3.3 p.4, §3.4 p.4, §3.5 p.4–5, Fig. 2 p.5, §3.6 p.5–6, §3.7 p.6) · §4 Experimental
@@ -72,7 +72,7 @@ point-by-point response appended to `1343_revised_version.pdf`.
 | Strict Procedia template | ✅ | See 1.7; template spacing kept as supplied — `elsarticle.cls` sets 22 pt above and below every display equation and `ecrc.sty` forces `\flushbottom`, so the white space around equations is the template's own (the submission had overridden it to 5 pt); template header/footer untouched (note: the conference's `ecrc.sty` prints "(2025)" in the running head and copyright line — left as supplied) |
 | Page limit | ✅ | 10 pages (ICMLDE 2022–23 limit: 10, extra pages charged) |
 | Similarity ≤ 10% + upload similarity report | ⏳ | Day 5 |
-| Single file `1343_revised_version.pdf` with this response appended | 🔄 | Draft built: `reports/1343_revised_version_DRAFT.pdf` (4-page response + 10-page paper); final version after the Overleaf compile |
+| Single file `1343_revised_version.pdf` with this response appended | ✅ | `reports/submission/1343_revised_version.pdf`: 5-page response + the 10-page Overleaf PDF; standalone `1343_response_to_reviewers.pdf` alongside |
 | Acknowledgement email to info@icmlde.org | ⏳ | |
 
 ---
@@ -110,3 +110,4 @@ point-by-point response appended to `1343_revised_version.pdf`.
 | 2026-10-11 | Kaggle report JSONs saved to the repo; Tables 2 and 4 regenerated from them and checked row by row against main.tex (14/14 rows identical); every percentage and training time in the text recomputed and confirmed | `reports/benchmarks/*_ablation.json`, `reports/benchmarks/ablation_*.tex` | 2.2-2.4, 3.6 |
 | 2026-10-11 | Point-by-point response letter written (`response.tex`): every comment quoted verbatim, response, and location; section/table/figure/equation/page numbers read from the paper build via xr-hyper so they cannot drift; labels added to subsections 3.5, 3.6, 5.1-5.3 (no layout change). Draft single PDF assembled | `paper_icmlde_overleaf/response.tex`, `main.tex`, `reports/1343_revised_version_DRAFT.pdf` | all |
 | 2026-10-11 | Profile/KG ablation in the deployed scenarios (4 variants via the real API, Qdrant server + MySQL); paragraph added to §5.3; responses R2.3 and R3.6 updated; still 10 pages | `scripts/evaluate_scenarios_live.py --ablation`, `reports/scenario_ablation_live.{json,md}`, `main.tex` §5.3, `response.tex` | 2.3, 3.6 |
+| 2026-10-11 | Final Overleaf PDF checked against the local build: same 10 pages, all 22 sections/tables/figures and all 10 page endings identical, so the response letter's page numbers hold. Final submission files built (response letter first, then the Overleaf paper) | `reports/submission/1343_revised_version.pdf`, `reports/submission/1343_response_to_reviewers.pdf` | all |
