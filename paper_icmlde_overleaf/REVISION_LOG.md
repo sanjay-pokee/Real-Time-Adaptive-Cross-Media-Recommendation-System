@@ -72,7 +72,7 @@ point-by-point response appended to `1343_revised_version.pdf`.
 | Strict Procedia template | ✅ | See 1.7; template spacing kept as supplied — `elsarticle.cls` sets 22 pt above and below every display equation and `ecrc.sty` forces `\flushbottom`, so the white space around equations is the template's own (the submission had overridden it to 5 pt); template header/footer untouched (note: the conference's `ecrc.sty` prints "(2025)" in the running head and copyright line — left as supplied) |
 | Page limit | ✅ | 10 pages (ICMLDE 2022–23 limit: 10, extra pages charged) |
 | Similarity ≤ 10% + upload similarity report | ⏳ | Day 5 |
-| Single file `1343_revised_version.pdf` with this response appended | ⏳ | Day 5 |
+| Single file `1343_revised_version.pdf` with this response appended | 🔄 | Draft built: `reports/1343_revised_version_DRAFT.pdf` (4-page response + 10-page paper); final version after the Overleaf compile |
 | Acknowledgement email to info@icmlde.org | ⏳ | |
 
 ---
@@ -108,3 +108,4 @@ point-by-point response appended to `1343_revised_version.pdf`.
 | 2026-10-11 | Overleaf compile gave 11 pages (one reference over) with stretched gaps around equations. Reproduced locally with pdfLaTeX's exact txfonts metrics; cause: Times metrics differ from the earlier build, and `\flushbottom` (forced by `ecrc.sty`) inflates the template's 22 pt display spacing on short pages. Fix: semantic cosine score made inline (Eq. 2 removed, later equations renumbered); result 10 pages with ~15 lines spare and no inflated gaps | `main.tex` | 1.7 |
 | 2026-10-11 | Overlap check: 2.3% of the revised text matches the submitted version in 8-word runs (references excluded) | — | Editorial (similarity) |
 | 2026-10-11 | Kaggle report JSONs saved to the repo; Tables 2 and 4 regenerated from them and checked row by row against main.tex (14/14 rows identical); every percentage and training time in the text recomputed and confirmed | `reports/benchmarks/*_ablation.json`, `reports/benchmarks/ablation_*.tex` | 2.2-2.4, 3.6 |
+| 2026-10-11 | Point-by-point response letter written (`response.tex`): every comment quoted verbatim, response, and location; section/table/figure/equation/page numbers read from the paper build via xr-hyper so they cannot drift; labels added to subsections 3.5, 3.6, 5.1-5.3 (no layout change). Draft single PDF assembled | `paper_icmlde_overleaf/response.tex`, `main.tex`, `reports/1343_revised_version_DRAFT.pdf` | all |

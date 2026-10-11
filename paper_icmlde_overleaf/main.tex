@@ -276,6 +276,7 @@ Interactions are logged in MySQL with a signed weight $w$: view $0.4$, click $0.
 The profile is empty until the user's first non-neutral event on an embedded item, which sets $\mathbf{u}_1=\mathrm{sign}(w)\,\mathbf{e}_i$, so users without events receive no EMA score. Likes pull the profile toward an item, skips and low ratings push it away, weak signals such as views move it less, and renormalization keeps it on the unit sphere. The EMA score is the cosine similarity $S_{\mathit{ema}}(i,u)=\mathbf{e}_i^\top\mathbf{u}_t/(\|\mathbf{e}_i\|\,\|\mathbf{u}_t\|)$. Because each event updates a single vector, EMA can follow session-level drift without retraining any model.
 
 \subsection{Graph collaborative filtering with LightGCN}
+\label{sec:lightgcn}
 LightGCN \cite{he2020lightgcn} is trained on the interaction log. An event with $w>0$ becomes an unweighted edge of the bipartite graph $\mathcal{G}=(\mathcal{U}\cup\mathcal{I},\mathcal{E})$, repeated events on the same pair are merged, and skips and low ratings are excluded rather than used as explicit negatives. With $\mathcal{N}_u$ the neighbors of user $u$, layer $\ell$ propagates and the final embedding averages all $L$ layers,
 \begin{equation}
     \mathbf{e}^{(\ell)}_u=\sum_{i\in\mathcal{N}_u}\frac{\mathbf{e}^{(\ell-1)}_i}{\sqrt{|\mathcal{N}_u|\,|\mathcal{N}_i|}},
@@ -293,6 +294,7 @@ and symmetrically for items. Training minimizes the Bayesian Personalized Rankin
 where $\hat{y}_{ui}=\mathbf{e}_u^\top\mathbf{e}_i$, $\Theta$ are the layer-0 embeddings of the batch, and for every sampled positive pair $(u,i)$ one negative $j$ is drawn uniformly from the catalog and redrawn if $(u,j)$ is observed. BPR suits implicit, positive-only feedback because it optimizes the pairwise ranking order directly, without negative labels \cite{he2020lightgcn,wang2019ngcf}. At inference time the graph score is the cosine similarity of the $\ell_2$-normalized embeddings, $S_{\mathit{graph}}(i,u)=\mathbf{e}_u^\top\mathbf{e}_i/(\|\mathbf{e}_u\|\,\|\mathbf{e}_i\|)$. A graph score exists only when both user and item are in the training graph; otherwise the candidate is ranked by the other signals. The training settings are given in Section~\ref{sec:setup}.
 
 \subsection{Knowledge graph and profile-aware scoring}
+\label{sec:kg}
 The knowledge graph is built in memory from the catalog, without a separate graph database, in three steps (Fig.~\ref{fig:knowledge_graph}).
 \emph{(i) Entities.} Each item becomes a node typed by its content type. After Unicode normalization and case-folding, each creator becomes a Creator node, each category a Genre/topic node, and each alphanumeric token of at least three characters in the title, description, creators, categories, and content type a term entity of the item. Each user becomes a User node, and the declared profile attributes become Profession, Age group, and Interest/skill nodes.
 \emph{(ii) Relations.} Items link to creators by directed\_by, written\_by, or performed\_by, according to the content type, and to genres by belongs\_to\_genre; users link to items by liked, bookmarked, or completed when the event weight is positive (these edges also form the LightGCN graph) and to their profile nodes. Each profession and age group expands into a fixed list of related topic terms (related\_to\_profession and suitable\_for; e.g., \emph{data analyst} $\rightarrow$ data, analytics, business, statistics, technology, science), and an age group may also carry unsuitable terms (e.g., \emph{family} $\rightarrow$ horror, crime, thriller, war).
@@ -414,6 +416,7 @@ Batch / epochs & 4096 / 60, no early stopping & Text encoder & all-MiniLM-L6-v2,
 \section{Results}
 \label{sec:results}
 \subsection{Baselines and ablation}
+\label{sec:ablation}
 Table~\ref{tab:ablation} reports the results at $K=20$. Absolute values are low, as usual for full-catalog ranking on sparse purchase data, so methods are compared under identical conditions. Every difference between the tuned hybrid and another row is significant ($p<0.01$), and the results at $K=10$ lead to the same conclusions, except that the tuned and hand-set hybrids are tied on Health \& Household.
 
 \begin{table}[!t]
@@ -451,6 +454,7 @@ Health \& Household behaves differently. Semantic similarity, EMA, and LightGCN 
 The selected weights are stable: relative to the semantic score, $\lambda_g=0.8$, $\lambda_e=0.2$--$0.4$, and $\lambda_k=0.05$--$0.1$ (the selection $(0.5,0.4,0.2,0.05)$ has the same ratios as $(1,0.8,0.4,0.1)$). The hand-set weights thus under-weight the graph signal by a factor of four, and the tuned weights improve NDCG@20 over them by 5.4\%, 3.6\%, and 6.5\% ($p<10^{-4}$ on every dataset).
 
 \subsection{Latency}
+\label{sec:latency}
 Latency was measured on a laptop (AMD Ryzen 5 5600H, 16 GB RAM, NVIDIA RTX 3050 Laptop GPU for query encoding) running MySQL 8.0 and a Qdrant 1.12.6 server with an HNSW index ($m=16$, ef\_construct $=100$) over the full 120,747-item catalog. After 30 warm-up requests, 700 requests with $K=10$ (16 queries, each issued anonymously and for six demo users) were sent through FastAPI's in-process test client, so validation, ranking, and serialization are included and only the network hop is excluded (Table~\ref{tab:latency}).
 
 \begin{table}[!t]
@@ -480,6 +484,7 @@ KG/profile rerank & 13.1 & 13.1 & 22.3 & 28.2 \\
 Over all 700 requests, the median latency is 363~ms (mean 371~ms, p95 455~ms, p99 507~ms). Personalized requests are 28~ms slower at the median than anonymous ones: the MySQL preference, LightGCN, and EMA stages add about 15~ms, and the rest comes from retrieving $5K$ instead of $K$ candidates. An EMA update takes 0.05~ms (p99 0.08~ms over 2,000 updates), so a like or skip is reflected in the very next request without retraining. The dominant costs are the lexical title scan (191~ms), which scans the catalog with pandas on every request, and the Qdrant query (83~ms), which returns up to $5K$ candidates with their payloads. Because the CPU-bound scan is serialized by the Python interpreter lock, one API process sustains 2.7 requests per second, and 3.3 with eight concurrent workers; an inverted title index and several worker processes are the main routes to higher throughput. Qdrant's embedded local mode, used during development, performs exact search in Python and took 1.5~s per query in the same setting, so the server deployment is required for interactive use.
 
 \subsection{Prototype scenarios}
+\label{sec:scenarios}
 Eight scenarios were issued through the deployed endpoint with $K=10$, each as a seeded demo user with the viewer age implied by its profile (20 for young adults, 30 for adults, 8 for the family profile); the three health, industry, and finance scenarios also declare their domain, as the frontend does. PersonHit@5 counts the top-5 results that credit the queried person, ProfileAlign@5 the top-5 results with a positive profile score (Eq.~\eqref{eq:profile_score}), Avg.~KG and Avg.~profile are the mean $S_{\mathit{kg}}$ and $S_{\mathit{profile}}$ of the top five, and the cross-domain rate is the fraction of scenarios whose top ten contains at least two content types.
 
 \begin{table}[!t]

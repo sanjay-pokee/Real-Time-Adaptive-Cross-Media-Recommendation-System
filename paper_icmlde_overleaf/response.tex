@@ -1,0 +1,161 @@
+% Point-by-point response to the ICMLDE reviewers for paper 1343.
+%
+% Section, table, figure, equation and page numbers are read from the paper's
+% own build (main.aux) through the xr package, so they always match the
+% compiled manuscript. Compile main.tex first, then this file in the same
+% folder. Reference numbers ([n]) are written out by hand: they follow the
+% order of first citation in main.tex.
+\documentclass[10pt]{article}
+\usepackage[a4paper,margin=2.2cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{txfonts}
+% main.tex loads hyperref, so its labels carry five fields: xr-hyper (before
+% hyperref) reads them correctly, where plain xr would print all five.
+\usepackage{xr-hyper}
+\usepackage[hidelinks]{hyperref}
+\externaldocument{main}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage{tabularx}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{4pt}
+\setlist{itemsep=1pt,topsep=2pt}
+
+\newcounter{rc}
+\newcommand{\reviewer}[1]{\setcounter{rc}{0}\section*{Reviewer #1}}
+\newcommand{\point}[2]{\stepcounter{rc}%
+  \par\medskip\noindent\textbf{Comment #1.\arabic{rc}.}\enspace\textit{``#2''}\par}
+\newcommand{\response}{\noindent\textbf{Response.}\enspace}
+\newcommand{\where}[1]{\par\noindent\textbf{Changes in the manuscript:}\enspace #1\par}
+\newcommand{\sect}[1]{Section~\ref{#1} (p.~\pageref{#1})}
+\newcommand{\tabl}[1]{Table~\ref{#1} (p.~\pageref{#1})}
+\newcommand{\figr}[1]{Fig.~\ref{#1} (p.~\pageref{#1})}
+\newcommand{\eqn}[1]{Eq.~(\ref{#1}) (p.~\pageref{#1})}
+
+\begin{document}
+
+\begin{center}
+{\large\textbf{Response to the Reviewers}}\\[4pt]
+Paper ID 1343: \textit{Real-Time Adaptive Cross-Media Recommendation Using Semantic Embeddings, Knowledge Graph Scoring, and Graph Collaborative Learning}\\[2pt]
+International Conference on Machine Learning and Data Engineering (ICMLDE 5.0)
+\end{center}
+
+Dear Scientific Committee and Reviewers,
+
+We thank the reviewers for their careful reading and constructive comments. We have revised the manuscript to address every comment. The main changes are:
+\begin{itemize}
+  \item \textbf{A large-scale quantitative evaluation} (\sect{sec:setup} and \sect{sec:results}) on three Amazon Reviews 2023 categories with up to 50,000 users and 52,213 items, reporting Recall@$K$, NDCG@$K$, MAP@$K$, and MRR@$K$ for $K\in\{10,20\}$ with significance tests.
+  \item \textbf{Implemented baselines and a full ablation} (\tabl{tab:ablation}): most-popular ranking and each signal on its own, the hybrid with hand-set and with validation-selected weights, and the hybrid with each signal removed, all under identical conditions.
+  \item \textbf{Complete experimental configuration} (\tabl{tab:datasets}, \tabl{tab:settings}) and \textbf{measured latency and throughput} (\tabl{tab:latency}).
+  \item \textbf{Precise descriptions} of the event weights, EMA initialization and negative updates, LightGCN training, and the knowledge-graph construction procedure (\sect{sec:implementation}).
+  \item \textbf{Recent related work} (2025--2026) and a comparison table (\tabl{tab:novelty}).
+  \item \textbf{Formatting and language}: the manuscript now follows the Procedia Computer Science template without modifications, both figures were redrawn, all captions were corrected, and the text was proofread. The paper remains within 10 pages.
+\end{itemize}
+Below, each comment is quoted in italics, followed by our response and the location of the changes. Page numbers refer to the revised manuscript.
+
+%---------------------------------------------------------------------------
+\reviewer{1}
+
+\point{R1}{The Figure 1 caption is written twice.}
+\response We thank the reviewer. The caption appeared twice because the original figure image contained its own caption text, in addition to the caption typeset by LaTeX. Figure~1 has been redrawn as a vector figure with no embedded text and now carries a single caption. It has also been updated to show all data sources of the current catalog.
+\where{\figr{fig:architecture}.}
+
+\point{R1}{Different text fonts are used on pages 4 and 5.}
+\response The different font came from a typewriter typeface used for field names, example queries, event types, and relation names, and from the two raster figures, which used two different typefaces. All such text is now set in the body font (including URLs in the references), and both figures were redrawn in the document font, so the manuscript uses Times throughout.
+\where{Whole manuscript; in particular \sect{sec:implementation} and \figr{fig:architecture}, \figr{fig:knowledge_graph}.}
+
+\point{R1}{Check the caption of Figure 2.}
+\response The caption has been reduced to a single sentence. While checking it, we also found that some edge labels of the original figure did not match the relations described in the text, so Figure~2 was redrawn to show exactly the entities and relations defined in the knowledge-graph construction procedure.
+\where{\figr{fig:knowledge_graph}; \sect{sec:kg}.}
+
+\point{R1}{Correct the captions of all tables.}
+\response All table captions now follow the template: a single line placed above the table, with explanatory text moved to the body. The tables use the template's own rules.
+\where{\tabl{tab:novelty}, \tabl{tab:datasets}, \tabl{tab:settings}, \tabl{tab:ablation}, \tabl{tab:latency}, \tabl{tab:results}.}
+
+\point{R1}{Cite papers from 2025 onwards.}
+\response We added a discussion of recent knowledge-aware graph and cross-domain recommenders published in 2025--2026: LGKAT [18], LightKG [19], LLMCDSR [20], LLM4CDSR [21], LeCDSR [22], and KLLMRec [23], in addition to the 2025--2026 works [11, 16, 17]. These works are also compared with the proposed system in a new table.
+\where{\sect{sec:discussion}; \tabl{tab:novelty}; References [18]--[23].}
+
+\point{R1}{Spelling mistakes (e.g., in conclusion).}
+\response The whole manuscript has been proofread and revised for language. Spelling errors, including ``papaer'' in the conclusion, have been corrected, and a citation that printed as ``[?]'' has been fixed.
+\where{Whole manuscript; \sect{sec:conclusion}.}
+
+\point{R1}{Ensure the paper is in the template.}
+\response The manuscript now uses the Procedia Computer Science template without modifications: all custom spacing, font, caption, and list overrides were removed, the running head and the corresponding-author footnote follow the template, and the references are formatted in the Procedia style and numbered in order of citation. The paper remains within 10 pages.
+\where{Whole manuscript.}
+
+%---------------------------------------------------------------------------
+\reviewer{2}
+
+\point{R2}{The proposed integration of Sentence-BERT, Qdrant, EMA personalization, LightGCN, and knowledge-graph/profile scoring is interesting and clearly presented. However, the manuscript should strengthen the novelty discussion by providing a more detailed comparison with recent cross-domain and hybrid recommendation approaches.}
+\response We thank the reviewer. Section~2 now discusses recent knowledge-aware graph recommenders, which combine LightGCN-style propagation with knowledge graphs [18, 19], and recent LLM-based cross-domain recommenders [20--23]. A new comparison table contrasts these methods with the proposed system in terms of domains, text semantics, collaborative graph, knowledge graph, short-term adaptation, and deployment. The novelty paragraph now states explicitly that the contribution is the integration of these signals over one catalog with separate immediate (EMA) and periodic (LightGCN) personalization, and it acknowledges the corresponding trade-offs: our knowledge graph is a lightweight entity-overlap scorer rather than a learned embedding, and our encoder is a compact sentence model rather than an LLM.
+\where{\sect{sec:discussion}; \tabl{tab:novelty}.}
+
+\point{R2}{The experimental evaluation is limited to five prototype scenarios. Please provide a larger-scale evaluation using standard recommendation metrics such as Recall@K, NDCG@K, MAP, and MRR, as the current study itself identifies these as future evaluation requirements.}
+\response We added a large-scale offline evaluation on three categories of the Amazon Reviews 2023 corpus [27]: Movies \& TV (50,000 users, 52,213 items, 814,346 training interactions), Health \& Household (50,000 users, 42,621 items), and Industrial \& Scientific (33,959 users, 18,804 items). Each method ranks the full catalog for every test user, and we report Recall@$K$, NDCG@$K$, MAP@$K$, and MRR@$K$ for $K\in\{10,20\}$ with paired Wilcoxon signed-rank tests. With validation-selected weights, the hybrid is the best method on Movies \& TV and Industrial \& Scientific for all measures, improving NDCG@20 over the strongest single signal by 21.6\% and 26.9\% ($p<10^{-45}$). On Health \& Household, the knowledge-graph signal alone performs best, which we report and discuss as a limitation. The scenario evaluation is retained as a complement, because it covers the query- and profile-dependent behavior that public logs cannot test.
+\where{\sect{sec:setup}; \tabl{tab:datasets}; \sect{sec:ablation}; \tabl{tab:ablation}.}
+
+\point{R2}{A detailed ablation study is recommended to quantify the individual contribution of semantic retrieval, EMA personalization, LightGCN, and KG/profile scoring. This would help demonstrate whether the improvement is actually attributable to the proposed hybrid architecture. The final score currently combines these components using fixed weights.}
+\response We added an ablation in which each signal is removed in turn from the hybrid. Removing the semantic score lowers NDCG@20 by 19.2--31.6\%, removing LightGCN by 14.6--21.8\%, and removing EMA or the knowledge-graph score by 0.7--3.0\%, and every difference is statistically significant ($p<0.01$). The signals are therefore complementary: LightGCN alone is weaker than semantic retrieval on every dataset, yet removing it from the hybrid lowers NDCG@20 by up to 21.8\%. Regarding the fixed weights, the weights are now selected by grid search on a separate validation split and compared with the original hand-set weights. The selected weights are stable across the three datasets and improve NDCG@20 over the hand-set weights by 5.4\%, 3.6\%, and 6.5\% ($p<10^{-4}$); they show that the hand-set graph weight was four times too small. The declared-profile score has no counterpart in public interaction logs, so it is evaluated in the prototype scenarios.
+\where{\sect{sec:setup} (baselines and weight selection); \sect{sec:ablation}; \tabl{tab:ablation}; \eqn{eq:hybrid}.}
+
+\point{R2}{The baseline comparison should be strengthened. Table 3 mainly provides qualitative descriptions of semantic-only, graph-only, and KG/profile-only systems. Implementing these baselines under the same experimental conditions and reporting comparable quantitative results would provide stronger evidence for the effectiveness of the proposed approach.}
+\response The qualitative rows of the former Table~3 have been removed. Most-popular ranking, semantic-only, EMA-only, LightGCN-only, and KG-only baselines are now implemented in the same evaluation code and evaluated with the same chronological split, the same candidate set (the full catalog), and the same metrics as the hybrid. Their results are reported side by side with the hybrid and the ablation variants.
+\where{\tabl{tab:ablation}; \sect{sec:ablation}.}
+
+\point{R2}{The reproducibility and real-time claims should be strengthened. Please provide complete experimental configurations, including data splitting, LightGCN training parameters, EMA settings, hybrid-score weight selection, and detailed latency/throughput measurements. The manuscript currently acknowledges that production latency benchmarking and larger-scale evaluation remain future work.}
+\response The Experimental Setup section now specifies the data preparation (rating threshold, $k$-core filtering, user sampling), the chronological split (last two positives for testing, the previous one for validation), the candidate set, the offline counterpart of each signal, the metrics, and the weight-selection grid. A settings table lists all LightGCN and EMA parameters, together with the training time. For the real-time claim, we measured 700 requests to the deployed recommendation endpoint over the full 120,747-item catalog on a laptop with a Qdrant HNSW server: the median latency is 363~ms (p95 455~ms, p99 507~ms), an EMA profile update takes 0.05~ms, so feedback is reflected in the very next request, and the per-stage latency and the throughput (2.7--3.3 requests per second per process) are reported. We also state the current bottleneck (the lexical title scan) and the remedy. The manuscript no longer describes these evaluations as future work.
+\where{\sect{sec:setup}; \tabl{tab:datasets}; \tabl{tab:settings}; \sect{sec:latency}; \tabl{tab:latency}.}
+
+%---------------------------------------------------------------------------
+\reviewer{3}
+
+\point{R3}{Specify LightGCN's training settings, including layers, embedding size, negative sampling, and stopping criteria.}
+\response LightGCN uses 64-dimensional embeddings initialized from $\mathcal{N}(0,0.1^2)$ and 3 propagation layers whose outputs are averaged, and it is trained with Adam (learning rate $10^{-3}$, $L_2$ weight $10^{-4}$) and batches of 4,096 positive pairs. For each positive pair, one negative item is drawn uniformly from the catalog and redrawn if the user has interacted with it. Training runs for a fixed budget of 60 epochs without early stopping, so that neither the validation nor the test data influence training. These settings are given in the text and in a new settings table.
+\where{\sect{sec:lightgcn}, \eqn{eq:lightgcn} and \eqn{eq:bpr}; \tabl{tab:settings}.}
+
+\point{R3}{Clarify how positive interactions are selected and how different event types are weighted.}
+\response Each event type has a signed weight: view 0.4, click 0.6, like and bookmark 1.0, complete 1.2, and skip $-1.0$; an explicit rating $r$ is mapped to $(r-3)/2$, so that four and five stars are positive and one and two stars are negative. An interaction is positive, and becomes an edge of the LightGCN graph, when its weight is positive; repeated events on the same user--item pair are merged into a single edge, and skips and low ratings are excluded from the graph rather than used as explicit negatives. For the Amazon benchmark, ratings of four or five stars are positive.
+\where{\sect{sec:ema}; \sect{sec:lightgcn}; \tabl{tab:settings}.}
+
+\point{R3}{Explain how the EMA profile is initialized and how skips or other negative events update it.}
+\response The profile is empty until the user's first non-neutral event, which initializes it to the embedding of that item (or its negation for a negative event); users without events receive no EMA score. Each event with weight $w$ moves the profile by a step $\alpha\min(|w|,1)$, with $\alpha=0.25$, toward the item embedding for positive events and toward its negation for negative events such as skips, after which the profile is renormalized to unit length. Skips therefore push the profile away from the skipped item, and the renormalization prevents repeated negative events from collapsing it.
+\where{\sect{sec:ema}, \eqn{eq:ema_update}.}
+
+\point{R3}{Provide a precise procedure for constructing KG entities, relations, and user-item paths.}
+\response The knowledge-graph subsection now gives a three-step procedure. (i) Entities: items typed by content type; Creator, Genre/topic, and term entities extracted from the normalized catalog text; User nodes; and Profession, Age group, and Interest/skill nodes from the declared profile. (ii) Relations: directed\_by, written\_by, and performed\_by between items and creators; belongs\_to\_genre; liked, bookmarked, and completed between users and items; and profile edges, with each profession and age group expanded into a fixed list of related (and, for age groups, unsuitable) topic terms, for which examples are given. (iii) Paths: a user reaches an item through a length-two path via a shared entity, which we define formally and count through set intersections in the knowledge-graph and profile scores. Figure~2 was redrawn to match this procedure.
+\where{\sect{sec:kg}; \eqn{eq:paths}, \eqn{eq:kg_score}, \eqn{eq:profile_score}; \figr{fig:knowledge_graph}.}
+
+\point{R3}{Reconcile the stated cross-domain output rate with the scenario results and define the calculation.}
+\response We thank the reviewer for this observation. The cross-domain rate is now defined explicitly as the fraction of scenarios whose top ten results contain at least two content types. While reconciling it, we found that the original scenario figures had been computed with a simplified script that did not call the deployed recommendation service. All scenarios were therefore re-run through the deployed endpoint, as the corresponding demo users, and extended to eight scenarios. The cross-domain rate is 4/8 overall and 4/5 for the scenarios without a domain filter (3/8 and 3/5 if movies and TV shows are counted as one medium); the three domain-scoped scenarios stay within their declared domain by design. All scenario metrics are defined in the text, and the table reports the content types of each scenario, so the rate can be checked directly.
+\where{\sect{sec:scenarios}; \tabl{tab:results}.}
+
+\point{R3}{Include ablation results to show the individual effects of semantic, EMA, graph, and KG/profile signals.}
+\response Please see our response to Comment R2.3. Each of the semantic, EMA, graph, and knowledge-graph signals is evaluated on its own and removed in turn from the hybrid on three datasets, and all effects are statistically significant. The declared-profile score has no counterpart in public interaction logs; its effect is shown in the prototype scenarios, where every scenario places five profile-aligned items in the top five.
+\where{\tabl{tab:ablation}; \sect{sec:ablation} and \sect{sec:scenarios}; \tabl{tab:results}.}
+
+%---------------------------------------------------------------------------
+\section*{Editorial requirements}
+\begin{itemize}
+  \item \textbf{Language:} the manuscript has been proofread and edited throughout.
+  \item \textbf{Figures:} both figures are original and were drawn by the authors; no figure is taken from published work.
+  \item \textbf{Template:} the manuscript follows the Procedia Computer Science template without modifications (see Comment R1.7).
+  \item \textbf{Similarity:} the similarity report of the revised manuscript is uploaded as a supplementary file.
+\end{itemize}
+
+\section*{Additional corrections}
+While revising the manuscript, we also corrected the following points, which were not raised by the reviewers:
+\begin{itemize}
+  \item the authors of reference [12] (LLMRec) were listed incorrectly and have been corrected;
+  \item the graph score is now given as the cosine similarity of normalized embeddings, as in the implementation;
+  \item the description of the data sources was updated to the current catalog (seven content types, 120,747 items);
+  \item two ranking stages of the implementation that were missing from the description, creator and title matching and a short-term preference bonus, are now described, so that the hybrid score in \eqn{eq:hybrid} matches the implementation exactly.
+\end{itemize}
+
+We hope that the revised manuscript addresses the reviewers' concerns, and we thank them again for their valuable comments.
+
+\medskip
+Sincerely,\\
+Sanjay A.~K., Eswara Raj M., Aditya Vijay, Himaneesh Reddy Jangalapalli, Bagavathi Sivakumar P., Krishna Priya G.
+
+\end{document}
