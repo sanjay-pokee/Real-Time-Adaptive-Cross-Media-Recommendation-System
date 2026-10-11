@@ -134,7 +134,10 @@
 \usepackage{array}
 \usepackage{tabularx}
 \usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,shapes.geometric,fit}
 \usepackage{url}
+\urlstyle{same}
 
 \begin{document}
 \begin{frontmatter}
@@ -153,7 +156,7 @@
 \address[a]{Department of Computer Science and Engineering, Amrita School of Computing, Coimbatore, Amrita Vishwa Vidyapeetham, India}
 
 \begin{abstract}
-A user's interests extend across media: the same preference can appear as a film theme, a book topic, a musical artist, or a learning goal. Conventional recommenders operate within single-domain silos and cannot connect these signals. This paper presents a real-time adaptive cross-media recommender that maps movies, TV shows, books, and music, extended to health, industrial, and finance products, into one normalized catalog of 120,747 items and ranks them with a hybrid score. The backend combines Sentence-BERT metadata embeddings with Qdrant approximate nearest-neighbor search, deterministic creator-aware search, MySQL interaction logging, exponential moving average (EMA) session adaptation, LightGCN collaborative filtering, and knowledge-graph (KG) profile-aware reranking; a React frontend exposes search, filters, per-signal score explanations, and feedback. Each component covers a distinct requirement: embeddings handle heterogeneous text and cold start, creator matching protects person queries, EMA follows short-term preference drift, LightGCN captures collaborative preference, and the KG links domains through shared creator, genre, age, profession, and interest entities. On three Amazon Reviews 2023 categories with up to 50,000 users and 52,213 items, the hybrid with validation-selected weights is the best method on two of the three, improving NDCG@20 over the strongest single signal by 21.6\% and 26.9\%, and the ablation shows that every signal makes a statistically significant contribution; on the third category, entity overlap alone performs best. On a laptop, a recommendation over the 120,747-item catalog takes 363~ms at the median (p95 455~ms), and a feedback event updates the user profile in 0.05~ms. In eight prototype scenarios run through the deployed API, every scenario places five profile-aligned items in the top five, and four of the five scenarios without a domain filter return at least two content types.
+A user's interests span media: the same preference can appear as a film theme, a book topic, a musical artist, or a learning goal, yet most recommenders operate within single-domain silos. This paper presents a real-time adaptive cross-media recommender that maps movies, TV shows, books, and music, extended to health, industrial, and finance products, into one catalog of 120,747 items. Candidates from Sentence-BERT embeddings with Qdrant nearest-neighbor search and from creator and title matching are reranked by a hybrid score combining exponential moving average (EMA) session adaptation, LightGCN collaborative filtering, and knowledge-graph (KG) and profile scoring, behind a FastAPI and React application with MySQL interaction logging. On three Amazon Reviews 2023 categories with up to 50,000 users, the hybrid with validation-selected weights is the best method on two categories, improving NDCG@20 over the strongest single signal by 21.6\% and 26.9\%, and an ablation shows that every signal contributes significantly; on the third category, entity overlap alone performs best. A recommendation over the full catalog takes 363~ms at the median on a laptop, and a feedback event updates the user profile in 0.05~ms.
 \end{abstract}
 
 \begin{keyword}
@@ -166,49 +169,31 @@ Recommender systems \sep Cross-media recommendation \sep Sentence-BERT \sep Qdra
 \section{Introduction}
 \label{sec:introduction}
 \email{g\_krishnapriya@cb.amrita.edu (Krishna Priya G.), pbsk@cb.amrita.edu (Bagavathi Sivakumar P.)}
-Recommendation systems are now the main interface through which users discover movies, songs, books, learning resources, and other digital content. Most deployed systems, however, remain domain-specific: a movie platform recommends films, a music platform recommends tracks, and a book platform recommends books. This separation is practical for platform owners, but it does not reflect how human interest works. A user interested in science fiction may enjoy a film such as \emph{Interstellar}, a novel about space exploration, a soundtrack with a similar emotional tone, and educational content on astronomy. A useful recommender should therefore connect these signals across media types, so that recommendations follow the user's preferences rather than the boundaries of a single medium.
+Recommender systems are the main interface through which users discover digital content, yet most deployed systems remain domain-specific: a movie platform recommends films, a music platform recommends tracks, and a book platform recommends books. Human interest does not follow these boundaries. A user interested in science fiction may enjoy a film such as \emph{Interstellar}, a novel about space exploration, a soundtrack with a similar tone, and educational content on astronomy, so a useful recommender should connect these signals across media.
 
-This paper presents a unified recommendation pipeline for movies, TV shows, books, and music, which has since been extended to health, industrial, and finance products. Every item, whatever its medium, is mapped to a common schema with fields such as a global identifier, content type, title, description, creators, categories, release date, popularity, rating, metadata, and embedding text. This representation allows heterogeneous datasets to be indexed in a single semantic retrieval layer in which every item is an entity of the same kind. On top of this layer, the system logs user interactions and personalizes results with both an immediate (per-event) method and a periodically trained method. The goal is not only to retrieve semantically similar content, but also to combine it with recommendations that adapt to user behavior over time.
+This paper presents a working cross-media recommendation pipeline for movies, TV shows, books, and music, which has since been extended to health, industrial, and finance products. Every item is mapped to one schema and one semantic retrieval layer: Sentence-BERT compares items of different domains through their descriptions \cite{reimers2019sbert}, Qdrant provides nearest-neighbor retrieval \cite{qdrant}, LightGCN learns collaborative preference \cite{he2020lightgcn}, an exponential moving average (EMA) of item embeddings adapts to each feedback event, and an in-memory knowledge graph (KG) adds entity- and profile-aware scoring, behind a FastAPI backend \cite{fastapi} with MySQL logging.
 
-Three technical directions motivate the implementation. Sentence-BERT allows items from different domains to be compared through their textual descriptions \cite{reimers2019sbert}; LightGCN learns collaborative preference from the user--item interaction graph \cite{he2020lightgcn}; and Qdrant provides low-latency nearest-neighbor retrieval \cite{qdrant}. The FastAPI \cite{fastapi} backend integrates Qdrant for retrieval, MySQL for storage and interaction logging, a PyTorch LightGCN model for reranking, an exponential moving average (EMA) of item embeddings for session adaptation, and an in-memory knowledge graph (KG) for entity-aware profile scoring.
-
-The research gap is that these capabilities are rarely implemented together in a single working multi-domain pipeline. Graph-based models are usually benchmarked on single-domain interaction datasets; semantic systems retrieve content by meaning rather than by the user's preferences; cross-domain approaches commonly transfer between two domains instead of normalizing several domains into one catalog; and real-time personalization is usually treated separately from graph learning.
-
-The design addresses heterogeneous metadata, the item cold-start problem, session-level preference drift, hybrid score fusion, people-based search over actors, directors, authors, and singers, and age- and profession-aware scoring without private social data.
-
-The contributions of this paper are threefold:
+These capabilities are rarely combined in one multi-domain pipeline: graph models are usually benchmarked on single-domain datasets, semantic systems retrieve by meaning rather than by preference, cross-domain methods typically transfer between two domains instead of normalizing many into one catalog, and real-time personalization is usually separate from graph learning. The contributions of this paper are threefold:
 \begin{enumerate}
-    \item An integrated cross-media platform for movies, TV shows, books, and music, extended to health, industrial, and finance products, that supports semantic, creator-aware, and flexible search through a unified catalog and web application.
-
-    \item A hybrid ranking model that combines Sentence-BERT/Qdrant retrieval, EMA-based personalization, LightGCN graph scoring, and knowledge-graph profile scoring.
-
-    \item A quantitative evaluation on three large public interaction datasets, comprising single-signal baselines, an ablation of every signal, validation-based weight selection, and latency measurements, complemented by scenario-level tests of the working prototype.
+    \item An integrated cross-media platform with a unified catalog of seven content types that supports semantic, creator-aware, and title search.
+    \item A hybrid ranking model that combines semantic retrieval, EMA adaptation, LightGCN graph scoring, and KG/profile scoring, with explainable sub-scores.
+    \item A quantitative evaluation on three public interaction datasets, comprising single-signal baselines, an ablation of every signal, validation-based weight selection, latency measurements, and scenario tests of the deployed system.
 \end{enumerate}
 
-\section{Discussion of Related Work and Novelty}
+\section{Related Work and Novelty}
 \label{sec:discussion}
-Recommendation methods include collaborative filtering, content-based recommendation, hybrid recommendation, graph neural collaborative filtering, semantic retrieval, knowledge-graph recommendation, adaptive approaches, and cross-domain transfer. Collaborative filtering learns from behavior and content-based recommendation from item metadata, while hybrid approaches combine the two to reduce the cold-start problem \cite{zhang2019deep}.
-Neural Graph Collaborative Filtering (NGCF) applies graph convolution to the user--item interaction graph; LightGCN simplifies NGCF by removing feature transformations and non-linear activations and keeping only neighborhood-based embedding propagation \cite{wang2019ngcf,he2020lightgcn}. In this work LightGCN is used as a collaborative reranking signal rather than as the candidate generator: semantic retrieval first finds relevant cross-media candidates, and the graph-derived representations then add a signal for users with sufficient interaction history. Sequential recommenders such as SASRec model the order of user actions and are usually evaluated offline within a single domain \cite{kang2018sasrec}; because they play a different role from cross-media retrieval, a hybrid ranking pipeline is adopted here instead.
+Collaborative filtering learns from behavior and content-based recommendation from item metadata, and hybrid approaches combine the two to reduce the cold-start problem \cite{zhang2019deep}. NGCF applies graph convolution to the user--item graph, and LightGCN simplifies it by keeping only neighborhood propagation \cite{wang2019ngcf,he2020lightgcn}; here LightGCN is a reranking signal for users with interaction history rather than the candidate generator. Sequential recommenders such as SASRec model the order of user actions within a single domain \cite{kang2018sasrec}, and Sentence-BERT embeddings \cite{reimers2019sbert} let items of different media share one vector space before any interactions exist. KGAT and RippleNet propagate preferences over knowledge-graph relations such as directed-by \cite{wang2019kgat,wang2018ripplenet}. Cross-domain recommendation transfers preferences between domains, mostly between two \cite{zang2022cross}, and a recent survey extends the scope to multi-domain transfer \cite{zhang2025survey}; large language models augmented with graph structure have also been used for relevance and explanation \cite{wu2024llmrec}. Studies from Amrita Vishwa Vidyapeetham have addressed cold-start prediction, collaborative filtering, sparse data, dual-feedback personalization, and community-aware recommendation \cite{amrita2023densenet,amrita2023adamvrgo,amrita2024sparse,amrita2025dualfeedback,amrita2026svd}, but not the integration of heterogeneous media into one pipeline.
 
-Semantic embedding methods compute item similarity before many user interactions exist. Sentence-BERT is practical because it produces sentence embeddings that can be compared directly by cosine similarity \cite{reimers2019sbert}. Here, each item is converted into an embedding text that combines its title, categories, description, and creators, which places movies, books, and songs in a shared vector space.
+Recent work has moved in two directions that are directly relevant here. Knowledge-aware graph recommenders combine LightGCN-style propagation with knowledge graphs: LGKAT adds a personalized knowledge-aware attention sub-network to LightGCN and is evaluated separately on movie, book, music, and restaurant data \cite{hassanzadeh2025lgkat}, and LightKG simplifies the graph neural network of knowledge-aware recommenders to reduce training cost on sparse data \cite{li2025lightkg}. Cross-domain recommenders increasingly use large language models as a semantic bridge between domains: LLMCDSR generates pseudo-interactions with an LLM and injects collaborative information into textual item features \cite{xin2025llmcdsr}, LLM4CDSR builds unified LLM-based item representations and hierarchical user profiles across domains \cite{liu2025llm4cdsr}, LeCDSR likewise enhances cross-domain sequential recommendation with an LLM \cite{wang2026lecdsr}, and KLLMRec augments multi-domain recommendation with LLM-derived knowledge \cite{li2026kllmrec}.
 
-Knowledge-graph systems such as KGAT and RippleNet connect users, items, and entities through relations such as acted-in, directed-by, written-by, and belongs-to-genre \cite{wang2019kgat,wang2018ripplenet}. The present implementation builds an in-memory KG from the unified catalog and uses it for entity-proximity scoring. Cross-domain research supports preference transfer between domains, although many works still focus on transfer between two domains \cite{zang2022cross}; a recent survey broadens this scope to multi-domain and task-guided transfer \cite{zhang2025survey}. Large language models augmented with graph structure have also been explored for relevance and explanation generation \cite{wu2024llmrec}.
-
-Recent work has moved in two directions that are directly relevant here. Knowledge-aware graph recommenders combine LightGCN-style propagation with knowledge graphs: LGKAT adds a personalized knowledge-aware attention sub-network to LightGCN and is evaluated separately on movie, book, music, and restaurant data \cite{hassanzadeh2025lgkat}, and LightKG simplifies the graph neural network of knowledge-aware recommenders to reduce training cost on sparse data \cite{li2025lightkg}. Cross-domain recommenders increasingly use large language models as a semantic bridge between domains: LLMCDSR uses an LLM to generate pseudo-interactions and injects collaborative information into textual item features \cite{xin2025llmcdsr}, LLM4CDSR builds unified LLM-based item representations and hierarchical user profiles across domains \cite{liu2025llm4cdsr}, LeCDSR likewise enhances cross-domain sequential recommendation with an LLM \cite{wang2026lecdsr}, and KLLMRec augments multi-domain recommendation with LLM-derived knowledge \cite{li2026kllmrec}.
-
-Recent studies from Amrita Vishwa Vidyapeetham have addressed several recommendation challenges, including cold-start prediction, optimization of collaborative filtering, sparse interaction data, dual-feedback personalization, and community-aware recommendation \cite{amrita2023densenet,amrita2023adamvrgo,amrita2024sparse,amrita2025dualfeedback,amrita2026svd}. These studies, however, do not address the integration of heterogeneous media into a common recommendation pipeline. In the proposed system, movies, books, and music share one catalog schema and pass through shared retrieval, personalization, and reranking stages. The contribution therefore lies in cross-media integration rather than in another standalone model.
-
-The novelty of this work is not a new neural layer; it is the combination of mature methods within one working pipeline, each covering a distinct requirement. Sentence-BERT provides cross-domain semantic understanding, Qdrant low-latency vector retrieval, MySQL durable interaction memory, EMA immediate handling of preference drift, LightGCN collaborative preference propagation, and the knowledge graph entity- and profile-level reasoning. Related systems usually emphasize one of these capabilities; the proposed system combines all of them behind a clear input--output API with a path for adding new domains.
-Unlike a traditional hybrid recommender, which fuses content and collaborative scores from models trained separately in each domain, the proposed system first maps heterogeneous media into one common schema that serves vector search, creator lookup, graph construction, API responses, and the frontend. Cross-media recommendation is therefore treated as both a data-modeling problem and a ranking problem. The system also separates immediate from delayed personalization: EMA reacts to a single like, skip, or bookmark, whereas LightGCN is retrained once enough new interactions have accumulated. This division is practical because sessions change quickly while graph training is comparatively expensive.
-
-\begin{table}[t]
+\begin{table}[!t]
 \centering
 \caption{Comparison with representative graph, knowledge-aware, and cross-domain recommenders.}
 \label{tab:novelty}
 \footnotesize
 \begin{tabular*}{\hsize}{@{\extracolsep{\fill}}llccccc@{}}
 \toprule
-Method & Domains & Text semantics & Collab.\ graph & Knowledge graph & Short-term adapt. & Deployed system \\
+Method & Domains & Text semantics & Collab.\ graph & Knowledge graph & Short-term adapt. & Deployed \\
 \colrule
 LightGCN \cite{he2020lightgcn} & single & -- & yes & -- & -- & -- \\
 KGAT \cite{wang2019kgat} & single & -- & yes & yes & -- & -- \\
@@ -216,166 +201,158 @@ LGKAT \cite{hassanzadeh2025lgkat} & single & -- & yes & yes & -- & -- \\
 LightKG \cite{li2025lightkg} & single & -- & yes & yes & -- & -- \\
 LLMCDSR \cite{xin2025llmcdsr} & cross-domain & LLM & -- & -- & sequence & -- \\
 LLM4CDSR \cite{liu2025llm4cdsr} & cross-domain & LLM & -- & -- & sequence & -- \\
-This work & 3 media, one catalog & Sentence-BERT & LightGCN & entity overlap & per-event EMA & yes \\
+This work & 7 types, one catalog & Sentence-BERT & LightGCN & entity overlap & per-event EMA & yes \\
 \botrule
 \end{tabular*}
 \end{table}
 
-Table~\ref{tab:novelty} summarizes the differences, based on the components reported in each cited paper. Knowledge-aware graph models learn from a single domain at a time, and LLM-based cross-domain models are trained offline for a fixed set of domains around next-item prediction; neither family combines text-based retrieval, collaborative graph scoring, KG/profile scoring, and per-event adaptation in one deployed system. The present work makes the opposite trade-off: its knowledge graph is a lightweight entity-overlap scorer rather than a learned KG embedding, and it uses a compact sentence encoder rather than an LLM, in exchange for a single catalog across media, real-time updates, and explainable sub-scores. Because these models address different tasks and training protocols, Section~\ref{sec:results} does not reimplement them; instead, it isolates the contribution of every signal of the proposed pipeline under one protocol.
+Table~\ref{tab:novelty} contrasts these approaches, based on the components reported in each cited paper. Knowledge-aware graph models learn from one domain at a time, and LLM-based cross-domain models are trained offline for a fixed set of domains around next-item prediction; neither family combines text-based retrieval, collaborative graph scoring, KG/profile scoring, and per-event adaptation in a deployed system. The novelty of this work is therefore not a new neural layer but the integration of these methods over one catalog, with immediate (EMA) and periodic (LightGCN) personalization kept separate; in exchange, its knowledge graph is a lightweight entity-overlap scorer rather than a learned embedding, and its encoder is a compact sentence model rather than an LLM. Because the cited models address different tasks and training protocols, Section~\ref{sec:results} does not reimplement them but isolates the contribution of each signal of the proposed pipeline under one protocol.
 
 \section{Implementation}
 \label{sec:implementation}
-\subsection{Web application system}
-The implemented system is a modular web recommendation product. The frontend provides user profile selection, natural-language search, content-type filters, recommendation cards, score-signal display, detail views, similar-item search, and interaction buttons. The backend exposes recommendation and interaction APIs. The data pipeline preprocesses heterogeneous datasets into a common catalog, generates embeddings, uploads vectors to Qdrant, stores content and user interactions in MySQL, trains LightGCN artifacts from positive interaction logs, and exposes KG-profile scoring at query time.
+\subsection{System overview}
+In the architecture of Fig.~\ref{fig:architecture}, each source is mapped into the unified catalog, embedded, and loaded into Qdrant and MySQL offline, and LightGCN is retrained periodically. At request time, the FastAPI backend validates a query together with an optional user, content-type or domain filter, viewer age, and result count $K$; it matches creators and titles, retrieves Qdrant candidates, reranks them, and returns the final score with every sub-score, so that the React frontend can show which signal drove each recommendation. Feedback such as likes, skips, and bookmarks is logged through the interaction endpoint and updates the user's EMA profile immediately. The declared viewer age and domain act as a hard eligibility filter before ranking: an undeclared viewer is capped at a teen ceiling, and the health, industrial, and finance catalogs default to adult maturity.
 
-The request flow begins when the user enters a query such as \emph{space adventure with aliens}, \emph{James Cameron}, or \emph{business analytics and learning}. The request contains the query, an optional user identifier, an optional content-type filter, and the desired number of results $K$. The backend validates the request with Pydantic, checks for direct creator matches, embeds the query, retrieves vector candidates from Qdrant, applies MySQL-backed personalization when a user is known, blends all scores, and returns the results as JSON. The frontend displays each result's title, domain, creators, categories, and score bars, and lets the user give feedback, which is sent back to the backend and used in subsequent rankings.
-
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=0.8\textwidth]{chad.png}
-    \caption{System architecture of the proposed cross-media recommender.}
-    \label{fig:architecture}
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >=Stealth,
+  box/.style={draw, rounded corners=1.5pt, align=center, minimum height=7mm, inner sep=2pt, text width=#1},
+  box/.default=22mm]
+\node[box=24mm] (s1) at (0,0) {Movies, TV shows\\(TMDb)};
+\node[box=24mm] (s2) at (3.3,0) {Books\\(Open Library)};
+\node[box=24mm] (s3) at (6.6,0) {Music\\(Spotify, Last.fm)};
+\node[box=31mm] (s4) at (10.3,0) {Health, industrial, finance\\(Amazon Reviews 2023)};
+\node[box=42mm] (cat) at (5.1,-1.11) {Unified catalog, mappers $\phi_d$\\120,747 items, 7 content types};
+\node[box=22mm] (sbert) at (0.3,-2.21) {Sentence-BERT\\embeddings};
+\node[box=27mm] (sql) at (9.6,-2.21) {MySQL catalog and\\interaction log};
+\node[box=22mm] (qd) at (0.3,-3.33) {Qdrant HNSW\\candidate search};
+\node[box=21mm] (lex) at (3.2,-3.33) {Creator and title\\matching};
+\node[box=19mm] (ema) at (6.0,-3.33) {EMA profile\\(per event)};
+\node[box=19mm] (gcn) at (8.6,-3.33) {LightGCN\\(periodic)};
+\node[box=21mm] (kg) at (11.3,-3.33) {KG and profile\\scores};
+\node[box=36mm] (hyb) at (5.1,-4.47) {Hybrid ranker $S(i,u,q)$, Eq.~\eqref{eq:hybrid}};
+\node[box=16mm] (api) at (8.6,-4.47) {FastAPI\\JSON};
+\node[box=16mm] (ui) at (11.3,-4.47) {React\\frontend};
+\foreach \s in {s1,s2,s3,s4} \draw[->] (\s.south) -- (cat.north);
+\draw[->] (cat.west) -| (sbert.north);
+\draw[->] (sbert) -- (qd);
+\draw[->] (lex.north |- cat.south) -- (lex.north);
+\draw[->] (cat.east) -| (sql.north);
+\foreach \t in {ema,gcn,kg} \draw[->] (sql.south) -- (\t.north);
+\foreach \t in {qd,lex,ema,gcn,kg} \draw[->] (\t.south) -- (hyb.north);
+\draw[->] (hyb) -- (api);
+\draw[->] (api) -- (ui);
+\draw[->] (ui.east) -- ++(0.45,0) |- (sql.east) node[pos=0.25, right, align=left] {feed-\\back};
+\end{tikzpicture}
+\caption{System architecture of the proposed cross-media recommender.}
+\label{fig:architecture}
 \end{figure}
 
-Figure~\ref{fig:architecture} shows the four layers of the system. The retrieval layer (Sentence-BERT encoding and Qdrant approximate nearest-neighbor search), the storage layer (MySQL catalog and interaction logs), the personalization layer (EMA updates and periodically retrained LightGCN embeddings), and the presentation layer (FastAPI endpoints consumed by the React frontend) are separated so that each component can be tested on its own. Qdrant search runs at request time, the EMA profile is updated immediately after each feedback event, and LightGCN is retrained periodically.
-The pipeline produces explicit intermediate artifacts: normalized catalog rows, embedding texts, dense vectors, Qdrant payloads, MySQL interaction logs, and exported graph embeddings. These artifacts make experiments more reproducible, because an error can be traced to a single stage instead of being hidden inside one end-to-end model.
-
-\subsection{Data sources and unified catalog}
-The central implementation decision is to map every domain to one unified schema.
-Movies and TV shows use TMDb metadata and credits \cite{tmdb}; books use the Open Library APIs \cite{openlibrary}; and music combines a public Spotify songs export with current tracks from the Last.fm API \cite{lastfm}, while the MusicBrainz API \cite{musicbrainz} serves on-demand recording lookups. The same mapping mechanism (Eq.~\eqref{eq:catalog_union}) was later used to add health, industrial, and finance products from the Amazon Reviews 2023 metadata \cite{hou2024blair}, with finance also including accounting and personal-finance titles from Open Library. The deployed catalog therefore contains 120,747 items of seven content types: 31,133 songs, 23,492 movies, 20,000 health and 20,000 industrial products, 12,402 books, 10,617 TV shows, and 3,103 finance items. The common fields are a global identifier, content type, source identifier, title, description, creators, categories, release date, popularity, rating, metadata text, embedding text, and a text hash.
-
-For movies, preprocessing combines the title, overview, genres, keywords, directors, and main cast. For books, the author field is mapped to the shared \emph{creators} field, while categories and descriptions form the semantic text. For music, the track artist and album are mapped to the creators and metadata fields. This allows the same search logic to handle actors, directors, authors, and singers. The metadata text is a richer string used for inspection and storage, whereas the embedding text is a clean natural-language string used for encoding. A SHA-256 hash of the embedding text allows embeddings from a previous build to be reused when a row has not changed.
-
-The catalog separates each item's source identifier from its global identifier, so that raw identifiers from different datasets cannot collide. The content-type field acts as the domain switch for filters, API responses, KG nodes, and frontend badges. Ratings and popularity are optional, which keeps the schema robust when new domains are added.
-
-Extensible search means that a new domain does not require a new recommender pipeline. Let each domain $d \in \mathcal{D}$ provide a mapper $\phi_d(x)$ from a raw row $x$ into the shared item representation $r_i$. The catalog is
+\subsection{Unified catalog and data sources}
+Each domain $d\in\mathcal{D}$ provides a mapper $\phi_d$ from a raw row $x$ to the shared item representation $r_i$, and the catalog is
 \begin{equation}
     \mathcal{C}=\bigcup_{d\in\mathcal{D}}\{\phi_d(x):x\in X_d\},
     \quad
     r_i=(id,type,title,desc,creators,categories,text_i).
     \label{eq:catalog_union}
 \end{equation}
-When a further domain such as courses, podcasts, games, or short videos is added, only $\phi_d$ has to be defined; embedding, vector search, KG scoring, the API response, and frontend rendering remain unchanged.
+Adding a domain therefore requires only a new $\phi_d$; embedding, search, KG scoring, the API, and the frontend are unchanged. Movies and TV shows use TMDb metadata and credits \cite{tmdb}; books use the Open Library APIs \cite{openlibrary}; music combines a public Spotify songs export with current tracks from the Last.fm API \cite{lastfm}; and health, industrial, and finance products come from the Amazon Reviews 2023 metadata \cite{hou2024blair}, with finance also including accounting and personal-finance titles from Open Library. The deployed catalog holds 120,747 items: 31,133 songs, 23,492 movies, 20,000 health and 20,000 industrial products, 12,402 books, 10,617 TV shows, and 3,103 finance items. Directors and cast, authors, and artists all map to the shared creators field, which therefore serves both person search and the knowledge graph. A SHA-256 hash of each embedding text lets unchanged rows reuse their embeddings.
 
-\subsection{Semantic embedding and vector search}
-The semantic retrieval layer uses Sentence-BERT, specifically the compact all-MiniLM-L6-v2 model, to convert item metadata into dense 384-dimensional vectors \cite{reimers2019sbert}. The dimension is fixed by the output layer of this model rather than being a free hyperparameter; keeping item embeddings, query embeddings, and user profile vectors (Section~\ref{sec:ema}) in the same space allows cosine similarity to be computed directly between users, items, and queries without an additional projection layer. The embedding text of each item concatenates its title, categories, description, and creators into one natural-language string. Let $\mathbf{e}_i \in \mathbb{R}^{384}$ be the embedding of item $i$ and $\mathbf{q} \in \mathbb{R}^{384}$ the encoded query. The semantic similarity score is
-\begin{equation}
-    S_{\mathit{sem}}(i,q)=
-    \frac{\mathbf{e}_i^\top \mathbf{q}}{\|\mathbf{e}_i\|\,\|\mathbf{q}\|}.
-    \label{eq:cosine}
-\end{equation}
-At retrieval time, Qdrant uses this cosine similarity for approximate nearest-neighbor search and returns the top-$K$ results with their scores. An optional content-type filter lets users search all domains or only one, such as movies, books, or music. Because the item payload is stored in Qdrant, the title, description, creators, categories, popularity, rating, and score are all available from a single request.
-
-The semantic layer enables cold-start and cross-domain retrieval: a new item can be recommended from its metadata alone, without any interactions, and the same query can retrieve a movie, a book, or a song whose metadata is semantically similar.
-
-Vector search is used for candidate generation, not for the final ranking. Qdrant quickly retrieves semantically similar items, and the reranking stage then accounts for user preference, creator intent, graph information, and KG/profile relevance.
-
-\subsection{Person-aware search over creators}
+\subsection{Semantic retrieval and creator and title matching}
 \label{sec:person}
-Users of recommendation interfaces frequently search for people rather than topics. Vector search alone does not distinguish names from generic text and may miss an exact match in the catalog.
-The backend therefore looks for exact, prefix, and substring matches on normalized creator names before running the semantic search. Up to five items directly associated with the person are placed first, and semantic results are appended after deduplication on the global identifier.
-This matters because the intent behind a name is not always captured by dense similarity. A search for James Cameron should prioritize his films; a search for Taylor Swift should return her music without duplicates, while still allowing cross-media hits where the metadata supports them. The shared creators field is both the search field and a source of graph entities.
-Creator search is deterministic: exact matches have the highest priority, followed by prefix matches and then substring matches.
+Each item's embedding text (title, categories, description, and creators) and each query are encoded by the all-MiniLM-L6-v2 Sentence-BERT model into 384-dimensional vectors \cite{reimers2019sbert}. The users' EMA profiles (Section~\ref{sec:ema}) live in the same space, so users, items, and queries are compared directly. With $\mathbf{e}_i$ the embedding of item $i$ and $\mathbf{q}$ that of the query, the semantic score is the cosine similarity $S_{\mathit{sem}}(i,q)=\mathbf{e}_i^\top\mathbf{q}/(\|\mathbf{e}_i\|\,\|\mathbf{q}\|)$. Qdrant performs approximate nearest-neighbor search over this similarity with an HNSW index; it generates candidates rather than the final ranking and lets a new item be recommended from its metadata alone.
 
-Titles are handled by an analogous lexical stage, because a short title such as \emph{F1} carries almost no semantic signal. On whole, normalized words, an item matches in one of five tiers: the query equals the title (tier 0), the title starts with the query (1), the title contains the query (2), every query token occurs in the title or categories (3), or the query phrase occurs in the description (4). Tiers 0 and 1 are ranked first and tiers 2--4 are ordered together by popularity. Lexical matches fill at most $\max(3,\lfloor K/2\rfloor)$ result slots and receive the fixed score $1.30-0.06\,t$ for tier $t$, which keeps them above the cosine band while preserving the tier order; creator matches are placed first, lexical matches next, and semantic candidates fill the remaining slots after deduplication.
+Dense similarity does not capture the intent of a name or a short title such as \emph{F1}, so two deterministic stages run first. Creator matching looks for exact, prefix, and substring matches on normalized creator names and places up to five matching items first. Title matching assigns each item one of five tiers on whole normalized words: the query equals the title (tier 0), the title starts with the query (1) or contains it (2), every query token occurs in the title or categories (3), or the query phrase occurs in the description (4). Tiers 0 and 1 rank first and tiers 2--4 are ordered by popularity; lexical matches fill at most $\max(3,\lfloor K/2\rfloor)$ slots and receive the fixed score $1.30-0.06\,t$ for tier $t$, which keeps them above the cosine band. Semantic candidates fill the remaining slots after deduplication.
 
 \subsection{Interaction logging and EMA adaptation}
 \label{sec:ema}
-The backend records user interactions through a dedicated API and stores them in MySQL. Each event type carries a signed weight $w$: view $0.4$, click $0.6$, like $1.0$, bookmark $1.0$, complete $1.2$, and skip $-1.0$; an explicit rating $r\in[1,5]$ is mapped to $w=(r-3)/2$, so that four and five stars are positive, three stars is neutral, and one or two stars are negative. Events with $w=0$ are ignored.
-
-Let $\mathbf{u}_t \in \mathbb{R}^{384}$ be the user's profile vector, kept in the same Sentence-BERT space as the item embeddings so that $\mathbf{u}_t$ and $\mathbf{e}_i$ are directly comparable, and let $\alpha\in(0,1)$ be the smoothing factor ($\alpha=0.25$). An event with weight $w$ on item $i$ moves the profile by a step $\eta=\alpha\min(|w|,1)$ toward $\mathbf{e}_i$ when $w>0$ and toward $-\mathbf{e}_i$ when $w<0$:
+Interactions are logged in MySQL with a signed weight $w$: view $0.4$, click $0.6$, like and bookmark $1.0$, complete $1.2$, and skip $-1.0$; an explicit rating $r\in[1,5]$ maps to $w=(r-3)/2$, and events with $w=0$ are ignored. Let $\mathbf{u}_t\in\mathbb{R}^{384}$ be the user's profile and $\alpha=0.25$ the smoothing factor. An event with weight $w$ on item $i$ moves the profile by the step $\eta=\alpha\min(|w|,1)$ toward $\mathrm{sign}(w)\,\mathbf{e}_i$:
 \begin{equation}
     \tilde{\mathbf{u}}_{t+1}=(1-\eta)\,\mathbf{u}_t+\eta\,\mathrm{sign}(w)\,\mathbf{e}_i,
     \qquad
     \mathbf{u}_{t+1}=\tilde{\mathbf{u}}_{t+1}/\|\tilde{\mathbf{u}}_{t+1}\|.
     \label{eq:ema_update}
 \end{equation}
-The profile is empty until the user's first non-neutral event on an embedded item, which initializes it to $\mathbf{u}_1=\mathrm{sign}(w)\,\mathbf{e}_i$; a user with no events therefore receives no EMA score. Likes, bookmarks, and completions thus pull the profile toward the item, a skip or low rating pushes it away from the item, and weak signals such as views move it less. Re-normalization after every update keeps the profile on the unit sphere, so repeated skips cannot shrink it to zero. The EMA score of a candidate item $i$ is
-\begin{equation}
-    S_{\mathit{ema}}(i,u)=
-    \frac{\mathbf{e}_i^\top\mathbf{u}_t}{\|\mathbf{e}_i\|\,\|\mathbf{u}_t\|}.
-    \label{eq:ema_score}
-\end{equation}
-EMA provides lightweight real-time adaptation without retraining the graph model after every click, which suits session-level changes such as a user temporarily moving from entertainment to learning content. More complex online learning could update model parameters continuously, but EMA updates only one vector per user and is cheap enough to run on every event.
+The profile is empty until the user's first non-neutral event on an embedded item, which sets $\mathbf{u}_1=\mathrm{sign}(w)\,\mathbf{e}_i$, so users without events receive no EMA score. Likes pull the profile toward an item, skips and low ratings push it away, weak signals such as views move it less, and renormalization keeps it on the unit sphere. The EMA score is the cosine similarity $S_{\mathit{ema}}(i,u)=\mathbf{e}_i^\top\mathbf{u}_t/(\|\mathbf{e}_i\|\,\|\mathbf{u}_t\|)$. Because each event updates a single vector, EMA can follow session-level drift without retraining any model.
 
 \subsection{Graph collaborative filtering with LightGCN}
-Semantic retrieval captures item similarity but not collaborative behavior. The system therefore includes a PyTorch LightGCN model trained on the interaction log; the exported user and item embeddings are used for reranking. An interaction is treated as positive, and becomes an edge of the training graph, when its event weight is positive ($w>0$). Repeated events on the same user--item pair are merged into a single unweighted edge, and skips and low ratings are excluded from the graph rather than used as explicit negatives.
-
-LightGCN represents users and items as nodes in a bipartite interaction graph $\mathcal{G}=(\mathcal{U}\cup\mathcal{I},\mathcal{E})$, where each edge $(u,i)\in\mathcal{E}$ corresponds to a positive interaction. Let $\mathbf{e}^{(0)}_u$ and $\mathbf{e}^{(0)}_i$ be the initial learnable embeddings. The $\ell$-th layer propagation rule is
+LightGCN \cite{he2020lightgcn} is trained on the interaction log. An event with $w>0$ becomes an unweighted edge of the bipartite graph $\mathcal{G}=(\mathcal{U}\cup\mathcal{I},\mathcal{E})$, repeated events on the same pair are merged, and skips and low ratings are excluded rather than used as explicit negatives. With $\mathcal{N}_u$ the neighbors of user $u$, layer $\ell$ propagates and the final embedding averages all $L$ layers,
 \begin{equation}
-    \mathbf{e}^{(\ell)}_u =
-    \sum_{i\in\mathcal{N}_u}
-    \frac{\mathbf{e}^{(\ell-1)}_i}{\sqrt{|\mathcal{N}_u|}\sqrt{|\mathcal{N}_i|}},
-    \quad
-    \mathbf{e}^{(\ell)}_i =
-    \sum_{u\in\mathcal{N}_i}
-    \frac{\mathbf{e}^{(\ell-1)}_u}{\sqrt{|\mathcal{N}_i|}\sqrt{|\mathcal{N}_u|}}.
-    \label{eq:lightgcn_prop}
-\end{equation}
-After $L$ propagation layers, the final embedding is the mean over all layers:
-\begin{equation}
+    \mathbf{e}^{(\ell)}_u=\sum_{i\in\mathcal{N}_u}\frac{\mathbf{e}^{(\ell-1)}_i}{\sqrt{|\mathcal{N}_u|\,|\mathcal{N}_i|}},
+    \qquad
     \mathbf{e}_u=\frac{1}{L+1}\sum_{\ell=0}^{L}\mathbf{e}^{(\ell)}_u,
-    \quad
-    \mathbf{e}_i=\frac{1}{L+1}\sum_{\ell=0}^{L}\mathbf{e}^{(\ell)}_i.
-    \label{eq:lightgcn_avg}
+    \label{eq:lightgcn}
 \end{equation}
-The model is trained with the Bayesian Personalized Ranking (BPR) loss:
+and symmetrically for items. Training minimizes the Bayesian Personalized Ranking (BPR) loss
 \begin{equation}
     \mathcal{L}_{\mathrm{BPR}}=
     -\sum_{(u,i,j)\in\mathcal{D}}\ln\sigma(\hat{y}_{ui}-\hat{y}_{uj})
     +\lambda\|\Theta\|^2,
     \label{eq:bpr}
 \end{equation}
-where $\hat{y}_{ui}=\mathbf{e}_u^\top\mathbf{e}_i$, $\Theta$ denotes the layer-0 embeddings of the batch, and $j$ is a negative item. For every sampled positive pair $(u,i)$, one negative $j$ is drawn uniformly from the catalog and redrawn if $(u,j)$ is itself a positive. BPR is used instead of a pointwise loss such as mean-squared error or binary cross-entropy because the signal is implicit and positive-only, with no reliable negative label for an item the user has simply not seen; it optimizes the pairwise ranking order directly and is the standard objective for LightGCN and related graph collaborative filtering models \cite{he2020lightgcn,wang2019ngcf}. The training settings (embedding size, number of layers, optimizer, batch size, and epoch budget) are listed in Section~\ref{sec:setup}. At inference time, user and item embeddings are $\ell_2$-normalized, and the graph compatibility score is their cosine similarity:
-\begin{equation}
-    S_{\mathit{graph}}(i,u)=\frac{\mathbf{e}_u^\top\mathbf{e}_i}{\|\mathbf{e}_u\|\,\|\mathbf{e}_i\|}.
-    \label{eq:graph_score}
-\end{equation}
-
-The graph stage is a reranker rather than a candidate generator. Semantic retrieval supports cold-start discovery, while LightGCN is strongest when both user and item appear in the interaction graph. If a graph score is unavailable, the candidate can still be ranked using semantic, EMA, KG, and profile signals.
+where $\hat{y}_{ui}=\mathbf{e}_u^\top\mathbf{e}_i$, $\Theta$ are the layer-0 embeddings of the batch, and for every sampled positive pair $(u,i)$ one negative $j$ is drawn uniformly from the catalog and redrawn if $(u,j)$ is observed. BPR suits implicit, positive-only feedback because it optimizes the pairwise ranking order directly, without negative labels \cite{he2020lightgcn,wang2019ngcf}. At inference time the graph score is the cosine similarity of the $\ell_2$-normalized embeddings, $S_{\mathit{graph}}(i,u)=\mathbf{e}_u^\top\mathbf{e}_i/(\|\mathbf{e}_u\|\,\|\mathbf{e}_i\|)$. A graph score exists only when both user and item are in the training graph; otherwise the candidate is ranked by the other signals. The training settings are given in Section~\ref{sec:setup}.
 
 \subsection{Knowledge graph and profile-aware scoring}
-The system includes an in-memory knowledge graph built directly from the processed catalog, without a separate graph database. It is constructed in three steps.
-
-\emph{(i) Entities.} Every catalog item becomes an item node typed by its content type (Movie, Book, or Song). All text is Unicode-normalized and case-folded. Each entry of the creators field becomes a Creator node, each entry of the categories field a Genre/topic node, and every alphanumeric token of at least three characters in the title, description, creators, categories, and content type becomes a term entity of the item. Each user becomes a User node, and the declared profile attributes become Profession, Age Group, and Interest/Skill nodes.
-
-\emph{(ii) Relations.} Items are linked to creators by directed\_by, written\_by, or performed\_by, according to the content type, and to genres by belongs\_to\_genre. Users are linked to items by liked, bookmarked, or completed when the event weight is positive (these edges also form the LightGCN training graph), and to their profile nodes. Each profession and age group is expanded into a fixed list of related topic terms (related\_to\_profession and suitable\_for; e.g., \emph{data analyst} $\rightarrow$ data, analytics, business, statistics, technology, science), and an age group may also carry a list of unsuitable terms (e.g., \emph{family} $\rightarrow$ horror, crime, thriller, war).
-
-\emph{(iii) Paths.} A user reaches an item through a length-two path that passes through a shared entity: a query term, a profile term, a creator, or a genre. Because these entity namespaces are shared by all domains, the same path can end at a movie, a book, or a song (Fig.~\ref{fig:knowledge_graph}):
+The knowledge graph is built in memory from the catalog, without a separate graph database, in three steps (Fig.~\ref{fig:knowledge_graph}).
+\emph{(i) Entities.} Each item becomes a node typed by its content type. After Unicode normalization and case-folding, each creator becomes a Creator node, each category a Genre/topic node, and each alphanumeric token of at least three characters in the title, description, creators, categories, and content type a term entity of the item. Each user becomes a User node, and the declared profile attributes become Profession, Age group, and Interest/skill nodes.
+\emph{(ii) Relations.} Items link to creators by directed\_by, written\_by, or performed\_by, according to the content type, and to genres by belongs\_to\_genre; users link to items by liked, bookmarked, or completed when the event weight is positive (these edges also form the LightGCN graph) and to their profile nodes. Each profession and age group expands into a fixed list of related topic terms (related\_to\_profession and suitable\_for; e.g., \emph{data analyst} $\rightarrow$ data, analytics, business, statistics, technology, science), and an age group may also carry unsuitable terms (e.g., \emph{family} $\rightarrow$ horror, crime, thriller, war).
+\emph{(iii) Paths.} A user reaches an item through a length-two path via a shared entity, and because entity namespaces are shared by all domains, the path can end at an item of any medium:
 \begin{equation}
     P(u,i)=\{u\rightarrow e\rightarrow i:\;
     e\in \mathcal{E}_{\mathit{query}}\cup\mathcal{E}_{\mathit{creator}}\cup\mathcal{E}_{\mathit{genre}}\cup\mathcal{E}_{\mathit{profile}}\}.
     \label{eq:paths}
 \end{equation}
-Paths are not enumerated explicitly; both scores below count them through set intersections, which keeps scoring linear in the number of candidate items.
+The two scores below count such paths through set intersections, without enumerating them.
 
-\begin{figure}[t]
-    \centering
-    \includegraphics[width=0.8\textwidth]{di.png}
-    \caption{Knowledge graph used for profile-aware cross-media recommendation.}
-    \label{fig:knowledge_graph}
+\begin{figure}[!t]
+\centering
+\begin{tikzpicture}[font=\scriptsize, >=Stealth,
+  ent/.style={draw, ellipse, minimum width=17mm, minimum height=6mm, inner sep=1pt},
+  lab/.style={font=\scriptsize, fill=white, inner sep=1pt, align=center}]
+\node[ent] (age) at (-3.7,0.82) {Age group};
+\node[ent] (prof) at (-3.7,0.00) {Profession};
+\node[ent] (int) at (-3.7,-0.82) {Interest/skill};
+\node[ent] (user) at (0,0.00) {User};
+\node[ent] (movie) at (4.3,0.70) {Movie / TV show};
+\node[ent] (book) at (4.3,0.00) {Book};
+\node[ent] (song) at (4.3,-0.70) {Song};
+\node[draw, dashed, rounded corners=3pt, inner sep=3pt, fit=(movie)(book)(song),
+      label={[font=\scriptsize]above:Item (any medium)}] (items) {};
+\node[ent] (creator) at (8.9,0.00) {Creator};
+\node[ent] (genre) at (2.0,-2.01) {Genre / topic};
+\draw[->] (user) -- node[lab]{has} (age);
+\draw[->] (user) -- node[lab]{has} (prof);
+\draw[->] (user) -- node[lab]{has} (int);
+\draw[->] (user) -- node[lab]{liked, bookmarked,\\completed} (items.west);
+\draw[->] (items.east) -- node[above, align=center, font=\scriptsize]{directed\_by,\\written\_by,\\performed\_by} (creator);
+\draw[->] (items.south) -- node[lab]{belongs\_to\_genre} (genre);
+\draw[->, dashed] (prof) -- node[lab, pos=0.55]{related\_to\_profession} (genre);
+\draw[->, dashed] (int) -- node[lab, pos=0.6]{matches} (genre);
+\draw[->, dashed] (age.west) .. controls (-5.9,0.25) and (-5.4,-2.01) .. node[pos=0.42, left, font=\scriptsize]{suitable\_for} (genre.west);
+\end{tikzpicture}
+\caption{Knowledge-graph schema; dashed edges are profile expansions into topic terms.}
+\label{fig:knowledge_graph}
 \end{figure}
 
-The KG score counts the paths through query-term entities. Let $\mathcal{T}(q)$ be the term set of query $q$ and $\mathcal{T}(i)$ the term set of item $i$; then
+The KG score counts paths through query-term entities. With $\mathcal{T}(q)$ and $\mathcal{T}(i)$ the term sets of query $q$ and item $i$,
 \begin{equation}
     S_{\mathit{kg}}(i,q)=
     \min\!\left(1,\frac{|\mathcal{T}(q)\cap\mathcal{T}(i)|}
     {\max(3,|\mathcal{T}(q)|)}\right),
     \label{eq:kg_score}
 \end{equation}
-where the floor of three in the denominator prevents a one- or two-word query from reaching the maximum score through a single shared term.
-The profile score rewards items that align with the user's declared age group, profession, interests, and skills, while penalizing categories flagged as unsuitable:
+where the floor of three prevents a one- or two-word query from reaching the maximum through a single shared term. The profile score rewards items that match the user's declared attributes and penalizes unsuitable ones:
 \begin{equation}
     S_{\mathit{profile}}(i,u)=
     \sum_{t\in\mathcal{P}_{+}(u)} \delta(t,i)w_{+}
     -\sum_{t\in\mathcal{P}_{-}(u)} \delta(t,i)w_{-}
-    +\mathbf{1}[\mathrm{pref}(u)=\mathrm{type}(i)]w_c.
+    +\mathbf{1}[\mathrm{pref}(u)=\mathrm{type}(i)]w_c,
     \label{eq:profile_score}
 \end{equation}
-Here $\mathcal{P}_{+}(u)$ contains the user's interests, skills, and the terms expanded from the profession and age group, $\mathcal{P}_{-}(u)$ the unsuitable terms, $\delta(t,i)=1$ if term $t$ occurs in the text of item $i$, $\mathrm{pref}(u)$ the user's preferred content types, $w_+=0.16$, $w_-=0.25$, and $w_c=0.15$. The score is clipped to $[-1,1]$. The profile relies only on declared, consent-based attributes and avoids scraping private social-media data.
+where $\mathcal{P}_{+}(u)$ holds the user's interests, skills, and the terms expanded from the profession and age group, $\mathcal{P}_{-}(u)$ the unsuitable terms, $\delta(t,i)=1$ if term $t$ occurs in the text of item $i$, $\mathrm{pref}(u)$ the preferred content types, $w_+=0.16$, $w_-=0.25$, and $w_c=0.15$; the score is clipped to $[-1,1]$. The profile uses only declared, consent-based attributes, not private social-media data.
 
-\subsection{Recommendation pipeline and algorithms}
-The recommendation pipeline is an ordered algorithm rather than a single monolithic model. Given a request $(q,u,K,\mathit{type})$, the backend validates it, normalizes the query and the domain filter, reserves exact creator matches when available, embeds the query with Sentence-BERT, retrieves Qdrant candidates, removes duplicates, applies the optional type filter, adds the interaction-preference, LightGCN, EMA, KG, and profile scores when user context is available, and sorts the candidates by the hybrid score
+\subsection{Hybrid ranking}
+Candidates are sorted by the hybrid score
 \begin{equation}
     S(i,u,q)=S_{\mathit{sem}}(i,q)+B_{\mathit{pref}}(i,u)+
     \lambda_gS_{\mathit{graph}}(i,u)+
@@ -384,66 +361,28 @@ The recommendation pipeline is an ordered algorithm rather than a single monolit
     \lambda_pS_{\mathit{profile}}(i,u),
     \label{eq:hybrid}
 \end{equation}
-where $S_{\mathit{sem}}$ is replaced by the fixed lexical score for creator and title matches (Section~\ref{sec:person}). $B_{\mathit{pref}}$ is a short-term preference bonus computed from the user's 500 most recent events in MySQL: with $c_u(g)$ and $c_u(\tau)$ the summed event weights of category $g$ and content type $\tau$,
+where $S_{\mathit{sem}}$ is replaced by the fixed lexical score for creator and title matches. $B_{\mathit{pref}}$ is a short-term preference bonus from the user's 500 most recent events: with $c_u(g)$ and $c_u(\tau)$ the summed event weights of category $g$ and content type $\tau$,
 \begin{equation}
     B_{\mathit{pref}}(i,u)=0.035\!\sum_{g\in\mathrm{cat}(i)}\!\min(c_u(g),3)+0.02\min(c_u(\mathrm{type}(i)),3)-0.15\,\mathbf{1}[i\in\mathcal{I}^{+}_u]-0.35\,\mathbf{1}[i\in\mathcal{I}^{-}_u],
     \label{eq:pref}
 \end{equation}
-where $\mathcal{I}^{+}_u$ and $\mathcal{I}^{-}_u$ are the items the user has already interacted with positively and negatively, which are demoted so that recommendations favor new items. For known users, $5K$ semantic candidates are retrieved before reranking so that personalization can promote items from outside the initial top $K$.
-The deployed system uses $\lambda_g=0.20$, $\lambda_e=0.15$, $\lambda_k=0.08$, and $\lambda_p=0.10$; Section~\ref{sec:results} compares these hand-set weights with weights selected on a validation split. The output is a ranked list $R_u=[i_1,i_2,\ldots,i_K]$ in decreasing order of $S(i,u,q)$, returned to the frontend with item metadata and the individual sub-scores.
-
-The algorithm therefore treats the input both as free text and as possible creator intent: high-confidence name matches are preserved, Qdrant supplies broad candidates, user-specific signals are added only for known users, and the bounded sub-scores are returned so that the frontend can explain each recommendation.
-
-\subsection{Backend API and frontend integration}
-The backend is implemented with FastAPI, Pydantic validation, and OpenAPI documentation \cite{fastapi}. The main endpoints are \emph{GET /health}, \emph{GET /search/suggest}, \emph{POST /recommend}, \emph{POST /recommend/item}, \emph{POST /interactions}, and \emph{GET /interactions/\{user\}/\{item\}}.
-
-The React frontend provides demo profile login, natural-language search, filters, result cards, score-signal display, similar-item search, a detail view, and feedback controls. It turns the backend into an interactive prototype in which feedback immediately affects later recommendations through EMA.
-
-The API response is transparent: each recommendation contains its metadata, final score, and sub-scores,
-\[
-    (id,type,title,creators,categories,S,S_{\mathit{sem}},S_{\mathit{graph}},
-    S_{\mathit{ema}},S_{\mathit{kg}},S_{\mathit{profile}}),
-\]
-so that the score bars show whether a recommendation was driven mainly by semantic similarity, graph compatibility, EMA adaptation, or KG/profile alignment. Table~\ref{tab:modules} summarizes the input, output, and algorithm of each pipeline stage, from raw catalog rows to the final JSON response.
-
-\begin{table}[t]
-\centering
-\caption{Input, output, and algorithm of each pipeline stage, in execution order.}
-\label{tab:modules}
-\footnotesize
-\begin{tabularx}{\linewidth}{p{0.20\linewidth}p{0.18\linewidth}p{0.22\linewidth}X}
-\toprule
-Module & Input & Algorithm / technology & Output \\
-\colrule
-Preprocessing & raw movie/book/music rows & Pandas schema mapper $\phi_d$ & unified catalog and embedding text \\
-Semantic retrieval & query and metadata text & Sentence-BERT + cosine + Qdrant ANN & top-$K$ semantic candidates \\
-Creator and title search & query text & tiered exact/prefix/substring/token matching & creator and title hits above the semantic band \\
-Interaction memory & feedback event & MySQL logging, preference bonus (Eq.~\eqref{eq:pref}) & user-item history, category and type weights \\
-Real-time adaptation & user vector and item vector & EMA update & session-aware user profile vector \\
-Graph learning & positive interactions & LightGCN with BPR loss & user/item collaborative embeddings \\
-KG/profile scoring & query, item, profile & entity overlap and profile weights & KG and profile sub-scores \\
-API/frontend & request and ranked list & FastAPI + React & JSON response and interactive UI \\
-\botrule
-\end{tabularx}
-\end{table}
+where $\mathcal{I}^{+}_u$ and $\mathcal{I}^{-}_u$ are the items the user has already rated positively and negatively, which are demoted so that new items are favored. For known users, $5K$ candidates are retrieved before reranking, so that personalization can promote items from outside the initial top $K$. The deployed system uses the hand-set weights $\lambda_g=0.20$, $\lambda_e=0.15$, $\lambda_k=0.08$, and $\lambda_p=0.10$; Section~\ref{sec:results} compares them with weights selected on a validation split.
 
 \section{Experimental Setup}
 \label{sec:setup}
-The system is evaluated in two ways: an offline ranking benchmark on large public interaction data, which measures every signal of Eq.~\eqref{eq:hybrid} under identical conditions, and scenario tests on the working prototype, which cover the query- and profile-dependent behavior that public logs cannot exercise.
+The system is evaluated with an offline benchmark on public interaction data, which measures every signal of Eq.~\eqref{eq:hybrid} under identical conditions, and with scenario tests of the deployed system for the query- and profile-dependent behavior that public logs cannot exercise.
 
-\emph{Datasets.} The offline benchmark uses three categories of the Amazon Reviews 2023 corpus \cite{hou2024blair}: Movies \& TV, Health \& Household, and Industrial \& Scientific. Ratings of four or five stars are treated as positive interactions and all other ratings are discarded. The two large categories are filtered to a 10-core graph (every user and item has at least ten positives) and a random sample of 50,000 users is drawn, after which items with fewer than five remaining interactions are removed; the smaller Industrial \& Scientific category does not survive a 10-core filter and uses the 5-core graph without sampling. Item text (title, category path, description, and store) is taken from the corpus metadata and embedded with the same all-MiniLM-L6-v2 model used by the system. Table~\ref{tab:datasets} lists the resulting graphs; their densities are about 0.04\%. Metadata is available for every Health \& Household and Industrial \& Scientific item but for only 67.3\% of the Movies \& TV items, and items without text receive no semantic, EMA, or KG signal.
+\emph{Datasets.} The benchmark uses three categories of the Amazon Reviews 2023 corpus \cite{hou2024blair}: Movies \& TV, Health \& Household, and Industrial \& Scientific. Ratings of four or five stars are positive interactions; other ratings are discarded. The two large categories are filtered to a 10-core graph and a random sample of 50,000 users is drawn, after which items with fewer than five remaining interactions are removed; Industrial \& Scientific does not survive a 10-core filter and uses the 5-core graph without sampling. Item text (title, category path, description, and store) comes from the corpus metadata. Table~\ref{tab:datasets} lists the graphs, whose densities are about 0.04\%; metadata covers every Health \& Household and Industrial \& Scientific item but only 67.3\% of the Movies \& TV items, and items without text receive no semantic, EMA, or KG signal.
 
-\emph{Split and candidates.} Each user's positives are ordered by timestamp; the last two form the test set, the one before them the validation set, and the rest the training set. LightGCN is trained on the training set only. Every method ranks the full training catalog, excluding the items already in the user's history, so no negative sampling is involved in evaluation.
+\emph{Split, candidates, and metrics.} Each user's positives are ordered by timestamp; the last two form the test set, the one before them the validation set, and the rest the training set, on which alone LightGCN is trained. Every method ranks the full training catalog minus the user's history, so evaluation involves no negative sampling. Recall@$K$, NDCG@$K$, MAP@$K$, and MRR@$K$ are averaged over test users for $K\in\{10,20\}$, and significance is assessed with a paired Wilcoxon signed-rank test on per-user NDCG@20.
 
-\emph{Offline signals.} Public logs contain neither typed queries nor declared profiles, so each signal is replaced by its closest offline counterpart: $S_{\mathit{sem}}$ uses the user's most recent history item as the query, which corresponds to the system's similar-item endpoint; $S_{\mathit{ema}}$ replays Eq.~\eqref{eq:ema_update} over the history in time order; $S_{\mathit{graph}}$ is Eq.~\eqref{eq:graph_score}; and $S_{\mathit{kg}}$ applies Eq.~\eqref{eq:kg_score} with the entities of the user's history (category-path nodes, store, and main category) in place of the query terms, normalized by the candidate's entity count because a history contains far more entities than a typed query. Entities that occur on a single item or on more than half of the items are dropped as uninformative. The declared-profile score has no offline counterpart and is evaluated only in the prototype scenarios; the preference bonus $B_{\mathit{pref}}$ of Eq.~\eqref{eq:pref} is also omitted offline, because its category term overlaps with the offline KG signal.
+\emph{Offline signals.} Public logs contain neither typed queries nor declared profiles, so each signal uses its closest offline counterpart: $S_{\mathit{sem}}$ takes the user's most recent history item as the query, which corresponds to the system's similar-item endpoint; $S_{\mathit{ema}}$ replays Eq.~\eqref{eq:ema_update} over the history in time order; $S_{\mathit{graph}}$ is the LightGCN cosine score; and $S_{\mathit{kg}}$ applies Eq.~\eqref{eq:kg_score} to the entities of the user's history (category-path nodes, store, and main category), normalized by the candidate's entity count because a history holds far more entities than a query. Entities occurring on a single item or on more than half of the items are dropped. The declared-profile score has no offline counterpart and is covered by the scenarios, and $B_{\mathit{pref}}$ is omitted because its category term overlaps with the offline KG signal.
 
-\emph{Metrics and baselines.} Recall@$K$, NDCG@$K$, MAP@$K$, and MRR@$K$ are reported for $K\in\{10,20\}$ and averaged over test users. The baselines are most-popular ranking and each signal used on its own (semantic-only, EMA-only, LightGCN-only, and KG-only); the hybrid is evaluated with the hand-set weights of Section~\ref{sec:implementation} and with weights selected on the validation set, and the ablation removes one signal at a time from the selected hybrid. Statistical significance is assessed with a paired Wilcoxon signed-rank test on per-user NDCG@20.
+\emph{Baselines and weight selection.} The baselines are most-popular ranking and each signal on its own. The hybrid is evaluated with the hand-set weights and with weights chosen by grid search on 10,000 validation users, with a semantic weight $\lambda_s\in\{0,0.5,1\}$ (fixed to 1 in Eq.~\eqref{eq:hybrid}) and $\lambda_g,\lambda_e,\lambda_k\in\{0,0.05,0.1,0.2,0.4,0.8,1.6\}$, maximizing validation NDCG@20; the test set is used once, for the selected weights. The ablation removes one signal at a time from the selected hybrid.
 
-\emph{Weight selection.} The weights of Eq.~\eqref{eq:hybrid} are chosen by grid search on 10,000 validation users, with a weight $\lambda_s\in\{0,0.5,1\}$ on the semantic score (fixed to 1 in Eq.~\eqref{eq:hybrid}) and $\lambda_g,\lambda_e,\lambda_k\in\{0,0.05,0.1,0.2,0.4,0.8,1.6\}$, maximizing validation NDCG@20; the test set is used only once, for the selected weights.
+\emph{Training settings.} Table~\ref{tab:settings} lists the settings. LightGCN is trained for a fixed 60 epochs of $\lceil|\mathcal{E}|/B\rceil$ mini-batches without early stopping, so that neither validation nor test data influence training. All runs use seed 42 on one NVIDIA T4 GPU, on which a training run takes 17.1, 13.2, and 1.2 minutes on the three graphs.
 
-\emph{Training settings.} Table~\ref{tab:settings} lists the LightGCN and EMA settings. LightGCN is trained for a fixed budget of 60 epochs without early stopping, so that neither the validation nor the test set influences training; one epoch consists of $\lceil|\mathcal{E}|/B\rceil$ mini-batches. All runs use seed 42 on a single NVIDIA T4 GPU, on which one LightGCN training run takes 17.1, 13.2, and 1.2 minutes on the three graphs, respectively.
-
-\begin{table}[t]
+\begin{table}[!t]
 \centering
 \caption{Benchmark graphs after filtering.}
 \label{tab:datasets}
@@ -457,25 +396,17 @@ Health \& Household & 50,000 & 42,621 & 709,212 & 50,000 & 42,621 (100.0\%) \\
 Industrial \& Scientific & 33,959 & 18,804 & 170,834 & 33,926 & 18,804 (100.0\%) \\
 \botrule
 \end{tabular*}
-\end{table}
-
-\begin{table}[t]
-\centering
 \caption{LightGCN and EMA settings.}
 \label{tab:settings}
 \footnotesize
-\begin{tabular*}{\hsize}{@{\extracolsep{\fill}}ll@{}}
+\begin{tabular*}{\hsize}{@{\extracolsep{\fill}}llll@{}}
 \toprule
-Setting & Value \\
+Setting & Value & Setting & Value \\
 \colrule
-Embedding size / propagation layers & 64 / 3 (layer outputs averaged, Eq.~\eqref{eq:lightgcn_avg}) \\
-Initialization & $\mathcal{N}(0,0.1^2)$ \\
-Optimizer / learning rate / $L_2$ weight $\lambda$ & Adam / $10^{-3}$ / $10^{-4}$ \\
-Batch size / epochs & 4096 positive pairs / 60 (fixed budget, no early stopping) \\
-Negative sampling & 1 uniform negative per positive, resampled if observed \\
-Positive interactions & event weight $w>0$ (Amazon: rating $\geq 4$), duplicates merged \\
-EMA smoothing $\alpha$ / step & 0.25 / $\eta=\alpha\min(|w|,1)$ \\
-Text encoder & all-MiniLM-L6-v2, 384 dimensions \\
+Embedding size / layers & 64 / 3, averaged (Eq.~\eqref{eq:lightgcn}) & Negative sampling & 1 uniform per positive, resampled if observed \\
+Initialization & $\mathcal{N}(0,0.1^2)$ & Positive interactions & $w>0$ (Amazon: rating $\geq 4$), merged \\
+Optimizer / lr / $L_2$ $\lambda$ & Adam / $10^{-3}$ / $10^{-4}$ & EMA $\alpha$ / step & 0.25 / $\eta=\alpha\min(|w|,1)$ \\
+Batch / epochs & 4096 / 60, no early stopping & Text encoder & all-MiniLM-L6-v2, 384-d \\
 \botrule
 \end{tabular*}
 \end{table}
@@ -483,9 +414,9 @@ Text encoder & all-MiniLM-L6-v2, 384 dimensions \\
 \section{Results}
 \label{sec:results}
 \subsection{Baselines and ablation}
-Table~\ref{tab:ablation} reports the offline results at $K=20$. Absolute values are low, as is usual for full-catalog ranking on sparse purchase data, so the relevant comparison is between methods evaluated under identical conditions. Every difference between the tuned hybrid and another row of the table is statistically significant (Wilcoxon signed-rank test on per-user NDCG@20, $p<0.01$), and the results at $K=10$ lead to the same conclusions, except that the tuned and hand-set hybrids are tied on Health \& Household.
+Table~\ref{tab:ablation} reports the results at $K=20$. Absolute values are low, as usual for full-catalog ranking on sparse purchase data, so methods are compared under identical conditions. Every difference between the tuned hybrid and another row is significant ($p<0.01$), and the results at $K=10$ lead to the same conclusions, except that the tuned and hand-set hybrids are tied on Health \& Household.
 
-\begin{table}[t]
+\begin{table}[!t]
 \centering
 \caption{Offline ranking results at $K=20$ (R: Recall, N: NDCG); the best value in each column is in bold.}
 \label{tab:ablation}
@@ -513,25 +444,24 @@ Hybrid, tuned & \textbf{0.0368} & \textbf{0.0227} & \textbf{0.0146} & \textbf{0.
 \end{tabular*}
 \end{table}
 
-On Movies \& TV and Industrial \& Scientific, the hybrid with validation-selected weights is the best method on all four measures at both cut-offs. It improves NDCG@20 over the strongest single signal, semantic similarity, by 21.6\% and 26.9\%, and over most-popular ranking by factors of 2.3 and 1.9. The signals are complementary rather than redundant: LightGCN alone is weaker than semantic retrieval on every dataset, yet removing it from the hybrid lowers NDCG@20 by 14.6\%, 21.8\%, and 19.6\% on the three datasets, almost as much as removing the semantic score (31.6\%, 19.2\%, and 21.3\%). EMA and KG contribute smaller but consistent gains; removing either one lowers NDCG@20 by 0.7--3.0\% on every dataset.
+On Movies \& TV and Industrial \& Scientific, the hybrid with validation-selected weights is the best method on all four measures at both cut-offs. It improves NDCG@20 over the strongest single signal, semantic similarity, by 21.6\% and 26.9\%, and over most-popular ranking by factors of 2.3 and 1.9. The signals are complementary: LightGCN alone is weaker than semantic retrieval on every dataset, yet removing it from the hybrid lowers NDCG@20 by 14.6\%, 21.8\%, and 19.6\% on the three datasets, almost as much as removing the semantic score (31.6\%, 19.2\%, and 21.3\%). EMA and KG add smaller but consistent gains; removing either lowers NDCG@20 by 0.7--3.0\% on every dataset.
 
-Health \& Household behaves differently. Its collaborative and textual signals are weak: semantic similarity, EMA, and LightGCN on their own all rank below most-popular, whereas KG overlap alone, which here matches category paths and brands, is the best method and exceeds the tuned hybrid by 14.4\% in NDCG@20. Repeat purchases within a brand or product category dominate this domain, and this is exactly the structure that the entity-overlap score captures. The validation set nevertheless selected a small KG weight, because a single held-out item per user gives a noisy estimate of the best weights. The hybrid still outperforms most-popular ranking and every other single signal on this dataset, but the result shows that the weights should be tuned per domain on more validation data.
+Health \& Household behaves differently. Semantic similarity, EMA, and LightGCN on their own all rank below most-popular, whereas KG overlap alone, which here matches category paths and brands, is the best method and exceeds the tuned hybrid by 14.4\% in NDCG@20. Repeat purchases within a brand or category, which the entity-overlap score captures directly, dominate this domain. The validation set nevertheless selected a small KG weight, because one held-out item per user gives a noisy estimate of the best weights; the hybrid still beats most-popular ranking and every other single signal, but the result shows that weights should be tuned per domain on more validation data.
 
-The selected weights are stable across the three datasets. Relative to the semantic score, they are $\lambda_g=0.8$, $\lambda_e=0.2$--$0.4$, and $\lambda_k=0.05$--$0.1$; the selections $(0.5,0.4,0.2,0.05)$ for Health \& Household and Industrial \& Scientific have the same ratios as $(1,0.8,0.4,0.1)$. The hand-set weights of Section~\ref{sec:implementation} therefore under-weight the graph signal by a factor of four, and the tuned weights improve NDCG@20 over them by 5.4\%, 3.6\%, and 6.5\% ($p<10^{-4}$ on every dataset).
+The selected weights are stable: relative to the semantic score, $\lambda_g=0.8$, $\lambda_e=0.2$--$0.4$, and $\lambda_k=0.05$--$0.1$ (the selection $(0.5,0.4,0.2,0.05)$ has the same ratios as $(1,0.8,0.4,0.1)$). The hand-set weights thus under-weight the graph signal by a factor of four, and the tuned weights improve NDCG@20 over them by 5.4\%, 3.6\%, and 6.5\% ($p<10^{-4}$ on every dataset).
 
 \subsection{Latency}
-Latency was measured on a laptop (AMD Ryzen 5 5600H, 16 GB RAM, NVIDIA RTX 3050 Laptop GPU for query encoding) running MySQL 8.0 and a Qdrant 1.12.6 server with an HNSW index ($m=16$, ef\_construct $=100$) on the same machine, over the full deployed catalog of 120,747 items. After 30 warm-up requests, 700 \emph{POST /recommend} requests with $K=10$ (16 queries, each issued anonymously and for six demo users) were sent through FastAPI's in-process test client, so validation, ranking, and serialization are included and only the network hop is excluded. Table~\ref{tab:latency} reports the end-to-end and per-stage times.
+Latency was measured on a laptop (AMD Ryzen 5 5600H, 16 GB RAM, NVIDIA RTX 3050 Laptop GPU for query encoding) running MySQL 8.0 and a Qdrant 1.12.6 server with an HNSW index ($m=16$, ef\_construct $=100$) over the full 120,747-item catalog. After 30 warm-up requests, 700 requests with $K=10$ (16 queries, each issued anonymously and for six demo users) were sent through FastAPI's in-process test client, so validation, ranking, and serialization are included and only the network hop is excluded (Table~\ref{tab:latency}).
 
-\begin{table}[t]
+\begin{table}[!t]
 \centering
-\caption{Latency of \emph{POST /recommend} and of the EMA update, in milliseconds.}
+\caption{Latency of \emph{POST /recommend} by request type and stage, in milliseconds.}
 \label{tab:latency}
 \footnotesize
 \begin{tabular*}{\hsize}{@{\extracolsep{\fill}}lrrrr@{}}
 \toprule
 Request or stage & Mean & p50 & p95 & p99 \\
 \colrule
-End-to-end, all requests ($n=700$) & 371.3 & 363.2 & 455.3 & 507.2 \\
 End-to-end, anonymous ($n=100$) & 345.9 & 342.1 & 426.6 & 488.8 \\
 End-to-end, personalized ($n=600$) & 375.5 & 369.8 & 458.8 & 508.4 \\
 \colrule
@@ -543,18 +473,16 @@ MySQL preference bonus ($B_{\mathit{pref}}$) & 6.4 & 7.2 & 8.5 & 9.5 \\
 LightGCN rerank & 0.07 & 0.07 & 0.13 & 0.16 \\
 EMA rerank & 6.5 & 7.3 & 9.3 & 10.6 \\
 KG/profile rerank & 13.1 & 13.1 & 22.3 & 28.2 \\
-\colrule
-EMA profile update per event ($n=2000$) & 0.05 & 0.05 & 0.06 & 0.08 \\
 \botrule
 \end{tabular*}
 \end{table}
 
-The median request takes 363~ms (p95 455~ms, p99 507~ms). Personalized requests are 28~ms slower at the median than anonymous ones: the MySQL preference, LightGCN, and EMA stages add about 15~ms, and the rest comes from retrieving $5K$ instead of $K$ candidates. An EMA update takes 0.05~ms, so a like or skip is reflected in the very next request without any retraining, while LightGCN is retrained offline (Section~\ref{sec:setup}). The dominant costs are the lexical title scan (191~ms at the median), which scans the catalog with pandas on every request, and the Qdrant query (83~ms), which returns up to $5K$ candidates with their full payloads. A single API process therefore sustains only 2.7 requests per second, rising to 3.3 with eight concurrent workers, because the CPU-bound scan is serialized by the Python interpreter lock; an inverted index for titles and several worker processes are the main routes to higher throughput. Qdrant's embedded local mode, which was used during development, performs exact search in Python without an HNSW index and took 1.5~s per vector query in the same setting, so the server deployment is required for interactive use.
+Over all 700 requests, the median latency is 363~ms (mean 371~ms, p95 455~ms, p99 507~ms). Personalized requests are 28~ms slower at the median than anonymous ones: the MySQL preference, LightGCN, and EMA stages add about 15~ms, and the rest comes from retrieving $5K$ instead of $K$ candidates. An EMA update takes 0.05~ms (p99 0.08~ms over 2,000 updates), so a like or skip is reflected in the very next request without retraining. The dominant costs are the lexical title scan (191~ms), which scans the catalog with pandas on every request, and the Qdrant query (83~ms), which returns up to $5K$ candidates with their payloads. Because the CPU-bound scan is serialized by the Python interpreter lock, one API process sustains 2.7 requests per second, and 3.3 with eight concurrent workers; an inverted title index and several worker processes are the main routes to higher throughput. Qdrant's embedded local mode, used during development, performs exact search in Python and took 1.5~s per query in the same setting, so the server deployment is required for interactive use.
 
 \subsection{Prototype scenarios}
-The query- and profile-dependent behavior of the deployed system is tested in eight scenarios issued through \emph{POST /recommend} with $K=10$, each as one of the seeded demo users and with the viewer age implied by that user's profile (20 for young adults, 30 for adults, and 8 for the family profile). Five are entertainment and learning scenarios (actor/director search, singer search, profession-sensitive learning, family-friendly recommendation, and cross-media semantic intent); the other three are health, industry, and finance scenarios which, as in the frontend, also declare their domain. PersonHit@5 is the number of top-5 results whose creators include the queried person (person queries only); ProfileAlign@5 is the number of top-5 results with a positive profile score (Eq.~\eqref{eq:profile_score}); Avg.~KG and Avg.~profile are the mean $S_{\mathit{kg}}$ and $S_{\mathit{profile}}$ of the top five; and the last column lists the content types in the top ten. The cross-domain rate is the fraction of scenarios whose top ten contains at least two content types.
+Eight scenarios were issued through the deployed endpoint with $K=10$, each as a seeded demo user with the viewer age implied by its profile (20 for young adults, 30 for adults, 8 for the family profile); the three health, industry, and finance scenarios also declare their domain, as the frontend does. PersonHit@5 counts the top-5 results that credit the queried person, ProfileAlign@5 the top-5 results with a positive profile score (Eq.~\eqref{eq:profile_score}), Avg.~KG and Avg.~profile are the mean $S_{\mathit{kg}}$ and $S_{\mathit{profile}}$ of the top five, and the cross-domain rate is the fraction of scenarios whose top ten contains at least two content types.
 
-\begin{table}[t]
+\begin{table}[!t]
 \centering
 \caption{Prototype scenarios run through the deployed recommendation API.}
 \label{tab:results}
@@ -577,26 +505,22 @@ Mean & & 0.90 & 1.00 & 0.702 & 0.892 & 4/8 cross-domain \\
 \end{tabular*}
 \end{table}
 
-Both person queries place four or five items by the queried person in the top five; the James Cameron query ranks the documentary series \emph{James Cameron's Story of Science Fiction} first, which matches by title but does not list him among its creators. Every scenario places five profile-aligned items in the top five. Four of the five scenarios without a domain filter return at least two content types in the top ten, for example Taylor Swift's albums, concert films, and a book; the family profile receives only age-appropriate films; and the three domain-scoped scenarios stay within their declared domain by design. The cross-domain rate is therefore $4/8=0.50$ overall and $4/5$ among the scenarios without a domain filter, or $3/8$ and $3/5$ if movies and TV shows are counted as one medium. The domain-scoped results are specific: joint-support supplements for the caregiver, nitrile and vinyl exam gloves for the engineer, and budgeting titles for the finance user. EMA scores were available for all 80 returned items, whereas a LightGCN score was available for only one, because the deployed LightGCN model is trained on the demo interaction log (13 users and 347 items) and therefore rarely covers the candidates of a new query; its contribution is measured on the offline benchmark instead (Section~\ref{sec:results}). These scenarios complement, rather than replace, the offline benchmark: they verify that creator matching, the audience and domain constraints, and KG/profile reranking change the ranking in the intended direction, which public logs cannot test.
+Both person queries place four or five of the person's items in the top five; the James Cameron query ranks the series \emph{James Cameron's Story of Science Fiction} first, which matches by title but does not list him as a creator. Every scenario places five profile-aligned items in the top five. Four of the five scenarios without a domain filter return at least two content types; the family profile receives only age-appropriate films; and the three domain-scoped scenarios stay in their declared domain by design. The cross-domain rate is thus $4/8$ overall and $4/5$ without a domain filter ($3/8$ and $3/5$ if movies and TV shows count as one medium). EMA scores were available for all 80 returned items but a LightGCN score for only one, because the deployed LightGCN model is trained on the demo log (13 users and 347 items) and rarely covers the candidates of a new query; its contribution is measured by the benchmark instead.
 
 \section{Conclusion and Future Work}
 \label{sec:conclusion}
-This paper presented a real-time adaptive cross-media recommendation engine built on a unified catalog, Sentence-BERT embeddings, Qdrant vector search, MySQL interaction logging, EMA personalization, LightGCN collaborative filtering, an in-memory knowledge graph, FastAPI services, and a React interface. The final ranking combines semantic similarity, graph compatibility, EMA profile similarity, KG entity overlap, and age- and profession-aware profile matching.
-One extensible schema lets movies, TV shows, books, music, and health, industrial, and finance products be searched together while still supporting person-specific search over actors, directors, authors, and singers, and shared entities (creators, genres, profile attributes, and interaction history) connect the domains.
-On three Amazon Reviews 2023 categories, the hybrid with validation-selected weights outperformed every single signal on two of them, every signal contributed significantly to the hybrid, and validation-based weight selection improved on the hand-set weights on all three. A request over the 120,747-item catalog takes 363~ms at the median on a laptop, and feedback updates the user profile in 0.05~ms, so adaptation is immediate.
-Eight scenarios run through the deployed API confirm person matching, consistent profile alignment, and cross-domain output in four of the five scenarios without a domain filter.
-The work has several limitations: on Health \& Household, entity overlap alone outperformed the hybrid, which shows that the weights must be tuned per domain on more validation data; the deployed LightGCN model covers only the demo interaction log, so its score is rarely available at query time; a single API process sustains only about three requests per second because of the pandas-based lexical scan; metadata quality depends on the source datasets, the knowledge graph is held in memory, the offline benchmark cannot evaluate the declared-profile signal, and multimodal embeddings and fairness- or diversity-aware reranking are not yet included. Future work will enrich metadata through official APIs, move the knowledge graph to a graph database, add domains such as courses and podcasts, and conduct user studies.
+This paper presented a real-time adaptive cross-media recommender that ranks seven content types from one catalog by combining semantic, creator and title, EMA, LightGCN, and KG and profile signals. On three Amazon Reviews 2023 categories, the hybrid with validation-selected weights was the best method on two of them, every signal contributed significantly, and weight selection improved on the hand-set weights; a request takes 363~ms at the median and a feedback update 0.05~ms. Its limitations are the Health \& Household result, where entity overlap alone was best, the demo-only coverage of the deployed LightGCN model, and a throughput of about three requests per second; future work will address them with per-domain weight tuning and an inverted title index, and will add further domains and user studies.
 
 \begin{thebibliography}{00}
 
 \bibitem{reimers2019sbert}
-Reimers N, Gurevych I. Sentence-BERT: sentence embeddings using Siamese BERT-networks. In: Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP); 2019. p. 3982--3992.
-
-\bibitem{he2020lightgcn}
-He X, Deng K, Wang X, Li Y, Zhang Y, Wang M. LightGCN: simplifying and powering graph convolution network for recommendation. In: Proceedings of the 43rd International ACM SIGIR Conference on Research and Development in Information Retrieval; 2020. p. 639--648.
+Reimers N, Gurevych I. Sentence-BERT: sentence embeddings using Siamese BERT-networks. In: Proceedings of EMNLP-IJCNLP; 2019. p. 3982--3992.
 
 \bibitem{qdrant}
 Qdrant. Qdrant vector database documentation; 2026. Available from: \url{https://qdrant.tech/documentation/}
+
+\bibitem{he2020lightgcn}
+He X, Deng K, Wang X, Li Y, Zhang Y, Wang M. LightGCN: simplifying and powering graph convolution network for recommendation. In: Proceedings of the 43rd ACM SIGIR Conference; 2020. p. 639--648.
 
 \bibitem{fastapi}
 Ram\'irez S. FastAPI documentation; 2026. Available from: \url{https://fastapi.tiangolo.com/}
@@ -605,16 +529,16 @@ Ram\'irez S. FastAPI documentation; 2026. Available from: \url{https://fastapi.t
 Zhang S, Yao L, Sun A, Tay Y. Deep learning based recommender system: a survey and new perspectives. ACM Computing Surveys 2019;\textbf{52}(1):1--38.
 
 \bibitem{wang2019ngcf}
-Wang X, He X, Wang M, Feng F, Chua TS. Neural graph collaborative filtering. In: Proceedings of the 42nd International ACM SIGIR Conference on Research and Development in Information Retrieval; 2019. p. 165--174.
+Wang X, He X, Wang M, Feng F, Chua TS. Neural graph collaborative filtering. In: Proceedings of the 42nd ACM SIGIR Conference; 2019. p. 165--174.
 
 \bibitem{kang2018sasrec}
-Kang WC, McAuley J. Self-attentive sequential recommendation. In: Proceedings of the IEEE International Conference on Data Mining (ICDM); 2018. p. 197--206.
+Kang WC, McAuley J. Self-attentive sequential recommendation. In: Proceedings of the IEEE ICDM; 2018. p. 197--206.
 
 \bibitem{wang2019kgat}
-Wang X, He X, Cao Y, Liu M, Chua TS. KGAT: knowledge graph attention network for recommendation. In: Proceedings of the 25th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining; 2019. p. 950--958.
+Wang X, He X, Cao Y, Liu M, Chua TS. KGAT: knowledge graph attention network for recommendation. In: Proceedings of the 25th ACM SIGKDD Conference; 2019. p. 950--958.
 
 \bibitem{wang2018ripplenet}
-Wang H, Zhang F, Wang J, Zhao M, Li W, Xie X, Guo M. RippleNet: propagating user preferences on the knowledge graph for recommender systems. In: Proceedings of the 27th ACM International Conference on Information and Knowledge Management (CIKM); 2018. p. 417--426.
+Wang H, Zhang F, Wang J, Zhao M, Li W, Xie X, Guo M. RippleNet: propagating user preferences on the knowledge graph for recommender systems. In: Proceedings of the 27th ACM CIKM; 2018. p. 417--426.
 
 \bibitem{zang2022cross}
 Zang T, Zhu Y, Liu H, Zhang R, Yu J. A survey on cross-domain recommendation: taxonomies, methods, and future directions. ACM Transactions on Information Systems 2022;\textbf{41}(2).
@@ -623,25 +547,7 @@ Zang T, Zhu Y, Liu H, Zhang R, Yu J. A survey on cross-domain recommendation: ta
 Zhang H, Cheng M, Liu Q, Jiang J, Wang X, Zhang R, Lei C, Chen E. A comprehensive survey on cross-domain recommendation: taxonomy, progress, and prospects. arXiv preprint arXiv:2503.14110; 2025.
 
 \bibitem{wu2024llmrec}
-Wei W, Ren X, Tang J, Wang Q, Su L, Cheng S, Wang J, Yin D, Huang C. LLMRec: large language models with graph augmentation for recommendation. In: Proceedings of the 17th ACM International Conference on Web Search and Data Mining (WSDM); 2024. p. 806--815.
-
-\bibitem{hassanzadeh2025lgkat}
-Hassanzadeh R, Majidnezhad V, Arasteh B. A novel recommender system using light graph convolutional network and personalized knowledge-aware attention sub-network. Scientific Reports 2025;\textbf{15}:15693.
-
-\bibitem{li2025lightkg}
-Li Y, Wang D, Sun Z, Zhang H, Guo H. LightKG: efficient knowledge-aware recommendations with simplified GNN architecture. In: Proceedings of the 31st ACM SIGKDD Conference on Knowledge Discovery and Data Mining V.2; 2025. p. 1577--1588.
-
-\bibitem{xin2025llmcdsr}
-Xin H, Sun Y, Wang C, Xiong H. LLMCDSR: enhancing cross-domain sequential recommendation with large language models. ACM Transactions on Information Systems 2025;\textbf{43}(5):1--33.
-
-\bibitem{liu2025llm4cdsr}
-Liu Q, Zhao X, Wang Y, Zhang Z, Zhong H, Chen C, Li X, Huang W, Tian F. Bridge the domains: large language models enhanced cross-domain sequential recommendation. In: Proceedings of the 48th International ACM SIGIR Conference on Research and Development in Information Retrieval; 2025. p. 1582--1592.
-
-\bibitem{wang2026lecdsr}
-Wang S, Zhu J, Wang K, Ruan S. LeCDSR: large language model enhanced cross-domain sequential recommendation. Information Fusion 2026;\textbf{127}:103762.
-
-\bibitem{li2026kllmrec}
-Li Y, Tian T, Cui J, Li D, Fan R, Yan R. Adaptive knowledge-augmented multi-domain recommendation with large language models. Information Fusion 2026;\textbf{126}:103619.
+Wei W, Ren X, Tang J, Wang Q, Su L, Cheng S, Wang J, Yin D, Huang C. LLMRec: large language models with graph augmentation for recommendation. In: Proceedings of the 17th ACM WSDM; 2024. p. 806--815.
 
 \bibitem{amrita2023densenet}
 Lakshmi Chetana V, Batchu RK, Devarasetty P, Voddelli S, Prasad DV. Effective movie recommendation based on improved densenet model. Multiagent and Grid Systems 2023;\textbf{19}(2):133--147.
@@ -658,6 +564,24 @@ Lakshmi Chetana V, Seetha H. A deep learning framework for enhancing recommender
 \bibitem{amrita2026svd}
 Keerthika T, Ignisha RG, Aiyyappan MR, Thoshi Babu LS, et al. Enhancing recommendation systems through SVD-based collaborative filtering and community detection. PLOS ONE 2026.
 
+\bibitem{hassanzadeh2025lgkat}
+Hassanzadeh R, Majidnezhad V, Arasteh B. A novel recommender system using light graph convolutional network and personalized knowledge-aware attention sub-network. Scientific Reports 2025;\textbf{15}:15693.
+
+\bibitem{li2025lightkg}
+Li Y, Wang D, Sun Z, Zhang H, Guo H. LightKG: efficient knowledge-aware recommendations with simplified GNN architecture. In: Proceedings of the 31st ACM SIGKDD Conference, Vol. 2; 2025. p. 1577--1588.
+
+\bibitem{xin2025llmcdsr}
+Xin H, Sun Y, Wang C, Xiong H. LLMCDSR: enhancing cross-domain sequential recommendation with large language models. ACM Transactions on Information Systems 2025;\textbf{43}(5):1--33.
+
+\bibitem{liu2025llm4cdsr}
+Liu Q, Zhao X, Wang Y, Zhang Z, Zhong H, Chen C, Li X, Huang W, Tian F. Bridge the domains: large language models enhanced cross-domain sequential recommendation. In: Proceedings of the 48th ACM SIGIR Conference; 2025. p. 1582--1592.
+
+\bibitem{wang2026lecdsr}
+Wang S, Zhu J, Wang K, Ruan S. LeCDSR: large language model enhanced cross-domain sequential recommendation. Information Fusion 2026;\textbf{127}:103762.
+
+\bibitem{li2026kllmrec}
+Li Y, Tian T, Cui J, Li D, Fan R, Yan R. Adaptive knowledge-augmented multi-domain recommendation with large language models. Information Fusion 2026;\textbf{126}:103619.
+
 \bibitem{tmdb}
 TMDb. The Movie Database API documentation; 2026. Available from: \url{https://developer.themoviedb.org/}
 
@@ -666,9 +590,6 @@ Internet Archive. Open Library APIs; 2026. Available from: \url{https://openlibr
 
 \bibitem{lastfm}
 Last.fm. Last.fm API documentation; 2026. Available from: \url{https://www.last.fm/api}
-
-\bibitem{musicbrainz}
-MetaBrainz Foundation. MusicBrainz API documentation; 2026. Available from: \url{https://musicbrainz.org/doc/MusicBrainz_API}
 
 \bibitem{hou2024blair}
 Hou Y, Li J, He Z, Yan A, Chen X, McAuley J. Bridging language and items for retrieval and recommendation. arXiv preprint arXiv:2403.03952; 2024.
