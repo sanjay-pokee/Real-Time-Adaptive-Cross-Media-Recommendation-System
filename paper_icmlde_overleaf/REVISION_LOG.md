@@ -83,11 +83,14 @@ p.8: both are too large to fit under their paragraph.
 
 ### Remaining
 
-1. Upload `main.tex` and `response.tex` to Overleaf; compile `main.tex`, then `response.tex`.
-2. Check that the Overleaf paper is 10 pages (p.10 has only ≈2–3 lines spare; if it spills, the next cut is the §2 LLM
-   sentence) and that the letter's page numbers match it.
-3. Build `1343_revised_version.pdf` (letter first, then the paper) from the Overleaf PDFs.
-4. Similarity report (≤10%) and acknowledgement email to info@icmlde.org (see Editorial).
+1. ✅ Overleaf paper compiled (2026-10-14): 10 pages; all 33 labels (sections, tables, figures, equations) on the same
+   pages as the local build; Nimbus Roman/tx fonts (Times).
+2. ✅ The Overleaf compile of `response.tex` printed "??" for every cross-reference (Overleaf does not keep `main.aux` when the
+   main document is switched), so the letter is the local build, whose labels were verified against the Overleaf paper.
+   To compile the letter on Overleaf instead, add a `latexmkrc` that builds `main.tex` as an external document.
+3. ✅ `reports/submission/1343_revised_version.pdf` = letter (6 p.) + Overleaf paper (10 p.); `1343_response_to_reviewers.pdf`
+   = letter alone. No "??" or placeholder in either.
+4. ⏳ Similarity report (≤10%) and acknowledgement email to info@icmlde.org (see Editorial).
 
 ---
 
@@ -196,3 +199,4 @@ p.8: both are too large to fit under their paragraph.
 | 2026-10-14 | Builder: "mean gain from adding a signal" now averages over the 7 non-empty combinations without it (going from the empty combination replaces popularity, it does not add to it); hand-set row label shortened | `scripts/build_ablation_table.py` | 2.3 |
 | 2026-10-14 | Results written: Table 4 (16 combinations + hand-set, inlined), §5.1 rewritten (3 paragraphs), significance/K=10 sentence, training time 17.1 → 17.0 min, abstract, contribution 3 and conclusion now state the 16-combination result; letter Table B inlined and one result sentence added to R2.3 | `main.tex`, `response.tex` | 2.3, 2.4, 3.6 |
 | 2026-10-14 | Page-budget cuts (see "Page budget"): paper back to 10 pages in the faithful build; previews `reports/paper_round2_preview.pdf`, `reports/response_round2_preview.pdf` | `main.tex`, `reports/` | editorial |
+| 2026-10-14 | Overleaf paper checked (10 pages, 33/33 labels on the same pages as the local build); Overleaf letter had unresolved "??" (no `main.aux`), so the locally built letter is used; submission PDFs rebuilt: letter (6 p.) + Overleaf paper (10 p.) | `reports/submission/1343_revised_version.pdf`, `1343_response_to_reviewers.pdf` | all |
