@@ -86,6 +86,63 @@ SCENARIOS = [
         "user_id": "user_finance_planner",
         "expected_terms": ["budget", "finance", "accounting", "bookkeeping", "tax"],
     },
+    # Added for the ICMLDE revision (the reviewers found five scenarios too few):
+    # three more person queries (director, author, band), three more cross-media
+    # intents, and one more query in each vertical.
+    {
+        "name": "Director lookup",
+        "query": "Christopher Nolan",
+        "user_id": "user_action",
+        "expected_terms": ["christopher nolan"],
+    },
+    {
+        "name": "Author lookup",
+        "query": "Stephen King",
+        "user_id": "user_dark_thriller",
+        "expected_terms": ["stephen king"],
+    },
+    {
+        "name": "Band lookup",
+        "query": "Coldplay",
+        "user_id": "user_music_rock",
+        "expected_terms": ["coldplay"],
+    },
+    {
+        "name": "Fantasy cross-media intent",
+        "query": "magic and dragons",
+        "user_id": "user_fantasy",
+        "expected_terms": ["magic", "dragon", "fantasy", "wizard", "sword"],
+    },
+    {
+        "name": "Romance cross-media intent",
+        "query": "romantic drama about love",
+        "user_id": "user_romance",
+        "expected_terms": ["romance", "romantic", "love", "drama"],
+    },
+    {
+        "name": "Action and superhero intent",
+        "query": "action thriller with superheroes",
+        "user_id": "user_action",
+        "expected_terms": ["action", "thriller", "superhero", "hero"],
+    },
+    {
+        "name": "Health vitamin discovery",
+        "query": "vitamin D and immune support",
+        "user_id": "user_health_caregiver",
+        "expected_terms": ["vitamin", "immune", "support", "supplement"],
+    },
+    {
+        "name": "Industrial tool lookup",
+        "query": "torque wrench and fastener tools",
+        "user_id": "user_industry_engineer",
+        "expected_terms": ["torque", "wrench", "fastener", "tool"],
+    },
+    {
+        "name": "Finance investing discovery",
+        "query": "retirement investing basics",
+        "user_id": "user_finance_planner",
+        "expected_terms": ["retirement", "invest", "savings", "finance"],
+    },
 ]
 
 

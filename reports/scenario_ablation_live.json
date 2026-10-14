@@ -3,12 +3,19 @@
     "kg_weight": 0.08,
     "profile_weight": 0.1,
     "profile_align@5": 1.0,
-    "avg_profile@5": 0.89225,
-    "avg_kg@5": 0.70225,
+    "avg_profile@5": 0.8578823529411764,
+    "avg_kg@5": 0.696764705882353,
     "unsuitable@10_total": 0,
-    "person_hit@5": 0.9,
-    "cross_domain": 4,
+    "person_hit@5": 0.8800000000000001,
+    "cross_domain": 8,
     "top5_items_changed_vs_full": 0.0,
+    "mean_precision@10": 0.9470588235294118,
+    "mean_recall@10": 0.10190563675404243,
+    "mean_ndcg@10": 0.943008745366183,
+    "mean_map@10": 0.912577030812325,
+    "mean_mrr@10": 0.9411764705882353,
+    "mean_hit@10": 1.0,
+    "scenarios": 17,
     "per_scenario": [
       {
         "scenario": "Actor/director lookup",
@@ -111,19 +118,139 @@
           "finance"
         ],
         "top_result": "Budgeting 101"
+      },
+      {
+        "scenario": "Director lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.64,
+        "avg_kg@5": 0.667,
+        "profile_negative@10": 0,
+        "person_hits@5": 5,
+        "domains@10": [
+          "movie"
+        ],
+        "top_result": "The Odyssey"
+      },
+      {
+        "scenario": "Author lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.834,
+        "avg_kg@5": 0.667,
+        "profile_negative@10": 0,
+        "person_hits@5": 4,
+        "domains@10": [
+          "book",
+          "show"
+        ],
+        "top_result": "Carrie"
+      },
+      {
+        "scenario": "Band lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.502,
+        "avg_kg@5": 0.333,
+        "profile_negative@10": 0,
+        "person_hits@5": 4,
+        "domains@10": [
+          "movie",
+          "music"
+        ],
+        "top_result": "Coldplay: A Head Full of Dreams"
+      },
+      {
+        "scenario": "Fantasy cross-media intent",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.958,
+        "avg_kg@5": 1.0,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "book",
+          "movie",
+          "show"
+        ],
+        "top_result": "Mighty Jack and the Goblin King"
+      },
+      {
+        "scenario": "Romance cross-media intent",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.992,
+        "avg_kg@5": 0.55,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "movie",
+          "show"
+        ],
+        "top_result": "The Interest of Love"
+      },
+      {
+        "scenario": "Action and superhero intent",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.97,
+        "avg_kg@5": 0.65,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "movie"
+        ],
+        "top_result": "Hero"
+      },
+      {
+        "scenario": "Health vitamin discovery",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.938,
+        "avg_kg@5": 1.0,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "health"
+        ],
+        "top_result": "Optimum Nutrition Serious Mass Weight Gainer Protein Powder, Vitamin C, Zinc and Vitamin D for Immune Support, Banana, 6 Pound (Packaging May Vary)"
+      },
+      {
+        "scenario": "Industrial tool lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.854,
+        "avg_kg@5": 0.76,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "industrial"
+        ],
+        "top_result": "M12-1.75 x 30MM Socket Head Cap Screws, Allen Socket Drive, Din 912, Stainless Steel 304, Full Thread, Bright Finish, Machine Thread, Quantity 10 by Fastenere"
+      },
+      {
+        "scenario": "Finance investing discovery",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.758,
+        "avg_kg@5": 0.6,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "finance"
+        ],
+        "top_result": "Seven steps to financial freedom in retirement"
       }
     ]
   },
   "w/o profile score": {
     "kg_weight": 0.08,
     "profile_weight": 0.0,
-    "profile_align@5": 0.925,
-    "avg_profile@5": 0.7915,
-    "avg_kg@5": 0.691875,
+    "profile_align@5": 0.9647058823529411,
+    "avg_profile@5": 0.7950588235294118,
+    "avg_kg@5": 0.684235294117647,
     "unsuitable@10_total": 0,
-    "person_hit@5": 0.9,
-    "cross_domain": 4,
-    "top5_items_changed_vs_full": 1.0,
+    "person_hit@5": 0.8800000000000001,
+    "cross_domain": 9,
+    "top5_items_changed_vs_full": 0.7058823529411765,
+    "mean_precision@10": 0.9235294117647059,
+    "mean_recall@10": 0.09790647353319357,
+    "mean_ndcg@10": 0.9159317624274063,
+    "mean_map@10": 0.8719491129785247,
+    "mean_mrr@10": 0.9117647058823529,
+    "mean_hit@10": 1.0,
+    "scenarios": 17,
     "per_scenario": [
       {
         "scenario": "Actor/director lookup",
@@ -226,6 +353,119 @@
           "finance"
         ],
         "top_result": "Budgeting 101"
+      },
+      {
+        "scenario": "Director lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.64,
+        "avg_kg@5": 0.667,
+        "profile_negative@10": 0,
+        "person_hits@5": 5,
+        "domains@10": [
+          "movie"
+        ],
+        "top_result": "The Odyssey"
+      },
+      {
+        "scenario": "Author lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.834,
+        "avg_kg@5": 0.667,
+        "profile_negative@10": 0,
+        "person_hits@5": 4,
+        "domains@10": [
+          "book",
+          "show"
+        ],
+        "top_result": "Stephen King's Kingdom Hospital"
+      },
+      {
+        "scenario": "Band lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.502,
+        "avg_kg@5": 0.333,
+        "profile_negative@10": 0,
+        "person_hits@5": 4,
+        "domains@10": [
+          "movie",
+          "music"
+        ],
+        "top_result": "Coldplay: A Head Full of Dreams"
+      },
+      {
+        "scenario": "Fantasy cross-media intent",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.958,
+        "avg_kg@5": 1.0,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "book",
+          "show"
+        ],
+        "top_result": "Mighty Jack and the Goblin King"
+      },
+      {
+        "scenario": "Romance cross-media intent",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.984,
+        "avg_kg@5": 0.55,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "movie",
+          "show"
+        ],
+        "top_result": "The Interest of Love"
+      },
+      {
+        "scenario": "Action and superhero intent",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.908,
+        "avg_kg@5": 0.6,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "movie",
+          "show"
+        ],
+        "top_result": "Hero"
+      },
+      {
+        "scenario": "Health vitamin discovery",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.938,
+        "avg_kg@5": 1.0,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "health"
+        ],
+        "top_result": "Optimum Nutrition Serious Mass Weight Gainer Protein Powder, Vitamin C, Zinc and Vitamin D for Immune Support, Banana, 6 Pound (Packaging May Vary)"
+      },
+      {
+        "scenario": "Industrial tool lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.662,
+        "avg_kg@5": 0.68,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "industrial"
+        ],
+        "top_result": "Hard-to-Find Fastener 014973253530 Grade 8 Coarse Hex Cap Screws, 1/2-13 x 2-3/4, Piece-25, Yellow"
+      },
+      {
+        "scenario": "Finance investing discovery",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.758,
+        "avg_kg@5": 0.6,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "finance"
+        ],
+        "top_result": "The smartest retirement book you'll ever read"
       }
     ]
   },
@@ -233,12 +473,19 @@
     "kg_weight": 0.0,
     "profile_weight": 0.1,
     "profile_align@5": 1.0,
-    "avg_profile@5": 0.887,
-    "avg_kg@5": 0.6793750000000001,
+    "avg_profile@5": 0.8550588235294118,
+    "avg_kg@5": 0.6638235294117647,
     "unsuitable@10_total": 0,
-    "person_hit@5": 0.9,
-    "cross_domain": 4,
-    "top5_items_changed_vs_full": 0.375,
+    "person_hit@5": 0.8800000000000001,
+    "cross_domain": 9,
+    "top5_items_changed_vs_full": 0.47058823529411764,
+    "mean_precision@10": 0.9294117647058824,
+    "mean_recall@10": 0.09786591390692155,
+    "mean_ndcg@10": 0.9306024679610386,
+    "mean_map@10": 0.8928968253968255,
+    "mean_mrr@10": 0.9411764705882353,
+    "mean_hit@10": 1.0,
+    "scenarios": 17,
     "per_scenario": [
       {
         "scenario": "Actor/director lookup",
@@ -341,19 +588,140 @@
           "finance"
         ],
         "top_result": "Bookkeeping for dummies"
+      },
+      {
+        "scenario": "Director lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.64,
+        "avg_kg@5": 0.667,
+        "profile_negative@10": 0,
+        "person_hits@5": 5,
+        "domains@10": [
+          "movie"
+        ],
+        "top_result": "The Odyssey"
+      },
+      {
+        "scenario": "Author lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.834,
+        "avg_kg@5": 0.667,
+        "profile_negative@10": 0,
+        "person_hits@5": 4,
+        "domains@10": [
+          "book",
+          "show"
+        ],
+        "top_result": "Carrie"
+      },
+      {
+        "scenario": "Band lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.502,
+        "avg_kg@5": 0.333,
+        "profile_negative@10": 0,
+        "person_hits@5": 4,
+        "domains@10": [
+          "movie",
+          "music"
+        ],
+        "top_result": "Coldplay: A Head Full of Dreams"
+      },
+      {
+        "scenario": "Fantasy cross-media intent",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.958,
+        "avg_kg@5": 1.0,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "book",
+          "movie",
+          "show"
+        ],
+        "top_result": "Mighty Jack and the Goblin King"
+      },
+      {
+        "scenario": "Romance cross-media intent",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.984,
+        "avg_kg@5": 0.5,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "movie",
+          "show"
+        ],
+        "top_result": "The Interest of Love"
+      },
+      {
+        "scenario": "Action and superhero intent",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.94,
+        "avg_kg@5": 0.55,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "movie",
+          "show"
+        ],
+        "top_result": "Hero"
+      },
+      {
+        "scenario": "Health vitamin discovery",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.938,
+        "avg_kg@5": 1.0,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "health"
+        ],
+        "top_result": "Optimum Nutrition Serious Mass Weight Gainer Protein Powder, Vitamin C, Zinc and Vitamin D for Immune Support, Banana, 6 Pound (Packaging May Vary)"
+      },
+      {
+        "scenario": "Industrial tool lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.822,
+        "avg_kg@5": 0.6,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "industrial"
+        ],
+        "top_result": "M12-1.75 x 30MM Socket Head Cap Screws, Allen Socket Drive, Din 912, Stainless Steel 304, Full Thread, Bright Finish, Machine Thread, Quantity 10 by Fastenere"
+      },
+      {
+        "scenario": "Finance investing discovery",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.822,
+        "avg_kg@5": 0.533,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "finance"
+        ],
+        "top_result": "Seven steps to financial freedom in retirement"
       }
     ]
   },
   "w/o KG and profile": {
     "kg_weight": 0.0,
     "profile_weight": 0.0,
-    "profile_align@5": 0.925,
-    "avg_profile@5": 0.78725,
-    "avg_kg@5": 0.671,
+    "profile_align@5": 0.9647058823529411,
+    "avg_profile@5": 0.7855294117647058,
+    "avg_kg@5": 0.6504705882352941,
     "unsuitable@10_total": 0,
-    "person_hit@5": 0.9,
-    "cross_domain": 4,
-    "top5_items_changed_vs_full": 1.125,
+    "person_hit@5": 0.8800000000000001,
+    "cross_domain": 9,
+    "top5_items_changed_vs_full": 0.9411764705882353,
+    "mean_precision@10": 0.9058823529411765,
+    "mean_recall@10": 0.09380586537549197,
+    "mean_ndcg@10": 0.9010610720120313,
+    "mean_map@10": 0.8485037348272642,
+    "mean_mrr@10": 0.9117647058823529,
+    "mean_hit@10": 1.0,
+    "scenarios": 17,
     "per_scenario": [
       {
         "scenario": "Actor/director lookup",
@@ -456,6 +824,120 @@
           "finance"
         ],
         "top_result": "Budgeting 101"
+      },
+      {
+        "scenario": "Director lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.64,
+        "avg_kg@5": 0.667,
+        "profile_negative@10": 0,
+        "person_hits@5": 5,
+        "domains@10": [
+          "movie"
+        ],
+        "top_result": "The Odyssey"
+      },
+      {
+        "scenario": "Author lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.834,
+        "avg_kg@5": 0.667,
+        "profile_negative@10": 0,
+        "person_hits@5": 4,
+        "domains@10": [
+          "book",
+          "show"
+        ],
+        "top_result": "Stephen King's Kingdom Hospital"
+      },
+      {
+        "scenario": "Band lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.502,
+        "avg_kg@5": 0.333,
+        "profile_negative@10": 0,
+        "person_hits@5": 4,
+        "domains@10": [
+          "movie",
+          "music"
+        ],
+        "top_result": "Coldplay: A Head Full of Dreams"
+      },
+      {
+        "scenario": "Fantasy cross-media intent",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.958,
+        "avg_kg@5": 1.0,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "book",
+          "movie",
+          "show"
+        ],
+        "top_result": "Mighty Jack and the Goblin King"
+      },
+      {
+        "scenario": "Romance cross-media intent",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.984,
+        "avg_kg@5": 0.5,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "movie",
+          "show"
+        ],
+        "top_result": "The Interest of Love"
+      },
+      {
+        "scenario": "Action and superhero intent",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.94,
+        "avg_kg@5": 0.55,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "movie",
+          "show"
+        ],
+        "top_result": "Hero"
+      },
+      {
+        "scenario": "Health vitamin discovery",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.938,
+        "avg_kg@5": 1.0,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "health"
+        ],
+        "top_result": "Optimum Nutrition Serious Mass Weight Gainer Protein Powder, Vitamin C, Zinc and Vitamin D for Immune Support, Banana, 6 Pound (Packaging May Vary)"
+      },
+      {
+        "scenario": "Industrial tool lookup",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.502,
+        "avg_kg@5": 0.44,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "industrial"
+        ],
+        "top_result": "Hard-to-Find Fastener 014973253530 Grade 8 Coarse Hex Cap Screws, 1/2-13 x 2-3/4, Piece-25, Yellow"
+      },
+      {
+        "scenario": "Finance investing discovery",
+        "profile_aligned@5": 5,
+        "avg_profile@5": 0.758,
+        "avg_kg@5": 0.533,
+        "profile_negative@10": 0,
+        "person_hits@5": null,
+        "domains@10": [
+          "finance"
+        ],
+        "top_result": "The smartest retirement book you'll ever read"
       }
     ]
   }

@@ -1,9 +1,12 @@
 """Baselines and ablation for the hybrid ranker on an Amazon Reviews 2023 category.
 
 Every signal of the hybrid score is run alone, the full hybrid is run with the
-hand-set weights from the paper and with weights selected on a validation
-split, and each signal is removed from the tuned hybrid in turn. All variants
-share one chronological split, one candidate set (the whole training
+hand-set weights from the paper, and all 16 on/off combinations of the four
+signals (semantic, EMA, LightGCN, KG) are run, each with its own weights
+selected on a validation split. The empty combination is popularity alone and
+the four-signal one is the tuned hybrid; removing one signal from the tuned
+hybrid with the weights left unchanged is kept as a fixed-weight variant. All
+variants share one chronological split, one candidate set (the whole training
 catalogue) and one metric code path, so every number is directly comparable.
 
 Amazon has no typed queries or declared profiles, so the online signals are
@@ -48,11 +51,19 @@ from models.graph.evaluate_lightgcn import train_for_evaluation
 from models.graph.lightgcn import LightGCNConfig
 
 SIGNALS = ("sem", "ema", "graph", "kg", "pop")
+# The four signals of the hybrid score, in the order the paper names them; the 16
+# on/off combinations of these are the full-factorial ablation.
+CORE_SIGNALS = ("sem", "ema", "graph", "kg")
+SIGNAL_LETTERS = {"sem": "S", "ema": "E", "graph": "G", "kg": "K"}
 # Eq. (hybrid) as deployed: backend.settings defaults.
 PAPER_WEIGHTS = {"sem": 1.0, "graph": 0.20, "ema": 0.15, "kg": 0.08}
 EMA_ALPHA = 0.25  # backend.settings.ema_alpha
-SEM_GRID = (0.0, 0.5, 1.0)
-AUX_GRID = (0.0, 0.05, 0.1, 0.2, 0.4, 0.8, 1.6)
+# Per-combination tuning: the first signal of a combination has weight 1 (scores
+# are compared by rank, so only the ratios matter); every other member takes a
+# positive weight from this grid, so a combination never silently drops a signal.
+RATIO_GRID = (0.05, 0.1, 0.2, 0.4, 0.8, 1.6, 3.2)
+FULL_SUBSET = "S+E+G+K"
+COMBINATION_PREFIX = "Combination "
 # Breaks exact score ties (frequent for KG-only) the same way in every variant.
 TIE_BREAK = 1e-6
 MAX_ENTITY_SHARE = 0.5  # an entity on more than half the items carries no signal
@@ -290,7 +301,24 @@ def _relevant_mask(batch: list[str], relevant: dict[str, np.ndarray], num_items:
     return mask
 
 
-def grid_search(
+def signal_subsets() -> list[tuple[str, ...]]:
+    """The 15 non-empty combinations of the four signals, smallest first.
+
+    The 16th combination, the empty one, ranks by popularity alone (the tie-break
+    every variant shares), so it is the "Most popular" baseline.
+    """
+    return [
+        subset
+        for size in range(1, len(CORE_SIGNALS) + 1)
+        for subset in itertools.combinations(CORE_SIGNALS, size)
+    ]
+
+
+def subset_label(subset: tuple[str, ...]) -> str:
+    return "+".join(SIGNAL_LETTERS[s] for s in subset) if subset else "none"
+
+
+def tune_subsets(
     users: list[str],
     user_rows: dict[str, int],
     histories: dict[str, np.ndarray],
@@ -298,27 +326,38 @@ def grid_search(
     ctx: Context,
     batch_size: int,
     select_by: str = "ndcg@20",
-) -> tuple[dict[str, float], list[dict]]:
-    combos = [
-        dict(zip(("sem", "graph", "ema", "kg"), values))
-        for values in itertools.product(SEM_GRID, AUX_GRID, AUX_GRID, AUX_GRID)
-        if any(values)
-    ]
+) -> tuple[dict[str, dict[str, float]], dict[str, list[dict]]]:
+    """Validation-selected weights for every combination, in one pass over the users.
+
+    All combinations share the signal matrices of a batch, so tuning the 15 of them
+    costs less than the single four-signal grid search.
+    """
+    combos: list[tuple[str, dict[str, float]]] = []
+    for subset in signal_subsets():
+        first, rest = subset[0], subset[1:]
+        for ratios in itertools.product(RATIO_GRID, repeat=len(rest)):
+            combos.append((subset_label(subset), {first: 1.0, **dict(zip(rest, ratios))}))
     totals = np.zeros((len(combos), 2))
     for batch in _batches(users, batch_size):
         signals, seen = batch_signals([user_rows[u] for u in batch], [histories[u] for u in batch], ctx)
         mask = _relevant_mask(batch, relevant, ctx.num_items, ctx.device)
-        for idx, weights in enumerate(combos):
+        for idx, (_, weights) in enumerate(combos):
             metrics = per_user_metrics(combine(signals, weights, seen), mask)
             totals[idx, 0] += float(metrics[select_by].sum())
             totals[idx, 1] += float(metrics["recall@20"].sum())
     totals /= len(users)
-    order = np.argsort(-totals[:, 0], kind="stable")
-    leaderboard = [
-        {"weights": combos[i], select_by: float(totals[i, 0]), "recall@20": float(totals[i, 1])}
-        for i in order[:15]
-    ]
-    return combos[int(order[0])], leaderboard
+
+    chosen: dict[str, dict[str, float]] = {}
+    boards: dict[str, list[dict]] = {}
+    for label in dict.fromkeys(label for label, _ in combos):
+        members = [i for i, (name, _) in enumerate(combos) if name == label]
+        order = sorted(members, key=lambda i: -totals[i, 0])  # stable: first grid entry wins ties
+        chosen[label] = combos[order[0]][1]
+        boards[label] = [
+            {"weights": combos[i][1], select_by: float(totals[i, 0]), "recall@20": float(totals[i, 1])}
+            for i in order[:5]
+        ]
+    return chosen, boards
 
 
 def evaluate_configs(
@@ -445,10 +484,15 @@ def run(args: argparse.Namespace) -> dict:
     test_users = sorted(u for u in test_rel if u in user_rows and u in test_hist)
     print(f"users: validation={len(val_users):,} test={len(test_users):,}", flush=True)
 
+    # Every combination gets its own validation-selected weights; the four-signal
+    # one is the tuned hybrid, so the headline row and the full-factorial row are
+    # the same run.
     stage = time.perf_counter()
-    tuned, leaderboard = grid_search(val_users, user_rows, train_hist, val_rel, ctx, args.eval_batch)
-    timings["grid_search_s"] = time.perf_counter() - stage
+    subset_weights, subset_boards = tune_subsets(val_users, user_rows, train_hist, val_rel, ctx, args.eval_batch)
+    timings["weight_tuning_s"] = time.perf_counter() - stage
+    tuned = subset_weights[FULL_SUBSET]
     print(f"tuned weights: {tuned}", flush=True)
+    print(f"combination weights: {subset_weights}", flush=True)
 
     configs: dict[str, dict[str, float]] = {
         "Popularity": {"pop": 1.0},
@@ -461,6 +505,11 @@ def run(args: argparse.Namespace) -> dict:
     }
     for signal in ("sem", "ema", "graph", "kg"):
         configs[f"Hybrid (tuned) w/o {signal}"] = {**tuned, signal: 0.0}
+    # Full-factorial ablation: all 16 on/off combinations of the four signals, each
+    # with its own validation-selected weights (the empty one is popularity alone).
+    configs[COMBINATION_PREFIX + "none"] = {}
+    for label, weights in subset_weights.items():
+        configs[COMBINATION_PREFIX + label] = weights
 
     stage = time.perf_counter()
     per_user = evaluate_configs(configs, test_users, user_rows, test_hist, test_rel, ctx, args.eval_batch)
@@ -468,9 +517,23 @@ def run(args: argparse.Namespace) -> dict:
     timings["rerank_ms_per_user"] = 1000.0 * timings["test_eval_s"] / max(1, len(test_users) * len(configs))
     timings["total_s"] = time.perf_counter() - clock
 
-    results = {
+    all_results = {
         name: {metric: float(values.mean()) for metric, values in metrics.items()}
         for name, metrics in per_user.items()
+    }
+    results = {n: m for n, m in all_results.items() if not n.startswith(COMBINATION_PREFIX)}
+    factorial_users = {n: m for n, m in per_user.items() if n.startswith(COMBINATION_PREFIX)}
+    factorial_tests = paired_tests(factorial_users, COMBINATION_PREFIX + FULL_SUBSET, "ndcg@20")
+    factorial = {
+        "full": FULL_SUBSET,
+        "order": ["none"] + [subset_label(s) for s in signal_subsets()],
+        "weights": {"none": {}, **subset_weights},
+        "results": {
+            n[len(COMBINATION_PREFIX):]: m for n, m in all_results.items() if n.startswith(COMBINATION_PREFIX)
+        },
+        "wilcoxon_vs_full_ndcg@20": {n[len(COMBINATION_PREFIX):]: p for n, p in factorial_tests.items()},
+        "validation_leaderboard": subset_boards,
+        "grid": {"first signal": 1.0, "others": RATIO_GRID},
     }
     report = {
         "dataset": args.dataset.name,
@@ -486,15 +549,18 @@ def run(args: argparse.Namespace) -> dict:
                      f"previous {args.val_per_user} -> validation, rest -> train",
             "candidates": "full training catalogue minus the user's history",
             "val_users": len(val_users), "test_users": len(test_users),
-            "grid": {"sem": SEM_GRID, "graph/ema/kg": AUX_GRID},
+            "grid": {"first signal of a combination": 1.0, "other signals": RATIO_GRID},
             "selected_by": "validation NDCG@20",
             "ema_alpha": EMA_ALPHA, "encoder": args.encoder,
         },
         "lightgcn": config.__dict__,
         "tuned_weights": tuned,
-        "validation_leaderboard": leaderboard,
+        "validation_leaderboard": subset_boards[FULL_SUBSET],
         "results": results,
-        "wilcoxon_vs_tuned_ndcg@20": paired_tests(per_user, "Hybrid (tuned)", "ndcg@20"),
+        "wilcoxon_vs_tuned_ndcg@20": paired_tests(
+            {n: m for n, m in per_user.items() if not n.startswith(COMBINATION_PREFIX)}, "Hybrid (tuned)", "ndcg@20"
+        ),
+        "factorial": factorial,
         "timings": timings,
     }
     if args.report:
@@ -520,6 +586,22 @@ def markdown_table(report: dict) -> str:
         p = pvalues.get(name)
         cells = " | ".join(f"{metrics[c]:.4f}" for c in columns)
         lines.append(f"| {name} | {cells} | {'--' if p is None else f'{p:.1e}'} |")
+    factorial = report.get("factorial")
+    if factorial:
+        fp = factorial["wilcoxon_vs_full_ndcg@20"]
+        lines += [
+            "",
+            "#### All 16 signal combinations (S semantic, E EMA, G LightGCN, K KG; each tuned on validation)",
+            "",
+            "| Combination | weights | " + " | ".join(c.upper() for c in columns) + " | p vs full (NDCG@20) |",
+            "|---" * (len(columns) + 3) + "|",
+        ]
+        for label in factorial["order"]:
+            metrics = factorial["results"][label]
+            weights = ", ".join(f"{k}={v:g}" for k, v in factorial["weights"][label].items()) or "popularity"
+            p = fp.get(label)
+            cells = " | ".join(f"{metrics[c]:.4f}" for c in columns)
+            lines.append(f"| {label} | {weights} | {cells} | {'--' if p is None else f'{p:.1e}'} |")
     return "\n".join(lines) + "\n"
 
 

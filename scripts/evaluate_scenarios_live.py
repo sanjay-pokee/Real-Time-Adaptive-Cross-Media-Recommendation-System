@@ -16,6 +16,17 @@ Metrics per scenario (top_k = 10):
   avg_profile@5     mean profile_score of the top 5
   domains@10        content types present in the top 10
   personalised@10   top-10 results carrying an EMA score / a LightGCN score
+  precision@10, recall@10, ndcg@10, map@10, mrr@10, hit@10
+                    standard rank metrics against rule-based relevance judgments
+                    (see ``relevant_items``): the catalogue holds no human labels
+                    for a typed query, so an item counts as relevant when the
+                    queried person is among its creators, or when its title,
+                    categories, creators or description contain at least two of
+                    the scenario's intent terms (and, for a declared vertical, it
+                    belongs to that vertical). The rule reads catalogue metadata
+                    only, never a ranker score. recall@10 divides by the size of
+                    the whole relevant set in the catalogue, so it is bounded by
+                    10 / |relevant|.
 
 Each request declares what the frontend would: the viewer age implied by the
 demo profile's age group (an undeclared viewer is capped at the teen ceiling,
@@ -33,7 +44,9 @@ Usage:
 from __future__ import annotations
 
 import json
+import math
 import os
+import re
 import unicodedata
 from pathlib import Path
 
@@ -44,8 +57,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 REPORT_DIR = PROJECT_ROOT / "reports"
 JSON_PATH = REPORT_DIR / "scenario_evaluation_live.json"
 MD_PATH = REPORT_DIR / "scenario_evaluation_live.md"
-PERSON_QUERIES = {"James Cameron", "Taylor Swift"}
+CATALOG_PATH = PROJECT_ROOT / "data" / "processed" / "content_catalog.csv"
+PERSON_QUERIES = {"James Cameron", "Taylor Swift", "Christopher Nolan", "Stephen King", "Coldplay"}
 TOP_K = 10
+RANK_METRICS = ("precision@10", "recall@10", "ndcg@10", "map@10", "mrr@10", "hit@10")
+# Intent terms an item must contain to count as relevant to a topical query.
+MIN_TERMS = 2
 # Declared viewer age per profile age group; 8 matches the frontend's "Kids" chip.
 AGE_BY_GROUP = {"young_adult": 20, "adult": 30, "family": 8, "teen": 15}
 # Vertical scenarios declare their domain, as the frontend's query chips do.
@@ -53,6 +70,9 @@ DOMAIN_BY_SCENARIO = {
     "Health product discovery": "health",
     "Industrial supply lookup": "industry",
     "Finance literacy discovery": "finance",
+    "Health vitamin discovery": "health",
+    "Industrial tool lookup": "industry",
+    "Finance investing discovery": "finance",
 }
 
 
@@ -65,10 +85,52 @@ def _mean(values: list[float]) -> float:
     return sum(values) / len(values) if values else 0.0
 
 
-def evaluate(client) -> list[dict]:
+def load_relevance_index():
+    """Normalised searchable text, creators and vertical of every catalogue item."""
+    import pandas as pd
+
+    catalog = pd.read_csv(CATALOG_PATH, dtype=str, keep_default_na=False)
+    text = (catalog["title"] + " " + catalog["categories"] + " " + catalog["creators"] + " "
+            + catalog["description"]).map(_norm)
+    return catalog["global_id"], text, catalog["creators"].map(_norm), catalog["domain"]
+
+
+def relevant_items(index, scenario: dict, person: str | None, domain: str | None) -> set[str]:
+    """Catalogue items judged relevant to a scenario by the metadata rule above."""
+    ids, text, creators, vertical = index
+    if person:
+        mask = creators.str.contains(re.escape(_norm(person)))
+    else:
+        matched = sum(text.str.contains(_norm(t), regex=False).astype(int) for t in scenario["expected_terms"])
+        mask = matched >= MIN_TERMS
+    if domain:
+        mask = mask & (vertical == domain)
+    return set(ids[mask])
+
+
+def rank_metrics(ranked_ids: list[str], relevant: set[str], k: int = TOP_K) -> dict[str, float]:
+    flags = [1 if g in relevant else 0 for g in ranked_ids[:k]]
+    hits, total = sum(flags), len(relevant)
+    first = next((i for i, f in enumerate(flags) if f), None)
+    best = min(total, k)
+    dcg = sum(f / math.log2(i + 2) for i, f in enumerate(flags))
+    ideal = sum(1.0 / math.log2(i + 2) for i in range(best))
+    precision_sum = sum(sum(flags[: i + 1]) / (i + 1) for i, f in enumerate(flags) if f)
+    return {
+        f"precision@{k}": hits / k,
+        f"recall@{k}": hits / total if total else 0.0,
+        f"ndcg@{k}": dcg / ideal if ideal else 0.0,
+        f"map@{k}": precision_sum / best if best else 0.0,
+        f"mrr@{k}": 1.0 / (first + 1) if first is not None else 0.0,
+        f"hit@{k}": 1.0 if hits else 0.0,
+    }
+
+
+def evaluate(client, index=None) -> list[dict]:
     from backend.mysql_store import MySQLStore
 
     store = MySQLStore()
+    index = index if index is not None else load_relevance_index()
     rows = []
     for scenario in SCENARIOS:
         user_id = scenario["user_id"]
@@ -87,6 +149,7 @@ def evaluate(client) -> list[dict]:
         top5, top10 = results[:5], results[:TOP_K]
 
         person = scenario["query"] if scenario["query"] in PERSON_QUERIES else None
+        relevant = relevant_items(index, scenario, person, domain)
         rows.append({
             "scenario": scenario["name"],
             "query": scenario["query"],
@@ -106,6 +169,9 @@ def evaluate(client) -> list[dict]:
             "graph_scored@10": sum(1 for r in top10 if r.get("graph_score") is not None),
             "top_result": top5[0]["title"] if top5 else "",
             "top10": [(r.get("content_type"), r.get("title")) for r in top10],
+            "top10_ids": [r.get("global_id") for r in top10],
+            "relevant_in_catalog": len(relevant),
+            **rank_metrics([r.get("global_id") for r in top10], relevant),
         })
     return rows
 
@@ -130,7 +196,20 @@ def markdown(rows: list[dict]) -> str:
         f"Mean PersonHit@5 over person queries: {_mean(person) / 5:.2f}",
         f"Mean ProfileAlign@5: {_mean([r['profile_aligned@5'] for r in rows]) / 5:.2f}",
         f"Mean KG@5: {_mean([r['avg_kg@5'] for r in rows]):.3f}   Mean profile@5: {_mean([r['avg_profile@5'] for r in rows]):.3f}",
+        "",
+        "| Scenario | Relevant in catalogue | P@10 | R@10 | NDCG@10 | MAP@10 | MRR@10 | HR@10 |",
+        "|---|---|---|---|---|---|---|---|",
     ]
+    for r in rows:
+        lines.append(
+            f"| {r['scenario']} | {r['relevant_in_catalog']} | {r['precision@10']:.2f} | {r['recall@10']:.4f} | "
+            f"{r['ndcg@10']:.3f} | {r['map@10']:.3f} | {r['mrr@10']:.3f} | {r['hit@10']:.0f} |"
+        )
+    lines.append(
+        "| Mean | | " + " | ".join(
+            f"{_mean([r[m] for r in rows]):.{4 if m == 'recall@10' else 3}f}" for m in RANK_METRICS
+        ) + " |"
+    )
     return "\n".join(lines) + "\n"
 
 
@@ -159,11 +238,12 @@ def run_ablation(client) -> dict:
 
     graph = app.state.recommender.knowledge_graph
     original = graph.rerank
+    index = load_relevance_index()
     variants = {}
     try:
         for name, (kg_weight, profile_weight) in ABLATION_VARIANTS.items():
             graph.rerank = partial(original, kg_weight=kg_weight, profile_weight=profile_weight)
-            variants[name] = evaluate(client)
+            variants[name] = evaluate(client, index)
     finally:
         graph.rerank = original
 
@@ -185,6 +265,8 @@ def run_ablation(client) -> dict:
             "person_hit@5": _mean(person) / 5,
             "cross_domain": sum(1 for r in rows if len(r["domains@10"]) >= 2),
             "top5_items_changed_vs_full": _mean(top5_changed),
+            **{f"mean_{m}": _mean([r[m] for r in rows]) for m in RANK_METRICS},
+            "scenarios": len(rows),
             "per_scenario": [
                 {k: r[k] for k in ("scenario", "profile_aligned@5", "avg_profile@5", "avg_kg@5",
                                    "profile_negative@10", "person_hits@5", "domains@10", "top_result")}
@@ -196,13 +278,15 @@ def run_ablation(client) -> dict:
 
 def ablation_markdown(summary: dict) -> str:
     lines = [
-        "| Variant | ProfileAlign@5 | Avg profile@5 | Avg KG@5 | Unsuitable in top 10 (all scenarios) | PersonHit@5 | Cross-domain | Top-5 items changed vs full |",
-        "|---|---|---|---|---|---|---|---|",
+        "| Variant | ProfileAlign@5 | Avg profile@5 | Avg KG@5 | Unsuitable in top 10 (all scenarios) | PersonHit@5 | Cross-domain | Top-5 items changed vs full | P@10 | NDCG@10 | MAP@10 | MRR@10 |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for name, s in summary.items():
         lines.append(
             f"| {name} | {s['profile_align@5']:.2f} | {s['avg_profile@5']:.3f} | {s['avg_kg@5']:.3f} | "
-            f"{s['unsuitable@10_total']} | {s['person_hit@5']:.2f} | {s['cross_domain']}/8 | {s['top5_items_changed_vs_full']:.2f} |"
+            f"{s['unsuitable@10_total']} | {s['person_hit@5']:.2f} | {s['cross_domain']}/{s['scenarios']} | "
+            f"{s['top5_items_changed_vs_full']:.2f} | {s['mean_precision@10']:.3f} | {s['mean_ndcg@10']:.3f} | "
+            f"{s['mean_map@10']:.3f} | {s['mean_mrr@10']:.3f} |"
         )
     return "\n".join(lines) + "\n"
 

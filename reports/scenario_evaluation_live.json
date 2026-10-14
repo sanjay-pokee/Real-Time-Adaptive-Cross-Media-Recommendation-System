@@ -59,7 +59,26 @@
         "finance",
         "The Historical Epic and Contemporary Hollywood"
       ]
-    ]
+    ],
+    "top10_ids": [
+      "show:tmdb_tv_api:79003",
+      "movie:tmdb_api:19995",
+      "movie:tmdb_api:83533",
+      "movie:tmdb_api:280",
+      "movie:tmdb_api:218",
+      "movie:tmdb_api:597",
+      "movie:tmdb_api:24982",
+      "movie:tmdb_api:110354",
+      "movie:tmdb_api:111332",
+      "finance:openlibrary_api:OL2341091W"
+    ],
+    "relevant_in_catalog": 15,
+    "precision@10": 0.8,
+    "recall@10": 0.5333333333333333,
+    "ndcg@10": 0.7162874455029682,
+    "map@10": 0.6171031746031745,
+    "mrr@10": 0.5,
+    "hit@10": 1.0
   },
   {
     "scenario": "Singer/artist lookup",
@@ -121,7 +140,26 @@
         "book",
         "LikeWar"
       ]
-    ]
+    ],
+    "top10_ids": [
+      "music:lastfm_api:taylor-swift-the-tortured-poets-department",
+      "music:lastfm_api:taylor-swift-the-fate-of-ophelia",
+      "music:lastfm_api:taylor-swift-i-can-do-it-with-a-broken-heart",
+      "music:lastfm_api:taylor-swift-bejeweled",
+      "music:lastfm_api:taylor-swift-wi-h-li-t",
+      "movie:tmdb_api:1160164",
+      "movie:tmdb_api:568332",
+      "movie:tmdb_api:373558",
+      "music:lastfm_api:ed-sheeran-the-joker-and-the-queen--feat--taylor-swift",
+      "book:openlibrary_api:OL19761415W"
+    ],
+    "relevant_in_catalog": 37,
+    "precision@10": 0.8,
+    "recall@10": 0.21621621621621623,
+    "ndcg@10": 0.8701249883466593,
+    "map@10": 0.8,
+    "mrr@10": 1.0,
+    "hit@10": 1.0
   },
   {
     "scenario": "Profession-aware learning",
@@ -182,7 +220,26 @@
         "finance",
         "Fundamental Analysis For Dummies"
       ]
-    ]
+    ],
+    "top10_ids": [
+      "book:openlibrary_api:OL22707912W",
+      "finance:openlibrary_api:OL15190465W",
+      "finance:openlibrary_api:OL15174426W",
+      "book:openlibrary_api:OL17581285W",
+      "finance:openlibrary_api:OL8513510W",
+      "finance:openlibrary_api:OL17363116W",
+      "book:openlibrary_api:OL3266788W",
+      "book:openlibrary_api:OL17488788W",
+      "finance:amazon_reviews_2023:B00QU5WYK8",
+      "finance:openlibrary_api:OL15189890W"
+    ],
+    "relevant_in_catalog": 550,
+    "precision@10": 0.9,
+    "recall@10": 0.016363636363636365,
+    "ndcg@10": 0.9266360779006401,
+    "map@10": 0.866388888888889,
+    "mrr@10": 1.0,
+    "hit@10": 1.0
   },
   {
     "scenario": "Family-safe profile",
@@ -242,7 +299,26 @@
         "movie",
         "Epic Tails"
       ]
-    ]
+    ],
+    "top10_ids": [
+      "movie:tmdb_api:774825",
+      "movie:tmdb_api:592983",
+      "movie:tmdb_api:570480",
+      "movie:tmdb_api:778855",
+      "movie:tmdb_api:877269",
+      "movie:tmdb_api:877957",
+      "movie:tmdb_api:912598",
+      "movie:tmdb_api:466876",
+      "movie:tmdb_api:508439",
+      "movie:tmdb_api:939338"
+    ],
+    "relevant_in_catalog": 5251,
+    "precision@10": 1.0,
+    "recall@10": 0.0019043991620643686,
+    "ndcg@10": 1.0,
+    "map@10": 1.0,
+    "mrr@10": 1.0,
+    "hit@10": 1.0
   },
   {
     "scenario": "Cross-media semantic intent",
@@ -303,7 +379,26 @@
         "show",
         "Mystery Science Theater 3000"
       ]
-    ]
+    ],
+    "top10_ids": [
+      "movie:tmdb_api:20856",
+      "show:tmdb_tv_api:157239",
+      "movie:tmdb_api:126889",
+      "movie:tmdb_api:636706",
+      "movie:tmdb_api:256346",
+      "show:tmdb_tv_api:3744",
+      "movie:tmdb_api:10128",
+      "movie:tmdb_api:531306",
+      "movie:tmdb_api:1119377",
+      "show:tmdb_tv_api:1952"
+    ],
+    "relevant_in_catalog": 1772,
+    "precision@10": 1.0,
+    "recall@10": 0.0056433408577878106,
+    "ndcg@10": 1.0,
+    "map@10": 1.0,
+    "mrr@10": 1.0,
+    "hit@10": 1.0
   },
   {
     "scenario": "Health product discovery",
@@ -363,7 +458,26 @@
         "health",
         "Force Factor Better Turmeric Joint Support Supplement Featuring HydroCurc Turmeric Curcumin with Black Pepper for Superior Absorption, Clinical Strength Joint Support, 120 Tablets, White Packaging"
       ]
-    ]
+    ],
+    "top10_ids": [
+      "health:amazon_reviews_2023:B01N7CK752",
+      "health:amazon_reviews_2023:B01BWE4K44",
+      "health:amazon_reviews_2023:B0B4STMLSV",
+      "health:amazon_reviews_2023:B089T7WHQW",
+      "health:amazon_reviews_2023:B0B7T8YTD1",
+      "health:amazon_reviews_2023:B001EWX06O",
+      "health:amazon_reviews_2023:B005CYJB0Y",
+      "health:amazon_reviews_2023:B09FVD1TQQ",
+      "health:amazon_reviews_2023:B0BS5RKLDL",
+      "health:amazon_reviews_2023:B09YKF7ZTV"
+    ],
+    "relevant_in_catalog": 3877,
+    "precision@10": 1.0,
+    "recall@10": 0.0025793139025019345,
+    "ndcg@10": 1.0,
+    "map@10": 1.0,
+    "mrr@10": 1.0,
+    "hit@10": 1.0
   },
   {
     "scenario": "Industrial supply lookup",
@@ -423,7 +537,26 @@
         "industrial",
         "Microflex MidKnight MK-296 Disposable Nitrile Gloves for Automotive, Law Enforcement w/Full Texture - Black"
       ]
-    ]
+    ],
+    "top10_ids": [
+      "industrial:amazon_reviews_2023:B09JGND7CG",
+      "industrial:amazon_reviews_2023:B002XXO5US",
+      "industrial:amazon_reviews_2023:B072C6HJQM",
+      "industrial:amazon_reviews_2023:B01DGIEMLA",
+      "industrial:amazon_reviews_2023:B0723F28G2",
+      "industrial:amazon_reviews_2023:B07DGH1D2H",
+      "industrial:amazon_reviews_2023:B087P3P57R",
+      "industrial:amazon_reviews_2023:B0BZWWCNKQ",
+      "industrial:amazon_reviews_2023:B0BG34XDFG",
+      "industrial:amazon_reviews_2023:B07W72M77S"
+    ],
+    "relevant_in_catalog": 988,
+    "precision@10": 1.0,
+    "recall@10": 0.010121457489878543,
+    "ndcg@10": 1.0,
+    "map@10": 1.0,
+    "mrr@10": 1.0,
+    "hit@10": 1.0
   },
   {
     "scenario": "Finance literacy discovery",
@@ -483,6 +616,741 @@
         "finance",
         "You Need A Budget - Personal Finance Software v3 - for Mac [Download]"
       ]
-    ]
+    ],
+    "top10_ids": [
+      "finance:openlibrary_api:OL19764848W",
+      "finance:openlibrary_api:OL5744726W",
+      "finance:amazon_reviews_2023:B004WINGCU",
+      "finance:amazon_reviews_2023:B000QO76HU",
+      "finance:openlibrary_api:OL17874418W",
+      "finance:amazon_reviews_2023:B000V7V2UO",
+      "finance:amazon_reviews_2023:B072HDS52T",
+      "finance:amazon_reviews_2023:B000AYIPFS",
+      "finance:amazon_reviews_2023:B00P0VDUGK",
+      "finance:amazon_reviews_2023:B004WINHK6"
+    ],
+    "relevant_in_catalog": 941,
+    "precision@10": 1.0,
+    "recall@10": 0.010626992561105207,
+    "ndcg@10": 1.0,
+    "map@10": 1.0,
+    "mrr@10": 1.0,
+    "hit@10": 1.0
+  },
+  {
+    "scenario": "Director lookup",
+    "query": "Christopher Nolan",
+    "user_id": "user_action",
+    "age": 30,
+    "domain": null,
+    "person_hits@5": 5,
+    "profile_aligned@5": 5,
+    "profile_negative@10": 0,
+    "avg_kg@5": 0.667,
+    "avg_profile@5": 0.64,
+    "domains@10": [
+      "movie"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 3,
+    "top_result": "The Odyssey",
+    "top10": [
+      [
+        "movie",
+        "The Odyssey"
+      ],
+      [
+        "movie",
+        "The Dark Knight"
+      ],
+      [
+        "movie",
+        "Interstellar"
+      ],
+      [
+        "movie",
+        "Inception"
+      ],
+      [
+        "movie",
+        "Oppenheimer"
+      ],
+      [
+        "movie",
+        "Interstellar: Nolan's Odyssey"
+      ],
+      [
+        "movie",
+        "Side by Side"
+      ],
+      [
+        "movie",
+        "Following"
+      ],
+      [
+        "movie",
+        "Tenet"
+      ],
+      [
+        "movie",
+        "Batman Begins"
+      ]
+    ],
+    "top10_ids": [
+      "movie:tmdb_api:1368337",
+      "movie:tmdb_api:155",
+      "movie:tmdb_api:157336",
+      "movie:tmdb_api:27205",
+      "movie:tmdb_api:872585",
+      "movie:tmdb_api:301959",
+      "movie:tmdb_api:110354",
+      "movie:tmdb_api:11660",
+      "movie:tmdb_api:577922",
+      "movie:tmdb_api:272"
+    ],
+    "relevant_in_catalog": 15,
+    "precision@10": 0.8,
+    "recall@10": 0.5333333333333333,
+    "ndcg@10": 0.8482378089219645,
+    "map@10": 0.7327777777777778,
+    "mrr@10": 1.0,
+    "hit@10": 1.0
+  },
+  {
+    "scenario": "Author lookup",
+    "query": "Stephen King",
+    "user_id": "user_dark_thriller",
+    "age": 30,
+    "domain": null,
+    "person_hits@5": 4,
+    "profile_aligned@5": 5,
+    "profile_negative@10": 0,
+    "avg_kg@5": 0.667,
+    "avg_profile@5": 0.834,
+    "domains@10": [
+      "book",
+      "show"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 0,
+    "top_result": "Carrie",
+    "top10": [
+      [
+        "book",
+        "Carrie"
+      ],
+      [
+        "book",
+        "It"
+      ],
+      [
+        "show",
+        "Stephen King's Kingdom Hospital"
+      ],
+      [
+        "book",
+        "Pet Sematary"
+      ],
+      [
+        "book",
+        "The Shining"
+      ],
+      [
+        "book",
+        "Wolves of the Calla"
+      ],
+      [
+        "book",
+        "Cell"
+      ],
+      [
+        "book",
+        "The Stand"
+      ],
+      [
+        "book",
+        "Later"
+      ],
+      [
+        "book",
+        "The Running Man"
+      ]
+    ],
+    "top10_ids": [
+      "book:openlibrary_api:OL81626W",
+      "book:openlibrary_api:OL81613W",
+      "show:tmdb_tv_api:1617",
+      "book:openlibrary_api:OL81631W",
+      "book:openlibrary_api:OL81633W",
+      "book:openlibrary_api:OL81594W",
+      "book:openlibrary_api:OL81597W",
+      "book:openlibrary_api:OL81618W",
+      "book:openlibrary_api:OL21229708W",
+      "book:openlibrary_api:OL149188W"
+    ],
+    "relevant_in_catalog": 72,
+    "precision@10": 0.9,
+    "recall@10": 0.125,
+    "ndcg@10": 0.8899541168509599,
+    "map@10": 0.7904365079365079,
+    "mrr@10": 1.0,
+    "hit@10": 1.0
+  },
+  {
+    "scenario": "Band lookup",
+    "query": "Coldplay",
+    "user_id": "user_music_rock",
+    "age": 20,
+    "domain": null,
+    "person_hits@5": 4,
+    "profile_aligned@5": 5,
+    "profile_negative@10": 0,
+    "avg_kg@5": 0.333,
+    "avg_profile@5": 0.502,
+    "domains@10": [
+      "movie",
+      "music"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 2,
+    "top_result": "Coldplay: A Head Full of Dreams",
+    "top10": [
+      [
+        "movie",
+        "Coldplay: A Head Full of Dreams"
+      ],
+      [
+        "music",
+        "Higher Power"
+      ],
+      [
+        "music",
+        "The Scientist"
+      ],
+      [
+        "music",
+        "Yellow"
+      ],
+      [
+        "music",
+        "My Universe"
+      ],
+      [
+        "music",
+        "Fix You"
+      ],
+      [
+        "music",
+        "Magic"
+      ],
+      [
+        "music",
+        "All My Love"
+      ],
+      [
+        "music",
+        "Talk"
+      ],
+      [
+        "music",
+        "Adventure of a Lifetime"
+      ]
+    ],
+    "top10_ids": [
+      "movie:tmdb_api:554152",
+      "music:lastfm_api:coldplay-higher-power",
+      "music:spotify_songs:75JFxkI2RXiU7L9VXzMkle",
+      "music:spotify_songs:3AJwUDP919kvQ9QcozQPxg",
+      "music:lastfm_api:coldplay-my-universe",
+      "music:spotify_songs:7LVHVU3tWfcxj5aiPFEW4Q",
+      "music:spotify_songs:23khhseCLQqVMCIT1WMAns",
+      "music:lastfm_api:coldplay-all-my-love",
+      "music:spotify_songs:4wzt5Rrk3W98pHXAqutuJw",
+      "music:spotify_songs:69uxyAqqPIsUyTO8txoP2M"
+    ],
+    "relevant_in_catalog": 38,
+    "precision@10": 0.9,
+    "recall@10": 0.23684210526315788,
+    "ndcg@10": 0.7799082337019199,
+    "map@10": 0.7071031746031746,
+    "mrr@10": 0.5,
+    "hit@10": 1.0
+  },
+  {
+    "scenario": "Fantasy cross-media intent",
+    "query": "magic and dragons",
+    "user_id": "user_fantasy",
+    "age": 20,
+    "domain": null,
+    "person_hits@5": null,
+    "profile_aligned@5": 5,
+    "profile_negative@10": 0,
+    "avg_kg@5": 1.0,
+    "avg_profile@5": 0.958,
+    "domains@10": [
+      "book",
+      "movie",
+      "show"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 0,
+    "top_result": "Mighty Jack and the Goblin King",
+    "top10": [
+      [
+        "book",
+        "Mighty Jack and the Goblin King"
+      ],
+      [
+        "book",
+        "Moon Rising"
+      ],
+      [
+        "book",
+        "The Girl Who Circumnavigated Fairyland in a Ship of Her Own Making (Fairyland #1)"
+      ],
+      [
+        "book",
+        "Test of the Twins"
+      ],
+      [
+        "book",
+        "A Dance With Dragons"
+      ],
+      [
+        "show",
+        "Dragon Age: Absolution"
+      ],
+      [
+        "show",
+        "The Dragon Prince"
+      ],
+      [
+        "show",
+        "Dragons: Race to the Edge"
+      ],
+      [
+        "show",
+        "DreamWorks Dragons"
+      ],
+      [
+        "movie",
+        "The Flight of Dragons"
+      ]
+    ],
+    "top10_ids": [
+      "book:openlibrary_api:OL19667474W",
+      "book:openlibrary_api:OL19799699W",
+      "book:openlibrary_api:OL15720267W",
+      "book:openlibrary_api:OL73424W",
+      "book:openlibrary_api:OL1955906W",
+      "show:tmdb_tv_api:203805",
+      "show:tmdb_tv_api:81046",
+      "show:tmdb_tv_api:78173",
+      "show:tmdb_tv_api:44305",
+      "movie:tmdb_api:27273"
+    ],
+    "relevant_in_catalog": 1531,
+    "precision@10": 1.0,
+    "recall@10": 0.006531678641410843,
+    "ndcg@10": 1.0,
+    "map@10": 1.0,
+    "mrr@10": 1.0,
+    "hit@10": 1.0
+  },
+  {
+    "scenario": "Romance cross-media intent",
+    "query": "romantic drama about love",
+    "user_id": "user_romance",
+    "age": 30,
+    "domain": null,
+    "person_hits@5": null,
+    "profile_aligned@5": 5,
+    "profile_negative@10": 0,
+    "avg_kg@5": 0.55,
+    "avg_profile@5": 0.992,
+    "domains@10": [
+      "movie",
+      "show"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 0,
+    "top_result": "The Interest of Love",
+    "top10": [
+      [
+        "show",
+        "The Interest of Love"
+      ],
+      [
+        "show",
+        "My Sunshine"
+      ],
+      [
+        "movie",
+        "Equals"
+      ],
+      [
+        "movie",
+        "Dia"
+      ],
+      [
+        "movie",
+        "Endless Love"
+      ],
+      [
+        "show",
+        "Love Story"
+      ],
+      [
+        "show",
+        "FLAMES"
+      ],
+      [
+        "show",
+        "Endless Love"
+      ],
+      [
+        "movie",
+        "Ordinary Love"
+      ],
+      [
+        "show",
+        "A Love So Beautiful"
+      ]
+    ],
+    "top10_ids": [
+      "show:tmdb_tv_api:211746",
+      "show:tmdb_tv_api:62152",
+      "movie:tmdb_api:301875",
+      "movie:tmdb_api:672128",
+      "movie:tmdb_api:226857",
+      "show:tmdb_tv_api:131142",
+      "show:tmdb_tv_api:76369",
+      "show:tmdb_tv_api:65555",
+      "movie:tmdb_api:588787",
+      "show:tmdb_tv_api:75387"
+    ],
+    "relevant_in_catalog": 6558,
+    "precision@10": 1.0,
+    "recall@10": 0.0015248551387618177,
+    "ndcg@10": 1.0,
+    "map@10": 1.0,
+    "mrr@10": 1.0,
+    "hit@10": 1.0
+  },
+  {
+    "scenario": "Action and superhero intent",
+    "query": "action thriller with superheroes",
+    "user_id": "user_action",
+    "age": 30,
+    "domain": null,
+    "person_hits@5": null,
+    "profile_aligned@5": 5,
+    "profile_negative@10": 0,
+    "avg_kg@5": 0.65,
+    "avg_profile@5": 0.97,
+    "domains@10": [
+      "movie"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 0,
+    "top_result": "Hero",
+    "top10": [
+      [
+        "movie",
+        "Hero"
+      ],
+      [
+        "movie",
+        "How I Became a Superhero"
+      ],
+      [
+        "movie",
+        "Super"
+      ],
+      [
+        "movie",
+        "Batman"
+      ],
+      [
+        "movie",
+        "Apex"
+      ],
+      [
+        "movie",
+        "Recoil"
+      ],
+      [
+        "movie",
+        "Ransom"
+      ],
+      [
+        "movie",
+        "Protector"
+      ],
+      [
+        "movie",
+        "Project Power"
+      ],
+      [
+        "movie",
+        "Force"
+      ]
+    ],
+    "top10_ids": [
+      "movie:tmdb_api:617385",
+      "movie:tmdb_api:641501",
+      "movie:tmdb_api:45132",
+      "movie:tmdb_api:2661",
+      "movie:tmdb_api:1318447",
+      "movie:tmdb_api:91333",
+      "movie:tmdb_api:3595",
+      "movie:tmdb_api:1383731",
+      "movie:tmdb_api:605116",
+      "movie:tmdb_api:75745"
+    ],
+    "relevant_in_catalog": 3347,
+    "precision@10": 1.0,
+    "recall@10": 0.002987750224081267,
+    "ndcg@10": 1.0,
+    "map@10": 1.0,
+    "mrr@10": 1.0,
+    "hit@10": 1.0
+  },
+  {
+    "scenario": "Health vitamin discovery",
+    "query": "vitamin D and immune support",
+    "user_id": "user_health_caregiver",
+    "age": 30,
+    "domain": "health",
+    "person_hits@5": null,
+    "profile_aligned@5": 5,
+    "profile_negative@10": 0,
+    "avg_kg@5": 1.0,
+    "avg_profile@5": 0.938,
+    "domains@10": [
+      "health"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 1,
+    "top_result": "Optimum Nutrition Serious Mass Weight Gainer Protein Powder, Vitamin C, Zinc and Vitamin D for Immune Support, Banana, 6 Pound (Packaging May Vary)",
+    "top10": [
+      [
+        "health",
+        "Optimum Nutrition Serious Mass Weight Gainer Protein Powder, Vitamin C, Zinc and Vitamin D for Immune Support, Banana, 6 Pound (Packaging May Vary)"
+      ],
+      [
+        "health",
+        "Thorne Vitamin D-5000 - Vitamin D3 Supplement - 5,000 IU - Support Healthy Bones, Teeth, Muscles, Cardiovascular, and Immune Function - NSF Certified for Sport - Dairy-Free, Soy-Free - 60 Capsules"
+      ],
+      [
+        "health",
+        "OLLY Women's Multivitamin Gummy, Overall Health and Immune Support, Vitamins A, D, C, E, Biotin, Folic Acid, Adult Chewable Vitamin, Berry, 65 Day Supply - 130 Count"
+      ],
+      [
+        "health",
+        "Isopure Low Carb, Vitamin C and Zinc for Immune Support, 25g Protein, Keto Friendly Protein Powder, 100% Whey Protein Isolate, Flavor: Chocolate Peanut Butter, 3 Pounds (Packaging May Vary)"
+      ],
+      [
+        "health",
+        "Nature Made Vitamin D3 2000 IU (50 mcg), Dietary Supplement for Bone, Teeth, Muscle and Immune Health Support, 220 Tablets, 220 Day Supply"
+      ],
+      [
+        "health",
+        "Vegan D3 + C Liquid, 1000 IU, Plant Based Vitamin D & C Supplement for Bone Health & Immune Support"
+      ],
+      [
+        "health",
+        "Natural Wonders – Daily Immunity Booster – Multivitamins for Men and Women - Energy Supplement Contains Vitamin A, C, D, E, B12, and Zinc for Adults"
+      ],
+      [
+        "health",
+        "BIOTICS Research Bio D Mulsion Forte Vitamin D3 Liquid Drops 50 for Best Absorption, Strengthens Bones, Supports The Immune System, Cardiovascular System"
+      ],
+      [
+        "health",
+        "D3-Genix 5000 IU, 60 Capsules"
+      ],
+      [
+        "health",
+        "Swanson High Potency Ultimate Immune Defense with C, D, Zinc & Elderberry 60 Caps"
+      ]
+    ],
+    "top10_ids": [
+      "health:amazon_reviews_2023:B0C4BXVMD2",
+      "health:amazon_reviews_2023:B0797HQFGT",
+      "health:amazon_reviews_2023:B0B5FQPG98",
+      "health:amazon_reviews_2023:B097FPHJ35",
+      "health:amazon_reviews_2023:B004U3Y8NI",
+      "health:amazon_reviews_2023:B08TKWNLH9",
+      "health:amazon_reviews_2023:B0BQ28VR3D",
+      "health:amazon_reviews_2023:B00EZFYD04",
+      "health:amazon_reviews_2023:B009NH9EDU",
+      "health:amazon_reviews_2023:B0BCSC66KS"
+    ],
+    "relevant_in_catalog": 3392,
+    "precision@10": 1.0,
+    "recall@10": 0.00294811320754717,
+    "ndcg@10": 1.0,
+    "map@10": 1.0,
+    "mrr@10": 1.0,
+    "hit@10": 1.0
+  },
+  {
+    "scenario": "Industrial tool lookup",
+    "query": "torque wrench and fastener tools",
+    "user_id": "user_industry_engineer",
+    "age": 30,
+    "domain": "industry",
+    "person_hits@5": null,
+    "profile_aligned@5": 5,
+    "profile_negative@10": 0,
+    "avg_kg@5": 0.76,
+    "avg_profile@5": 0.854,
+    "domains@10": [
+      "industrial"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 0,
+    "top_result": "M12-1.75 x 30MM Socket Head Cap Screws, Allen Socket Drive, Din 912, Stainless Steel 304, Full Thread, Bright Finish, Machine Thread, Quantity 10 by Fastenere",
+    "top10": [
+      [
+        "industrial",
+        "M12-1.75 x 30MM Socket Head Cap Screws, Allen Socket Drive, Din 912, Stainless Steel 304, Full Thread, Bright Finish, Machine Thread, Quantity 10 by Fastenere"
+      ],
+      [
+        "industrial",
+        "Chrome Plated Alloy Steel Socket Cap Screw, Hex Socket Drive, 5/16\"-24, 1-1/4\" Length (Pack of 5)"
+      ],
+      [
+        "industrial",
+        "5/16\" - 18 x 1\" Flat Head Socket Head Cap Screws, Threaded, Allen Socket Drive, Stainless Steel 18-8, Bright Finish, Quantity 15 Pieces by Bridge Fasteners"
+      ],
+      [
+        "industrial",
+        "2-56 x 1/8 Socket Head Cap Screws, Full Thread, Allen Socket Drive, Stainless Steel 18-8, Bright Finish, Quantity 100 Pieces by Fastenere"
+      ],
+      [
+        "industrial",
+        "Hard-to-Find Fastener 014973253530 Grade 8 Coarse Hex Cap Screws, 1/2-13 x 2-3/4, Piece-25, Yellow"
+      ],
+      [
+        "industrial",
+        "Hard-to-Find Fastener 014973283049 Hex Machine Screw Nuts, 2-56, Piece-100"
+      ],
+      [
+        "industrial",
+        "1/4-20 x 1-1/4\" Hex Socket Button Head Cap Screws Bolts 50 PCS, Allen Socket Drive, 304 Stainless Steel 18-8, Bright Finish, Full Machine UNC Threads"
+      ],
+      [
+        "industrial",
+        "POWERTEC 71154 T Track Hardware Kit with 1/4-20 Hex Bolt, Nuts and Flat Washer - Zinc Plated Carbon Steel – 10 Sets"
+      ],
+      [
+        "industrial",
+        "B&C Eagle SX5035-1316 1-3/16-Inch Length x 7/32-Inch Narrow Crown x 18 Gauge Galvanized Finish Staples (5,000 per box)"
+      ],
+      [
+        "industrial",
+        "B&C Eagle 112X148HD/22 Round Head 1-1/2-Inch x .148 x 22 Degree Hot Dip Galvanized Smooth Shank Plastic Collated Joist Hanger Nails (6,000 per box)"
+      ]
+    ],
+    "top10_ids": [
+      "industrial:amazon_reviews_2023:B01L0E0KH2",
+      "industrial:amazon_reviews_2023:B0012R0776",
+      "industrial:amazon_reviews_2023:B07Z9KWBVY",
+      "industrial:amazon_reviews_2023:B01A9EJD6I",
+      "industrial:amazon_reviews_2023:B08XR7XVWD",
+      "industrial:amazon_reviews_2023:B00L1LB6GY",
+      "industrial:amazon_reviews_2023:B08Y94Y5RT",
+      "industrial:amazon_reviews_2023:B07BKV5GCQ",
+      "industrial:amazon_reviews_2023:B0052VA6UQ",
+      "industrial:amazon_reviews_2023:B0007SXGAQ"
+    ],
+    "relevant_in_catalog": 816,
+    "precision@10": 1.0,
+    "recall@10": 0.012254901960784314,
+    "ndcg@10": 1.0,
+    "map@10": 1.0,
+    "mrr@10": 1.0,
+    "hit@10": 1.0
+  },
+  {
+    "scenario": "Finance investing discovery",
+    "query": "retirement investing basics",
+    "user_id": "user_finance_planner",
+    "age": 30,
+    "domain": "finance",
+    "person_hits@5": null,
+    "profile_aligned@5": 5,
+    "profile_negative@10": 0,
+    "avg_kg@5": 0.6,
+    "avg_profile@5": 0.758,
+    "domains@10": [
+      "finance"
+    ],
+    "ema_scored@10": 10,
+    "graph_scored@10": 0,
+    "top_result": "Seven steps to financial freedom in retirement",
+    "top10": [
+      [
+        "finance",
+        "Seven steps to financial freedom in retirement"
+      ],
+      [
+        "finance",
+        "The smartest retirement book you'll ever read"
+      ],
+      [
+        "finance",
+        "Retire Sooner, Retire Richer"
+      ],
+      [
+        "finance",
+        "Getting Started in A Financially Secure Retirement (Getting Started In.....)"
+      ],
+      [
+        "finance",
+        "A manager's guide to strategic retirement plan management"
+      ],
+      [
+        "finance",
+        "The retirement savings time bomb-- and how to defuse it"
+      ],
+      [
+        "finance",
+        "Choose your retirement"
+      ],
+      [
+        "finance",
+        "Retirement Calculator [Download]"
+      ],
+      [
+        "finance",
+        "Tax Planning To and Through Early Retirement"
+      ],
+      [
+        "finance",
+        "Retirement Planning Toolkit Deluxe 1.0 [Download]"
+      ]
+    ],
+    "top10_ids": [
+      "finance:openlibrary_api:OL15933140W",
+      "finance:openlibrary_api:OL14909098W",
+      "finance:openlibrary_api:OL15188184W",
+      "finance:openlibrary_api:OL8206400W",
+      "finance:openlibrary_api:OL5842924W",
+      "finance:openlibrary_api:OL2897564W",
+      "finance:openlibrary_api:OL20010526W",
+      "finance:amazon_reviews_2023:B078R9C9QC",
+      "finance:openlibrary_api:OL45448978W",
+      "finance:amazon_reviews_2023:B01CIMMBPE"
+    ],
+    "relevant_in_catalog": 705,
+    "precision@10": 1.0,
+    "recall@10": 0.014184397163120567,
+    "ndcg@10": 1.0,
+    "map@10": 1.0,
+    "mrr@10": 1.0,
+    "hit@10": 1.0
   }
 ]

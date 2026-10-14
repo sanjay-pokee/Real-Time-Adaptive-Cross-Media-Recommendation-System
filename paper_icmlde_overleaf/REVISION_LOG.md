@@ -17,6 +17,60 @@ point-by-point response appended to `1343_revised_version.pdf`.
 
 ---
 
+## Round 2 (2026-10-13): faculty's 16-combination ablation + team review of the response sheet
+
+**Status:** `response.tex` rewritten ✅ · 17 scenarios + rank metrics in the paper ✅ · 16-combination code ✅
+(smoke-tested end to end) · **16-combination numbers ⏳ — needs one Kaggle run** · page count ⏳ (11 pages
+with the 16-row table, see "Pending").
+
+| Request (faculty / team, 2026-10-13) | Outcome |
+|---|---|
+| Faculty: put the 16 combinations in the paper | `models/graph/evaluate_hybrid_ablation.py` now evaluates all 2⁴ on/off combinations of {semantic S, EMA E, LightGCN G, KG K}, **each with its own validation-tuned weights** (first signal = 1, others from {0.05…3.2}, positive only); empty = popularity, S+E+G+K = the tuned hybrid (same run). `scripts/build_ablation_table.py` writes Table 4 (16 rows + hand-set row, R/N/MAP/MRR@20 × 3 datasets), `ablation_response_table.tex` (Table B of the letter) and prints the numbers for the text. Old keys of the JSON are unchanged, a `factorial` block is added. |
+| Mention old vs new numbering for the reviewers | `response.tex`: numbering map (sections, tables, figures, equations; submitted page → revised page) and a **Submitted version / Revised version** line under every comment. Revised numbers/pages still come from `main.aux` (xr-hyper); submitted numbers/pages typed from the submitted PDF. |
+| "Table 1 is updated, no new table added" | R2.1 now says Table 1 was *updated*; the map says submitted Table 1 → revised Table 1 (updated), submitted Table 2 (modules) removed, revised Tables 2, 3, 5 are new, submitted Table 3 replaced by revised Tables 4 and 6. |
+| R1.2 "just write we changed…", rephrase 2.1 / 1.2 | Both rewritten to what/where, no explanation of causes. |
+| R1.6 "tell all 5 mistakes", write the words | The five: "papaer" (Conclusion, p.10), "differnent" and "choosen" (§2, p.3), "retrival" (§2, p.2), "go show" (§1, p.2); the "[?]" citation (§2, p.3) listed separately. Verified by diffing the submitted text against the revised one. |
+| "Whole" → "entire" | `response.tex` ("Entire manuscript"). |
+| Additional corrections: say "updated", not "reviewers missed it" | Section renamed **Additional updates**: "We also updated the following points…". |
+| R2.2 "not only 2–3 but at least 5" + "increase scenarios", "show results with the required metrics", "increase metrics" | Read as: scenarios (we had added only 3 to the original 5). Now **17 scenarios** (+12): 5 person queries (James Cameron, Taylor Swift, Christopher Nolan, Stephen King, Coldplay), 6 cross-media intents, 6 vertical queries (2 each health / industry / finance). New metrics per scenario: P/R/NDCG/MAP/MRR/HR@10 against rule-based relevance (person in creators, or ≥2 intent terms in title/categories/creators/description, inside the declared vertical; metadata only, never a ranker score). Paper: §5.3 + Table 6 grouped by kind of scenario (4 rows); response: Table A, one row per scenario. Caveat written in §5.3: 11 of the 12 topical queries score 1.00 (550–6,558 relevant items each), so only the person queries discriminate; recall is bounded by 10/\|relevant\|. Offline: HitRate/Precision@K were already in the JSON; shown in the text at integration. |
+| R2.3 "add table" | Table B in the letter = NDCG@20 and Recall@20 of the 16 combinations (filled from the Kaggle JSONs by `scripts.inline_response_tables`). |
+| R2.4 "qualitative and quantitative, don't overlap" | R2.4 now has a Quantitative part (first rows of Table 4) and a Qualitative part (what each baseline captures, §4; per-dataset behaviour, §5.1) and covers only the baselines; R2.3 covers only the 16 combinations and weights. |
+| "Table should not be in the top of the page" | All paper tables are now `[!ht]` (were `[!t]`): Tables 2, 3, 5 and 6 sit under their text. Tables 1 and 4 still move to the next page top when they do not fit under their paragraph (normal float behaviour; `[H]` would leave blank half-pages with `\flushbottom`). In the letter, tables are inline with `\Needspace` so a caption never separates from its table. |
+
+**Scenario results (live API, 17 scenarios, `reports/scenario_evaluation_live.json`, `scenario_ablation_live.json`):**
+the original 8 reproduce the earlier numbers exactly. Cross-domain 8/17 overall, 8/11 without a domain filter
+(6/17 and 6/11 with movies + TV shows as one medium); PersonHit@5 0.88 (4/5, 5/5, 5/5, 4/5, 4/5; the misses are
+items with the name in the title but not in `creators`); ProfileAlign@5 1.00; mean KG@5 0.697, profile@5 0.858;
+mean P/NDCG/MAP/MRR@10 0.947/0.943/0.913/0.941 (person queries only 0.84/0.82/0.73/0.80); EMA score on 170/170
+returned items, LightGCN on 7. Ablation: w/o profile ProfileAlign@5 1.00→0.96, profile@5 0.858→0.795, NDCG@10
+0.943→0.916, 0.71 of the top 5 change (Taylor Swift 5/5→2/5); w/o KG KG@5 0.697→0.664, NDCG@10 0.943→0.931, 0.47
+change; person matching unchanged, cross-domain 8/17→9/17 in both (one scenario gains a TV show), 0 unsuitable items.
+Regenerate with `python -m scripts.build_scenario_table`.
+
+### Numbering of the submitted vs the revised manuscript
+
+| Item | Submitted (10 p.) | Revised |
+|---|---|---|
+| Sections | 1 Intro p.2 · 2 Related work p.2–3 · 3 Implementation p.4–8 (3.1 p.4, 3.2 p.4, 3.3 p.5, 3.4 p.5, 3.5 EMA p.6, 3.6 LightGCN p.6, 3.7 KG p.7, 3.8 pipeline p.8, 3.9 API/frontend p.8) · 4 Results p.9 · 5 Conclusion p.10 | 1 · 2 · 3 (3.1 overview, 3.2 catalog, 3.3 = old 3.3+3.4, 3.4 EMA, 3.5 LightGCN, 3.6 KG, 3.7 hybrid; old 3.9 merged into 3.1) · **4 Experimental setup (new)** · 5 Results (5.1 baselines/ablation, 5.2 latency, 5.3 scenarios) · 6 Conclusion |
+| Tables | 1 prior families/measures p.3 · 2 modules p.8 · 3 prototype results + qualitative baselines p.9 | 1 comparison with recent work (**updated** old 1) · 2 benchmark graphs (new) · 3 LightGCN/EMA settings (new) · 4 baselines + 16 combinations (replaces the qualitative rows of old 3) · 5 latency (new) · 6 scenarios (old 3, per-scenario block). Old 2 removed |
+| Figures | 1 architecture p.4 · 2 KG p.7 · 3 result bar chart p.9 | 1 (redrawn) · 2 (redrawn) · old 3 removed |
+| Equations | (1) catalog (2) semantic (3) EMA update (4) EMA score (5)(6) LightGCN (7) BPR (8) graph score (9) paths (10) KG (11) profile (12) hybrid | (1) catalog (2) EMA update (3) LightGCN (4) BPR (5) paths (6) KG (7) profile (8) hybrid (9) preference bonus; semantic/EMA/graph scores inline |
+
+### Pending (needs the Kaggle run) — do in this order
+
+1. Push `models/graph/evaluate_hybrid_ablation.py`, `notebooks/hybrid_ablation_kaggle.ipynb`, the scripts and reports to **`main`** (the notebook pulls `origin/main`), then Kaggle → *Save Version → Save & Run All (Commit)*, GPU T4, Internet on (~1 h for the 3 datasets).
+2. Download the three `*_ablation.json` into `reports/benchmarks/` (replace the old ones).
+3. `python -m scripts.build_ablation_table` → `ablation_table.tex` (paste into Table 4 of `main.tex`), `ablation_response_table.tex`, and the printed summary for the §5.1 text.
+4. `python -m scripts.inline_response_tables` fills Table B of the letter.
+5. In `main.tex`: §4 "Baselines and weight selection" (16 combinations, per-combination grid, qualitative baseline description), §5.1 text and Table 4 caption, abstract/conclusion sentences, §4 training-time sentence (T4 minutes from the new run). Then rebuild and check the page count (see below).
+6. Update `response.tex` only if a claim changes (it contains no offline numbers except the dataset sizes and latency).
+
+Page budget: with the 16-row table the paper is **11 pages (14 lines on p.11)** — measured with the faithful build
+(TeX Gyre Termes) and dummy numbers. Options: cut ≈16 lines of prose (candidates: §5.2 embedded-Qdrant sentence,
+§3.2 hash sentence, Table 5 stage rows, §2), or accept 11 pages (extra pages are charged by the conference).
+
+---
+
 ## Reviewer #1
 
 | # | Comment | Status | What we changed | Where (paper) | Where (files) |
@@ -35,8 +89,8 @@ point-by-point response appended to `1343_revised_version.pdf`.
 |---|---|---|---|---|---|
 | 2.1 | Strengthen novelty with a detailed comparison to recent cross-domain and hybrid approaches | ✅ | New paragraph on 2025–26 knowledge-aware graph and LLM-based cross-domain recommenders; Table 1 compares LightGCN, KGAT, LGKAT, LightKG, LLMCDSR, LLM4CDSR and this work on domains, text semantics, collaborative graph, KG, short-term adaptation, deployment; the novelty paragraph states the trade-offs (entity-overlap KG, compact encoder) and why these models are not reimplemented. | §2, p.2–3; Table 1, p.3 | `main.tex` |
 | 2.2 | Larger-scale evaluation with Recall@K, NDCG@K, MAP, MRR | ✅ | Benchmark on 3 Amazon Reviews 2023 categories (Movies & TV 50,000 users / 52,213 items; Health & Household 50,000 / 42,621; Industrial & Scientific 33,959 / 18,804), full-catalog ranking, Recall/NDCG/MAP/MRR @10 and @20. Tuned hybrid best on Movies & TV and Industrial & Scientific on every measure (NDCG@20 +21.6% / +26.9% over the best single signal, 2.3× / 1.9× over popularity). | §4, p.6–7; Table 2, p.7; §5.1, p.7–8; Table 4, p.8 | `models/graph/evaluate_hybrid_ablation.py`, `notebooks/hybrid_ablation_kaggle.ipynb` |
-| 2.3 | Ablation study; fixed weights | ✅ | Removing LightGCN costs 14.6–21.8% NDCG@20, semantic 19.2–31.6%, EMA 0.7–2.7%, KG 1.5–3.0%; all significant (Wilcoxon p < 0.01). Validation-selected weights beat the hand-set ones by 5.4% / 3.6% / 6.5% (p < 1e-4); selected weights are stable across domains (λg ≈ 0.8, λe 0.2–0.4, λk 0.05–0.1 relative to semantic), i.e. the hand-set graph weight was 4× too low. | §4 (Baselines and weight selection), p.7; §5.1, p.7–8; Table 4, p.8 | `evaluate_hybrid_ablation.py` |
-| 2.4 | Implement baselines quantitatively (Table 3) | ✅ | Most-popular, semantic-only, EMA-only, LightGCN-only and KG-only baselines run under the identical split, candidates and metric code (Table 4), replacing the qualitative rows of the old Table 3. Exception reported: on Health & Household KG-only is best (+14.4% over the hybrid), discussed as a limitation. | §5.1, p.7–8; Table 4, p.8; §6, p.10 | `evaluate_hybrid_ablation.py` |
+| 2.3 | Ablation study; fixed weights | 🔄 round 2: 16 combinations, numbers pending Kaggle — the row below is the round-1 result (leave-one-out, fixed weights) | Removing LightGCN costs 14.6–21.8% NDCG@20, semantic 19.2–31.6%, EMA 0.7–2.7%, KG 1.5–3.0%; all significant (Wilcoxon p < 0.01). Validation-selected weights beat the hand-set ones by 5.4% / 3.6% / 6.5% (p < 1e-4); selected weights are stable across domains (λg ≈ 0.8, λe 0.2–0.4, λk 0.05–0.1 relative to semantic), i.e. the hand-set graph weight was 4× too low. | §4 (Baselines and weight selection), p.7; §5.1, p.7–8; Table 4, p.8 | `evaluate_hybrid_ablation.py` |
+| 2.4 | Implement baselines quantitatively (Table 3) | 🔄 round 2: add the qualitative baseline description to §4 at integration (the quantitative part is done) | Most-popular, semantic-only, EMA-only, LightGCN-only and KG-only baselines run under the identical split, candidates and metric code (Table 4), replacing the qualitative rows of the old Table 3. Exception reported: on Health & Household KG-only is best (+14.4% over the hybrid), discussed as a limitation. | §5.1, p.7–8; Table 4, p.8; §6, p.10 | `evaluate_hybrid_ablation.py` |
 | 2.5 | Reproducibility + real-time claims | ✅ | §4 gives datasets, filtering, chronological split, candidates, offline signal definitions, metrics, weight grid and the settings table (Table 3), plus LightGCN training time (17.1 / 13.2 / 1.2 min on a T4). The full request pipeline is described, including the creator/title matching stage and the preference bonus (Eq. 9) that were in the code but not in the paper. §5.2 + Table 5: 700 requests over the 120,747-item catalog on a laptop (Ryzen 5 5600H, RTX 3050, MySQL 8.0, Qdrant 1.12.6 HNSW server): p50 363 ms, p95 455 ms, p99 507 ms; per-stage breakdown; EMA update 0.05 ms; 2.7–3.3 req/s per process; bottleneck and embedded-mode result stated. | §3.3, p.4; §3.7 Eqs. 8–9, p.6; §4, p.6–7; Table 3, p.7; §5.2, p.8–9; Table 5, p.8 | `scripts/benchmark_latency.py`, `reports/latency_benchmark.{json,md}` |
 
 ## Reviewer #3
@@ -70,7 +124,7 @@ point-by-point response appended to `1343_revised_version.pdf`.
 | English proofreading | 🔄 | Grammar pass done on the whole paper; final proofread Day 5 |
 | Cite figures taken from published work | ✅ | Both figures are original, drawn by the authors in TikZ |
 | Strict Procedia template | ✅ | See 1.7; template spacing kept as supplied — `elsarticle.cls` sets 22 pt above and below every display equation and `ecrc.sty` forces `\flushbottom`, so the white space around equations is the template's own (the submission had overridden it to 5 pt); template header/footer untouched (note: the conference's `ecrc.sty` prints "(2025)" in the running head and copyright line — left as supplied) |
-| Page limit | ✅ | 10 pages (ICMLDE 2022–23 limit: 10, extra pages charged) |
+| Page limit | 🔄 | Round 1: 10 pages (ICMLDE 2022–23 limit: 10, extra pages charged). Round 2: 11 pages with the 17-scenario text (3 lines on p.11) and ≈14 lines on p.11 with the 16-row table; needs ≈16 lines of cuts to return to 10 |
 | Similarity ≤ 10% + upload similarity report | ⏳ | Day 5 |
 | Single file `1343_revised_version.pdf` with this response appended | ✅ | `reports/submission/1343_revised_version.pdf`: 5-page response + the 10-page Overleaf PDF; standalone `1343_response_to_reviewers.pdf` alongside |
 | Acknowledgement email to info@icmlde.org | ⏳ | |
@@ -111,3 +165,9 @@ point-by-point response appended to `1343_revised_version.pdf`.
 | 2026-10-11 | Point-by-point response letter written (`response.tex`): every comment quoted verbatim, response, and location; section/table/figure/equation/page numbers read from the paper build via xr-hyper so they cannot drift; labels added to subsections 3.5, 3.6, 5.1-5.3 (no layout change). Draft single PDF assembled | `paper_icmlde_overleaf/response.tex`, `main.tex`, `reports/1343_revised_version_DRAFT.pdf` | all |
 | 2026-10-11 | Profile/KG ablation in the deployed scenarios (4 variants via the real API, Qdrant server + MySQL); paragraph added to §5.3; responses R2.3 and R3.6 updated; still 10 pages | `scripts/evaluate_scenarios_live.py --ablation`, `reports/scenario_ablation_live.{json,md}`, `main.tex` §5.3, `response.tex` | 2.3, 3.6 |
 | 2026-10-11 | Final Overleaf PDF checked against the local build: same 10 pages, all 22 sections/tables/figures and all 10 page endings identical, so the response letter's page numbers hold. Final submission files built (response letter first, then the Overleaf paper) | `reports/submission/1343_revised_version.pdf`, `reports/submission/1343_response_to_reviewers.pdf` | all |
+| 2026-10-13 | Full-factorial ablation: all 16 on/off combinations of the four signals, each tuned on validation (one pass over the validation users; replaces the single 1,029-point grid, so the tuned hybrid is the S+E+G+K row); `factorial` block + markdown table in the JSON; fixed-weight leave-one-out kept. Smoke-tested on Industrial & Scientific (3 epochs, partial metadata: numbers meaningless, pipeline verified: singles = baselines, tuned = full) | `models/graph/evaluate_hybrid_ablation.py` | 2.3, 3.6 |
+| 2026-10-13 | Table generator writes the 16-combination Table 4 (16 rows + hand-set), a compact NDCG/Recall table for the letter, a HitRate/Precision table and a printed summary (best single, best pair, drop when a signal is removed, mean gain from adding each signal) | `scripts/build_ablation_table.py` | 2.3, 3.6 |
+| 2026-10-13 | Kaggle notebook text updated for the 16-combination run (same cells; pulls `origin/main`) | `notebooks/hybrid_ablation_kaggle.ipynb` | 2.3 |
+| 2026-10-13 | Scenarios 8 → 17 (3 person queries, 3 cross-media intents, 3 vertical queries added); rule-based relevance judgments and P/R/NDCG/MAP/MRR/HR@10; ablation re-run on 17 scenarios; scenario table builders (paper summary by kind, per-scenario for the letter) | `scripts/evaluate_recommendation_table.py`, `scripts/evaluate_scenarios_live.py`, `scripts/build_scenario_table.py`, `reports/scenario_*_live.*`, `reports/scenario_*table.tex` | 2.2, 3.5, 3.6 |
+| 2026-10-13 | §5.3 rewritten for 17 scenarios and the rank metrics; Table 6 now grouped by kind of scenario (per-scenario table moved to the letter, Table A); all tables `[!ht]`; labels `sec:overview`, `sec:catalog`, `sec:hybrid` added (no layout effect). Faithful build: 11 pages (3 lines on p.11) | `paper_icmlde_overleaf/main.tex` | 2.2, 3.5, 3.6, "table at top" |
+| 2026-10-13 | Response letter rewritten: numbering map, Submitted/Revised location under every comment, shortened responses (what + where), five spelling mistakes listed, "Entire manuscript", Table 1 "updated", R2.3/R2.4 separated, "Additional updates"; Table A (17 scenarios) inline, Table B (16 combinations) pending Kaggle; `scripts/inline_response_tables.py` refreshes both from the reports | `paper_icmlde_overleaf/response.tex`, `scripts/inline_response_tables.py` | all |
