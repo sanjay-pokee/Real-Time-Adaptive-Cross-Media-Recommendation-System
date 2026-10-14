@@ -254,16 +254,20 @@ def factorial_summary(reports: dict[str, dict]) -> str:
         for letter, name in signals.items():
             rest = [lab for lab in f["order"] if lab.count("+") == 2 and letter not in lab.split("+")]
             drop_label = rest[0] if rest else None
+            # Over the 7 non-empty combinations without the signal: going from the empty
+            # combination to a single signal replaces popularity rather than adding to it.
             gains = []
             for lab in f["order"]:
-                parts = [] if lab == "none" else lab.split("+")
+                if lab == "none":
+                    continue
+                parts = lab.split("+")
                 if letter in parts:
                     continue
                 with_label = "+".join(sorted(parts + [letter], key=lambda s: "SEGK".index(s)))
                 base = n20[lab]
                 gains.append(n20[with_label] / base - 1 if base else float("nan"))
             out.append(f"  w/o {name:8s}: {n20[drop_label]:.4f} ({100 * (n20[drop_label] / full - 1):+.1f}% vs full, "
-                       f"p={p[drop_label]:.1e}) | mean gain from adding it to the 8 combinations without it "
+                       f"p={p[drop_label]:.1e}) | mean gain from adding it to the 7 other combinations "
                        f"{100 * sum(gains) / len(gains):+.1f}% (min {100 * min(gains):+.1f}%, max {100 * max(gains):+.1f}%)")
         hand = report["results"]["Hybrid (paper weights)"]["ndcg@20"]
         out.append(f"  hand-set weights {hand:.4f}: tuned full is {100 * (full / hand - 1):+.1f}% "

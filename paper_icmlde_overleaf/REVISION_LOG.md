@@ -19,9 +19,9 @@ point-by-point response appended to `1343_revised_version.pdf`.
 
 ## Round 2 (2026-10-13): faculty's 16-combination ablation + team review of the response sheet
 
-**Status:** `response.tex` rewritten ✅ · 17 scenarios + rank metrics in the paper ✅ · 16-combination code ✅
-(smoke-tested end to end) · **16-combination numbers ⏳ — needs one Kaggle run** · page count ⏳ (11 pages
-with the 16-row table, see "Pending").
+**Status (2026-10-14):** `response.tex` rewritten ✅ · 17 scenarios + rank metrics ✅ · 16-combination Kaggle run
+✅ and written into the paper (§4, §5.1, Table 4, abstract, contributions, conclusion) and the letter (Table B) ✅ ·
+**10 pages** in the faithful build ✅ · ⏳ compile both files on Overleaf and check the page numbers (see "Remaining").
 
 | Request (faculty / team, 2026-10-13) | Outcome |
 |---|---|
@@ -56,18 +56,38 @@ Regenerate with `python -m scripts.build_scenario_table`.
 | Figures | 1 architecture p.4 · 2 KG p.7 · 3 result bar chart p.9 | 1 (redrawn) · 2 (redrawn) · old 3 removed |
 | Equations | (1) catalog (2) semantic (3) EMA update (4) EMA score (5)(6) LightGCN (7) BPR (8) graph score (9) paths (10) KG (11) profile (12) hybrid | (1) catalog (2) EMA update (3) LightGCN (4) BPR (5) paths (6) KG (7) profile (8) hybrid (9) preference bonus; semantic/EMA/graph scores inline |
 
-### Pending (needs the Kaggle run) — do in this order
+### 16-combination results (Kaggle run of 2026-10-14, `reports/benchmarks/*_ablation.json`; round-1 files in `round1/`)
 
-1. Push `models/graph/evaluate_hybrid_ablation.py`, `notebooks/hybrid_ablation_kaggle.ipynb`, the scripts and reports to **`main`** (the notebook pulls `origin/main`), then Kaggle → *Save Version → Save & Run All (Commit)*, GPU T4, Internet on (~1 h for the 3 datasets).
-2. Download the three `*_ablation.json` into `reports/benchmarks/` (replace the old ones).
-3. `python -m scripts.build_ablation_table` → `ablation_table.tex` (paste into Table 4 of `main.tex`), `ablation_response_table.tex`, and the printed summary for the §5.1 text.
-4. `python -m scripts.inline_response_tables` fills Table B of the letter.
-5. In `main.tex`: §4 "Baselines and weight selection" (16 combinations, per-combination grid, qualitative baseline description), §5.1 text and Table 4 caption, abstract/conclusion sentences, §4 training-time sentence (T4 minutes from the new run). Then rebuild and check the page count (see below).
-6. Update `response.tex` only if a claim changes (it contains no offline numbers except the dataset sizes and latency).
+Same graphs, seed and selected weights as round 1 (ratios S:G:E:K = 1:0.8:0.2:0.05 Movies & TV, 1:0.8:0.4:0.1 the other two); the
+full hybrid's NDCG@20 is unchanged (0.0227 / 0.0126 / 0.0283); LightGCN training 17.0 / 13.2 / 1.2 min on a T4.
+- **Movies & TV, Industrial & Scientific:** S+E+G+K is the best of the 16 on R/N/MAP/MRR at K=10 and 20 (HitRate@10 on I&S tied with
+  S+E+G). NDCG@20 +21.6% / +26.9% over the best single signal (semantic), ×2.3 / ×1.9 over popularity; HitRate@20 0.051→0.063,
+  0.068→0.089. Best pair everywhere: S+G.
+- **Removing a signal (re-tuned triples), NDCG@20:** semantic −22.0 / −8.6 / −20.6%; LightGCN −13.4 / −21.9 / −19.6%; KG −1.5 / −3.0 /
+  −2.1% (p<1e-6); EMA −0.7 / +0.5 (n.s., p=0.47) / −2.7%. Mean gain from adding a signal to the 7 other non-empty combinations:
+  S +86/+41/+45%, G +50/+30/+26%, KG +4/+22/+14%, EMA +39/+6/+7%.
+- **Health & Household:** K alone best on every measure (+14.4% NDCG@20 over the hybrid); hybrid ties S+G+K (p=0.47, the only
+  non-significant difference of all 45) and beats the other 13.
+- **Tuned vs hand-set:** +5.4 / +3.6 / +6.5% (p<1e-4); tie on H&H at K=10.
+- Wilcoxon: every combination vs S+E+G+K p<0.01 except S+G+K on H&H.
 
-Page budget: with the 16-row table the paper is **11 pages (14 lines on p.11)** — measured with the faithful build
-(TeX Gyre Termes) and dummy numbers. Options: cut ≈16 lines of prose (candidates: §5.2 embedded-Qdrant sentence,
-§3.2 hash sentence, Table 5 stage rows, §2), or accept 11 pages (extra pages are charged by the conference).
+### Page budget (decision 2026-10-14: 10 pages, as in round 1)
+
+Cuts, all wording or layout, no result or claim dropped: §5.3 compressed (the PA sentence and the rank-metric averages are in
+Table 6); §5.2 embedded-Qdrant aside and p99 parenthesis; §3.2 SHA-256 sentence; abstract opening sentence and stack
+clause; one clause each in §3.1, §3.4, §4 opening, §4 baselines paragraph, §5.1; the textbook BPR justification in §3.5;
+Table 5 rows "MySQL preference bonus" and "LightGCN rerank" moved into the §5.2 sentence (6.4 ms, 0.07 ms); "Proc." for
+all nine conference proceedings in the references; Fig. 1 vertical spacing 1.1 → 1.0 cm, Fig. 2 genre node 0.26 cm higher.
+Faithful build: **10 pages**, p.10 nearly full (≈2–3 lines spare). Table 1 stays at the top of p.3 and Table 4 at the top of
+p.8: both are too large to fit under their paragraph.
+
+### Remaining
+
+1. Upload `main.tex` and `response.tex` to Overleaf; compile `main.tex`, then `response.tex`.
+2. Check that the Overleaf paper is 10 pages (p.10 has only ≈2–3 lines spare; if it spills, the next cut is the §2 LLM
+   sentence) and that the letter's page numbers match it.
+3. Build `1343_revised_version.pdf` (letter first, then the paper) from the Overleaf PDFs.
+4. Similarity report (≤10%) and acknowledgement email to info@icmlde.org (see Editorial).
 
 ---
 
@@ -89,8 +109,8 @@ Page budget: with the 16-row table the paper is **11 pages (14 lines on p.11)** 
 |---|---|---|---|---|---|
 | 2.1 | Strengthen novelty with a detailed comparison to recent cross-domain and hybrid approaches | ✅ | New paragraph on 2025–26 knowledge-aware graph and LLM-based cross-domain recommenders; Table 1 compares LightGCN, KGAT, LGKAT, LightKG, LLMCDSR, LLM4CDSR and this work on domains, text semantics, collaborative graph, KG, short-term adaptation, deployment; the novelty paragraph states the trade-offs (entity-overlap KG, compact encoder) and why these models are not reimplemented. | §2, p.2–3; Table 1, p.3 | `main.tex` |
 | 2.2 | Larger-scale evaluation with Recall@K, NDCG@K, MAP, MRR | ✅ | Benchmark on 3 Amazon Reviews 2023 categories (Movies & TV 50,000 users / 52,213 items; Health & Household 50,000 / 42,621; Industrial & Scientific 33,959 / 18,804), full-catalog ranking, Recall/NDCG/MAP/MRR @10 and @20. Tuned hybrid best on Movies & TV and Industrial & Scientific on every measure (NDCG@20 +21.6% / +26.9% over the best single signal, 2.3× / 1.9× over popularity). | §4, p.6–7; Table 2, p.7; §5.1, p.7–8; Table 4, p.8 | `models/graph/evaluate_hybrid_ablation.py`, `notebooks/hybrid_ablation_kaggle.ipynb` |
-| 2.3 | Ablation study; fixed weights | 🔄 round 2: 16 combinations, numbers pending Kaggle — the row below is the round-1 result (leave-one-out, fixed weights) | Removing LightGCN costs 14.6–21.8% NDCG@20, semantic 19.2–31.6%, EMA 0.7–2.7%, KG 1.5–3.0%; all significant (Wilcoxon p < 0.01). Validation-selected weights beat the hand-set ones by 5.4% / 3.6% / 6.5% (p < 1e-4); selected weights are stable across domains (λg ≈ 0.8, λe 0.2–0.4, λk 0.05–0.1 relative to semantic), i.e. the hand-set graph weight was 4× too low. | §4 (Baselines and weight selection), p.7; §5.1, p.7–8; Table 4, p.8 | `evaluate_hybrid_ablation.py` |
-| 2.4 | Implement baselines quantitatively (Table 3) | 🔄 round 2: add the qualitative baseline description to §4 at integration (the quantitative part is done) | Most-popular, semantic-only, EMA-only, LightGCN-only and KG-only baselines run under the identical split, candidates and metric code (Table 4), replacing the qualitative rows of the old Table 3. Exception reported: on Health & Household KG-only is best (+14.4% over the hybrid), discussed as a limitation. | §5.1, p.7–8; Table 4, p.8; §6, p.10 | `evaluate_hybrid_ablation.py` |
+| 2.3 | Ablation study; fixed weights | ✅ round 2: all 16 combinations, each re-tuned (Table 4, letter Table B; see "16-combination results" above). The rest of this row is the round-1 fixed-weight leave-one-out, superseded | Removing LightGCN costs 14.6–21.8% NDCG@20, semantic 19.2–31.6%, EMA 0.7–2.7%, KG 1.5–3.0%; all significant (Wilcoxon p < 0.01). Validation-selected weights beat the hand-set ones by 5.4% / 3.6% / 6.5% (p < 1e-4); selected weights are stable across domains (λg ≈ 0.8, λe 0.2–0.4, λk 0.05–0.1 relative to semantic), i.e. the hand-set graph weight was 4× too low. | §4 (Baselines and weight selection), p.7; §5.1, p.7–8; Table 4, p.8 | `evaluate_hybrid_ablation.py` |
+| 2.4 | Implement baselines quantitatively (Table 3) | ✅ round 2: qualitative description of each baseline added to §4; quantitative rows are the single-signal rows of Table 4 | Most-popular, semantic-only, EMA-only, LightGCN-only and KG-only baselines run under the identical split, candidates and metric code (Table 4), replacing the qualitative rows of the old Table 3. Exception reported: on Health & Household KG-only is best (+14.4% over the hybrid), discussed as a limitation. | §5.1, p.7–8; Table 4, p.8; §6, p.10 | `evaluate_hybrid_ablation.py` |
 | 2.5 | Reproducibility + real-time claims | ✅ | §4 gives datasets, filtering, chronological split, candidates, offline signal definitions, metrics, weight grid and the settings table (Table 3), plus LightGCN training time (17.1 / 13.2 / 1.2 min on a T4). The full request pipeline is described, including the creator/title matching stage and the preference bonus (Eq. 9) that were in the code but not in the paper. §5.2 + Table 5: 700 requests over the 120,747-item catalog on a laptop (Ryzen 5 5600H, RTX 3050, MySQL 8.0, Qdrant 1.12.6 HNSW server): p50 363 ms, p95 455 ms, p99 507 ms; per-stage breakdown; EMA update 0.05 ms; 2.7–3.3 req/s per process; bottleneck and embedded-mode result stated. | §3.3, p.4; §3.7 Eqs. 8–9, p.6; §4, p.6–7; Table 3, p.7; §5.2, p.8–9; Table 5, p.8 | `scripts/benchmark_latency.py`, `reports/latency_benchmark.{json,md}` |
 
 ## Reviewer #3
@@ -124,7 +144,7 @@ Page budget: with the 16-row table the paper is **11 pages (14 lines on p.11)** 
 | English proofreading | 🔄 | Grammar pass done on the whole paper; final proofread Day 5 |
 | Cite figures taken from published work | ✅ | Both figures are original, drawn by the authors in TikZ |
 | Strict Procedia template | ✅ | See 1.7; template spacing kept as supplied — `elsarticle.cls` sets 22 pt above and below every display equation and `ecrc.sty` forces `\flushbottom`, so the white space around equations is the template's own (the submission had overridden it to 5 pt); template header/footer untouched (note: the conference's `ecrc.sty` prints "(2025)" in the running head and copyright line — left as supplied) |
-| Page limit | 🔄 | Round 1: 10 pages (ICMLDE 2022–23 limit: 10, extra pages charged). Round 2: 11 pages with the 17-scenario text (3 lines on p.11) and ≈14 lines on p.11 with the 16-row table; needs ≈16 lines of cuts to return to 10 |
+| Page limit | ✅ | 10 pages in round 1 and round 2 (ICMLDE 2022–23 limit: 10, extra pages charged); round 2 needed the cuts listed under "Page budget"; re-check on Overleaf |
 | Similarity ≤ 10% + upload similarity report | ⏳ | Day 5 |
 | Single file `1343_revised_version.pdf` with this response appended | ✅ | `reports/submission/1343_revised_version.pdf`: 5-page response + the 10-page Overleaf PDF; standalone `1343_response_to_reviewers.pdf` alongside |
 | Acknowledgement email to info@icmlde.org | ⏳ | |
@@ -171,3 +191,8 @@ Page budget: with the 16-row table the paper is **11 pages (14 lines on p.11)** 
 | 2026-10-13 | Scenarios 8 → 17 (3 person queries, 3 cross-media intents, 3 vertical queries added); rule-based relevance judgments and P/R/NDCG/MAP/MRR/HR@10; ablation re-run on 17 scenarios; scenario table builders (paper summary by kind, per-scenario for the letter) | `scripts/evaluate_recommendation_table.py`, `scripts/evaluate_scenarios_live.py`, `scripts/build_scenario_table.py`, `reports/scenario_*_live.*`, `reports/scenario_*table.tex` | 2.2, 3.5, 3.6 |
 | 2026-10-13 | §5.3 rewritten for 17 scenarios and the rank metrics; Table 6 now grouped by kind of scenario (per-scenario table moved to the letter, Table A); all tables `[!ht]`; labels `sec:overview`, `sec:catalog`, `sec:hybrid` added (no layout effect). Faithful build: 11 pages (3 lines on p.11) | `paper_icmlde_overleaf/main.tex` | 2.2, 3.5, 3.6, "table at top" |
 | 2026-10-13 | Response letter rewritten: numbering map, Submitted/Revised location under every comment, shortened responses (what + where), five spelling mistakes listed, "Entire manuscript", Table 1 "updated", R2.3/R2.4 separated, "Additional updates"; Table A (17 scenarios) inline, Table B (16 combinations) pending Kaggle; `scripts/inline_response_tables.py` refreshes both from the reports | `paper_icmlde_overleaf/response.tex`, `scripts/inline_response_tables.py` | all |
+| 2026-10-14 | Page-budget trims (wording only, no result removed): §5.3 compressed, §5.2 embedded-Qdrant aside and p99 parenthesis, §3.2 SHA-256 sentence, abstract stack clause, §3.1 clause, Fig. 1 spacing; R1.2 in the letter cut to one sentence. Paper still 10 pages with the §5.1 skeleton; estimated 11 pages (≈8 lines) with the finished §5.1 | `main.tex`, `response.tex` | R1.2, 2.2 |
+| 2026-10-14 | Kaggle 16-combination run (needed Internet switched on in the notebook; 25.3 / 19.7 / 3.9 min). Round-1 JSONs and tables moved to `reports/benchmarks/round1/`; new JSONs in place (Kaggle download came as `.txt`, copied to `.json`) | `reports/benchmarks/*_ablation.json`, `round1/` | 2.3, 3.6 |
+| 2026-10-14 | Builder: "mean gain from adding a signal" now averages over the 7 non-empty combinations without it (going from the empty combination replaces popularity, it does not add to it); hand-set row label shortened | `scripts/build_ablation_table.py` | 2.3 |
+| 2026-10-14 | Results written: Table 4 (16 combinations + hand-set, inlined), §5.1 rewritten (3 paragraphs), significance/K=10 sentence, training time 17.1 → 17.0 min, abstract, contribution 3 and conclusion now state the 16-combination result; letter Table B inlined and one result sentence added to R2.3 | `main.tex`, `response.tex` | 2.3, 2.4, 3.6 |
+| 2026-10-14 | Page-budget cuts (see "Page budget"): paper back to 10 pages in the faithful build; previews `reports/paper_round2_preview.pdf`, `reports/response_round2_preview.pdf` | `main.tex`, `reports/` | editorial |

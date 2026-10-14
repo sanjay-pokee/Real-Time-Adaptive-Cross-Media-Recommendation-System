@@ -156,7 +156,7 @@
 \address[a]{Department of Computer Science and Engineering, Amrita School of Computing, Coimbatore, Amrita Vishwa Vidyapeetham, India}
 
 \begin{abstract}
-A user's interests span media: the same preference can appear as a film theme, a book topic, a musical artist, or a learning goal, yet most recommenders operate within single-domain silos. This paper presents a real-time adaptive cross-media recommender that maps movies, TV shows, books, and music, extended to health, industrial, and finance products, into one catalog of 120,747 items. Candidates from Sentence-BERT embeddings with Qdrant nearest-neighbor search and from creator and title matching are reranked by a hybrid score combining exponential moving average (EMA) session adaptation, LightGCN collaborative filtering, and knowledge-graph (KG) and profile scoring, behind a FastAPI and React application with MySQL interaction logging. On three Amazon Reviews 2023 categories with up to 50,000 users, the hybrid with validation-selected weights is the best method on two categories, improving NDCG@20 over the strongest single signal by 21.6\% and 26.9\%, and an ablation shows that every signal contributes significantly; on the third category, entity overlap alone performs best. A recommendation over the full catalog takes 363~ms at the median on a laptop, and a feedback event updates the user profile in 0.05~ms.
+A user's interests span media, yet most recommenders operate within single-domain silos. This paper presents a real-time adaptive cross-media recommender that maps movies, TV shows, books, and music, extended to health, industrial, and finance products, into one catalog of 120,747 items. Candidates from Sentence-BERT embeddings with Qdrant nearest-neighbor search and from creator and title matching are reranked by a hybrid score combining exponential moving average (EMA) session adaptation, LightGCN collaborative filtering, and knowledge-graph (KG) and profile scoring. On three Amazon Reviews 2023 categories with up to 50,000 users, the hybrid with validation-selected weights is the best of all 16 combinations of its four signals on two categories, improving NDCG@20 over the strongest single signal by 21.6\% and 26.9\%, and removing any signal lowers it significantly; on the third category, entity overlap alone performs best. A recommendation over the full catalog takes 363~ms at the median on a laptop, and a feedback event updates the user profile in 0.05~ms.
 \end{abstract}
 
 \begin{keyword}
@@ -177,7 +177,7 @@ These capabilities are rarely combined in one multi-domain pipeline: graph model
 \begin{enumerate}
     \item An integrated cross-media platform with a unified catalog of seven content types that supports semantic, creator-aware, and title search.
     \item A hybrid ranking model that combines semantic retrieval, EMA adaptation, LightGCN graph scoring, and KG/profile scoring, with explainable sub-scores.
-    \item A quantitative evaluation on three public interaction datasets, comprising single-signal baselines, an ablation of every signal, validation-based weight selection, latency measurements, and scenario tests of the deployed system.
+    \item A quantitative evaluation on three public interaction datasets, comprising single-signal baselines, an ablation over all 16 combinations of the four signals, validation-based weight selection, latency measurements, and scenario tests of the deployed system.
 \end{enumerate}
 
 \section{Related Work and Novelty}
@@ -212,7 +212,7 @@ Table~\ref{tab:novelty} contrasts these approaches, based on the components repo
 \label{sec:implementation}
 \subsection{System overview}
 \label{sec:overview}
-In the architecture of Fig.~\ref{fig:architecture}, each source is mapped into the unified catalog, embedded, and loaded into Qdrant and MySQL offline, and LightGCN is retrained periodically. At request time, the FastAPI backend validates a query together with an optional user, content-type or domain filter, viewer age, and result count $K$; it matches creators and titles, retrieves Qdrant candidates, reranks them, and returns the final score with every sub-score, so that the React frontend can show which signal drove each recommendation. Feedback such as likes, skips, and bookmarks is logged through the interaction endpoint and updates the user's EMA profile immediately. The declared viewer age and domain act as a hard eligibility filter before ranking: an undeclared viewer is capped at a teen ceiling, and the health, industrial, and finance catalogs default to adult maturity.
+In the architecture of Fig.~\ref{fig:architecture}, each source is mapped into the unified catalog, embedded, and loaded into Qdrant and MySQL offline, and LightGCN is retrained periodically. At request time, the FastAPI backend validates a query together with an optional user, content-type or domain filter, viewer age, and result count $K$; it matches creators and titles, retrieves Qdrant candidates, reranks them, and returns the final score with every sub-score, which the React frontend displays. Feedback such as likes, skips, and bookmarks is logged through the interaction endpoint and updates the user's EMA profile immediately. The declared viewer age and domain act as a hard eligibility filter before ranking: an undeclared viewer is capped at a teen ceiling, and the health, industrial, and finance catalogs default to adult maturity.
 
 \begin{figure}[!t]
 \centering
@@ -223,17 +223,17 @@ In the architecture of Fig.~\ref{fig:architecture}, each source is mapped into t
 \node[box=24mm] (s2) at (3.3,0) {Books\\(Open Library)};
 \node[box=24mm] (s3) at (6.6,0) {Music\\(Spotify, Last.fm)};
 \node[box=31mm] (s4) at (10.3,0) {Health, industrial, finance\\(Amazon Reviews 2023)};
-\node[box=42mm] (cat) at (5.1,-1.11) {Unified catalog, mappers $\phi_d$\\120,747 items, 7 content types};
-\node[box=22mm] (sbert) at (0.3,-2.21) {Sentence-BERT\\embeddings};
-\node[box=27mm] (sql) at (9.6,-2.21) {MySQL catalog and\\interaction log};
-\node[box=22mm] (qd) at (0.3,-3.33) {Qdrant HNSW\\candidate search};
-\node[box=21mm] (lex) at (3.2,-3.33) {Creator and title\\matching};
-\node[box=19mm] (ema) at (6.0,-3.33) {EMA profile\\(per event)};
-\node[box=19mm] (gcn) at (8.6,-3.33) {LightGCN\\(periodic)};
-\node[box=21mm] (kg) at (11.3,-3.33) {KG and profile\\scores};
-\node[box=36mm] (hyb) at (5.1,-4.47) {Hybrid ranker $S(i,u,q)$, Eq.~\eqref{eq:hybrid}};
-\node[box=16mm] (api) at (8.6,-4.47) {FastAPI\\JSON};
-\node[box=16mm] (ui) at (11.3,-4.47) {React\\frontend};
+\node[box=42mm] (cat) at (5.1,-1.0) {Unified catalog, mappers $\phi_d$\\120,747 items, 7 content types};
+\node[box=22mm] (sbert) at (0.3,-2.0) {Sentence-BERT\\embeddings};
+\node[box=27mm] (sql) at (9.6,-2.0) {MySQL catalog and\\interaction log};
+\node[box=22mm] (qd) at (0.3,-3.0) {Qdrant HNSW\\candidate search};
+\node[box=21mm] (lex) at (3.2,-3.0) {Creator and title\\matching};
+\node[box=19mm] (ema) at (6.0,-3.0) {EMA profile\\(per event)};
+\node[box=19mm] (gcn) at (8.6,-3.0) {LightGCN\\(periodic)};
+\node[box=21mm] (kg) at (11.3,-3.0) {KG and profile\\scores};
+\node[box=36mm] (hyb) at (5.1,-4.0) {Hybrid ranker $S(i,u,q)$, Eq.~\eqref{eq:hybrid}};
+\node[box=16mm] (api) at (8.6,-4.0) {FastAPI\\JSON};
+\node[box=16mm] (ui) at (11.3,-4.0) {React\\frontend};
 \foreach \s in {s1,s2,s3,s4} \draw[->] (\s.south) -- (cat.north);
 \draw[->] (cat.west) -| (sbert.north);
 \draw[->] (sbert) -- (qd);
@@ -258,7 +258,7 @@ Each domain $d\in\mathcal{D}$ provides a mapper $\phi_d$ from a raw row $x$ to t
     r_i=(id,type,title,desc,creators,categories,text_i).
     \label{eq:catalog_union}
 \end{equation}
-Adding a domain therefore requires only a new $\phi_d$; embedding, search, KG scoring, the API, and the frontend are unchanged. Movies and TV shows use TMDb metadata and credits \cite{tmdb}; books use the Open Library APIs \cite{openlibrary}; music combines a public Spotify songs export with current tracks from the Last.fm API \cite{lastfm}; and health, industrial, and finance products come from the Amazon Reviews 2023 metadata \cite{hou2024blair}, with finance also including accounting and personal-finance titles from Open Library. The deployed catalog holds 120,747 items: 31,133 songs, 23,492 movies, 20,000 health and 20,000 industrial products, 12,402 books, 10,617 TV shows, and 3,103 finance items. Directors and cast, authors, and artists all map to the shared creators field, which therefore serves both person search and the knowledge graph. A SHA-256 hash of each embedding text lets unchanged rows reuse their embeddings.
+Adding a domain therefore requires only a new $\phi_d$; embedding, search, KG scoring, the API, and the frontend are unchanged. Movies and TV shows use TMDb metadata and credits \cite{tmdb}; books use the Open Library APIs \cite{openlibrary}; music combines a public Spotify songs export with current tracks from the Last.fm API \cite{lastfm}; and health, industrial, and finance products come from the Amazon Reviews 2023 metadata \cite{hou2024blair}, with finance also including accounting and personal-finance titles from Open Library. The deployed catalog holds 120,747 items: 31,133 songs, 23,492 movies, 20,000 health and 20,000 industrial products, 12,402 books, 10,617 TV shows, and 3,103 finance items. Directors and cast, authors, and artists all map to the shared creators field, which therefore serves both person search and the knowledge graph.
 
 \subsection{Semantic retrieval and creator and title matching}
 \label{sec:person}
@@ -275,7 +275,7 @@ Interactions are logged in MySQL with a signed weight $w$: view $0.4$, click $0.
     \mathbf{u}_{t+1}=\tilde{\mathbf{u}}_{t+1}/\|\tilde{\mathbf{u}}_{t+1}\|.
     \label{eq:ema_update}
 \end{equation}
-The profile is empty until the user's first non-neutral event on an embedded item, which sets $\mathbf{u}_1=\mathrm{sign}(w)\,\mathbf{e}_i$, so users without events receive no EMA score. Likes pull the profile toward an item, skips and low ratings push it away, weak signals such as views move it less, and renormalization keeps it on the unit sphere. The EMA score is the cosine similarity $S_{\mathit{ema}}(i,u)=\mathbf{e}_i^\top\mathbf{u}_t/(\|\mathbf{e}_i\|\,\|\mathbf{u}_t\|)$. Because each event updates a single vector, EMA can follow session-level drift without retraining any model.
+The profile is empty until the user's first non-neutral event on an embedded item, which sets $\mathbf{u}_1=\mathrm{sign}(w)\,\mathbf{e}_i$, so users without events receive no EMA score. Skips and low ratings push the profile away, weak signals such as views move it less, and renormalization keeps it on the unit sphere. The EMA score is the cosine similarity $S_{\mathit{ema}}(i,u)=\mathbf{e}_i^\top\mathbf{u}_t/(\|\mathbf{e}_i\|\,\|\mathbf{u}_t\|)$. Because each event updates a single vector, EMA can follow session-level drift without retraining any model.
 
 \subsection{Graph collaborative filtering with LightGCN}
 \label{sec:lightgcn}
@@ -293,7 +293,7 @@ and symmetrically for items. Training minimizes the Bayesian Personalized Rankin
     +\lambda\|\Theta\|^2,
     \label{eq:bpr}
 \end{equation}
-where $\hat{y}_{ui}=\mathbf{e}_u^\top\mathbf{e}_i$, $\Theta$ are the layer-0 embeddings of the batch, and for every sampled positive pair $(u,i)$ one negative $j$ is drawn uniformly from the catalog and redrawn if $(u,j)$ is observed. BPR suits implicit, positive-only feedback because it optimizes the pairwise ranking order directly, without negative labels \cite{he2020lightgcn,wang2019ngcf}. At inference time the graph score is the cosine similarity of the $\ell_2$-normalized embeddings, $S_{\mathit{graph}}(i,u)=\mathbf{e}_u^\top\mathbf{e}_i/(\|\mathbf{e}_u\|\,\|\mathbf{e}_i\|)$. A graph score exists only when both user and item are in the training graph; otherwise the candidate is ranked by the other signals. The training settings are given in Section~\ref{sec:setup}.
+where $\hat{y}_{ui}=\mathbf{e}_u^\top\mathbf{e}_i$, $\Theta$ are the layer-0 embeddings of the batch, and for every sampled positive pair $(u,i)$ one negative $j$ is drawn uniformly from the catalog and redrawn if $(u,j)$ is observed. At inference time the graph score is the cosine similarity of the $\ell_2$-normalized embeddings, $S_{\mathit{graph}}(i,u)=\mathbf{e}_u^\top\mathbf{e}_i/(\|\mathbf{e}_u\|\,\|\mathbf{e}_i\|)$. A graph score exists only when both user and item are in the training graph; otherwise the candidate is ranked by the other signals. The training settings are given in Section~\ref{sec:setup}.
 
 \subsection{Knowledge graph and profile-aware scoring}
 \label{sec:kg}
@@ -323,7 +323,7 @@ The two scores below count such paths through set intersections, without enumera
 \node[draw, dashed, rounded corners=3pt, inner sep=3pt, fit=(movie)(book)(song),
       label={[font=\scriptsize]above:Item (any medium)}] (items) {};
 \node[ent] (creator) at (8.9,0.00) {Creator};
-\node[ent] (genre) at (2.0,-2.01) {Genre / topic};
+\node[ent] (genre) at (2.0,-1.75) {Genre / topic};
 \draw[->] (user) -- node[lab]{has} (age);
 \draw[->] (user) -- node[lab]{has} (prof);
 \draw[->] (user) -- node[lab]{has} (int);
@@ -332,7 +332,7 @@ The two scores below count such paths through set intersections, without enumera
 \draw[->] (items.south) -- node[lab]{belongs\_to\_genre} (genre);
 \draw[->, dashed] (prof) -- node[lab, pos=0.55]{related\_to\_profession} (genre);
 \draw[->, dashed] (int) -- node[lab, pos=0.6]{matches} (genre);
-\draw[->, dashed] (age.west) .. controls (-5.9,0.25) and (-5.4,-2.01) .. node[pos=0.42, left, font=\scriptsize]{suitable\_for} (genre.west);
+\draw[->, dashed] (age.west) .. controls (-5.9,0.25) and (-5.4,-1.75) .. node[pos=0.42, left, font=\scriptsize]{suitable\_for} (genre.west);
 \end{tikzpicture}
 \caption{Knowledge-graph schema; dashed edges are profile expansions into topic terms.}
 \label{fig:knowledge_graph}
@@ -375,7 +375,7 @@ where $\mathcal{I}^{+}_u$ and $\mathcal{I}^{-}_u$ are the items the user has alr
 
 \section{Experimental Setup}
 \label{sec:setup}
-The system is evaluated with an offline benchmark on public interaction data, which measures every signal of Eq.~\eqref{eq:hybrid} under identical conditions, and with scenario tests of the deployed system for the query- and profile-dependent behavior that public logs cannot exercise.
+An offline benchmark on public interaction data measures every signal of Eq.~\eqref{eq:hybrid} under identical conditions; scenario tests of the deployed system cover the query- and profile-dependent behavior.
 
 \emph{Datasets.} The benchmark uses three categories of the Amazon Reviews 2023 corpus \cite{hou2024blair}: Movies \& TV, Health \& Household, and Industrial \& Scientific. Ratings of four or five stars are positive interactions; other ratings are discarded. The two large categories are filtered to a 10-core graph and a random sample of 50,000 users is drawn, after which items with fewer than five remaining interactions are removed; Industrial \& Scientific does not survive a 10-core filter and uses the 5-core graph without sampling. Item text (title, category path, description, and store) comes from the corpus metadata. Table~\ref{tab:datasets} lists the graphs, whose densities are about 0.04\%; metadata covers every Health \& Household and Industrial \& Scientific item but only 67.3\% of the Movies \& TV items, and items without text receive no semantic, EMA, or KG signal.
 
@@ -383,9 +383,9 @@ The system is evaluated with an offline benchmark on public interaction data, wh
 
 \emph{Offline signals.} Public logs contain neither typed queries nor declared profiles, so each signal uses its closest offline counterpart: $S_{\mathit{sem}}$ takes the user's most recent history item as the query, which corresponds to the system's similar-item endpoint; $S_{\mathit{ema}}$ replays Eq.~\eqref{eq:ema_update} over the history in time order; $S_{\mathit{graph}}$ is the LightGCN cosine score; and $S_{\mathit{kg}}$ applies Eq.~\eqref{eq:kg_score} to the entities of the user's history (category-path nodes, store, and main category), normalized by the candidate's entity count because a history holds far more entities than a query. Entities occurring on a single item or on more than half of the items are dropped. The declared-profile score has no offline counterpart and is covered by the scenarios, and $B_{\mathit{pref}}$ is omitted because its category term overlaps with the offline KG signal.
 
-\emph{Baselines, combinations, and weight selection.} Most-popular ranking uses neither content nor personalization. The single-signal baselines each keep one source of evidence: semantic similarity to the latest history item (content only, usable without interactions), EMA similarity to the session profile (recent taste only), the LightGCN score (collaborative behavior only, no text), and knowledge-graph entity overlap (shared creators, categories, and brands only). The ablation evaluates all $2^4=16$ combinations of the four signals, from the empty combination (popularity alone) to all four, and lists the hybrid with the hand-set weights of Section~\ref{sec:hybrid} as a reference. Each combination has its own weights, chosen by grid search on 10,000 validation users to maximize NDCG@20: the first signal of the combination has weight 1 and every other signal a weight in $\{0.05,0.1,0.2,0.4,0.8,1.6,3.2\}$, so that no combination is handicapped by weights chosen for another; the test set is used once, for the selected weights.
+\emph{Baselines, combinations, and weight selection.} Most-popular ranking uses neither content nor personalization, and each single-signal baseline keeps one source of evidence: semantic similarity to the latest item (content only, usable without interactions), EMA similarity to the session profile (recent taste only), the LightGCN score (collaborative behavior only), and KG entity overlap (shared categories and brands only). The ablation evaluates all $2^4=16$ combinations of the four signals, from the empty one (popularity alone) to all four, plus the hybrid with the hand-set weights of Section~\ref{sec:hybrid}. Each combination has its own weights, chosen by grid search on 10,000 validation users to maximize NDCG@20 (the first signal has weight 1 and every other signal a weight in $\{0.05,0.1,0.2,0.4,0.8,1.6,3.2\}$), so that no combination is handicapped by weights chosen for another; the test set is used once.
 
-\emph{Training settings.} Table~\ref{tab:settings} lists the settings. LightGCN is trained for a fixed 60 epochs of $\lceil|\mathcal{E}|/B\rceil$ mini-batches without early stopping, so that neither validation nor test data influence training. All runs use seed 42 on one NVIDIA T4 GPU, on which a training run takes 17.1, 13.2, and 1.2 minutes on the three graphs.
+\emph{Training settings.} Table~\ref{tab:settings} lists the settings. LightGCN is trained for a fixed 60 epochs of $\lceil|\mathcal{E}|/B\rceil$ mini-batches without early stopping, so that neither validation nor test data influence training. All runs use seed 42 on one NVIDIA T4 GPU, on which a training run takes 17.0, 13.2, and 1.2 minutes on the three graphs.
 
 \begin{table}[!ht]
 \centering
@@ -420,7 +420,7 @@ Batch / epochs & 4096 / 60, no early stopping & Text encoder & all-MiniLM-L6-v2,
 \label{sec:results}
 \subsection{Baselines and ablation}
 \label{sec:ablation}
-Table~\ref{tab:ablation} reports the 16 combinations of the four signals at $K=20$ (S: semantic, E: EMA, G: LightGCN, K: knowledge graph): the empty combination is most-popular ranking, the four single-signal rows are the baselines, S+E+G+K is the proposed hybrid, and the last row is the hybrid with the hand-set weights. Absolute values are low, as usual for full-catalog ranking on sparse purchase data, so methods are compared under identical conditions. \textbf{[PENDING: sentence on significance ($^{\circ}$ marks) and on the $K=10$ results, from the Kaggle run]}
+Table~\ref{tab:ablation} reports the 16 combinations of the four signals at $K=20$ (S: semantic, E: EMA, G: LightGCN, K: knowledge graph): the empty combination is most-popular ranking, the four single-signal rows are the baselines, S+E+G+K is the proposed hybrid, and the last row is the hybrid with the hand-set weights. Absolute values are low, as usual for full-catalog ranking on sparse purchase data, so methods are compared under identical conditions. Every combination differs significantly from S+E+G+K in NDCG@20 ($p<0.01$, Wilcoxon) except the one marked $^{\circ}$, and the results at $K=10$ and for HitRate and Precision lead to the same conclusions.
 
 \begin{table}[!ht]
 \centering
@@ -428,11 +428,44 @@ Table~\ref{tab:ablation} reports the 16 combinations of the four signals at $K=2
 \label{tab:ablation}
 \footnotesize
 % BEGIN ablation_table
-\textbf{[PENDING: Table 4, generated from the Kaggle results by the table builder]}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular*}{\hsize}{@{\extracolsep{\fill}}lcccccccccccc@{}}
+\toprule
+Signals & \multicolumn{4}{c}{Movies \& TV} & \multicolumn{4}{c}{Health \& Household} & \multicolumn{4}{c}{Industrial \& Scientific} \\
+ & R@20 & N@20 & MAP@20 & MRR@20 & R@20 & N@20 & MAP@20 & MRR@20 & R@20 & N@20 & MAP@20 & MRR@20 \\
+\colrule
+None (popularity) & 0.0197 & 0.0097 & 0.0048 & 0.0089 & 0.0237 & 0.0115 & 0.0056 & 0.0106 & 0.0282 & 0.0147 & 0.0077 & 0.0150 \\
+\colrule
+S & 0.0307 & 0.0187 & 0.0118 & 0.0196 & 0.0166 & 0.0096 & 0.0054 & 0.0104 & 0.0379 & 0.0223 & 0.0134 & 0.0238 \\
+E & 0.0233 & 0.0128 & 0.0074 & 0.0126 & 0.0104 & 0.0052 & 0.0026 & 0.0050 & 0.0254 & 0.0135 & 0.0074 & 0.0131 \\
+G & 0.0257 & 0.0136 & 0.0075 & 0.0134 & 0.0116 & 0.0054 & 0.0025 & 0.0047 & 0.0242 & 0.0130 & 0.0072 & 0.0130 \\
+K & 0.0093 & 0.0045 & 0.0021 & 0.0041 & \textbf{0.0253} & \textbf{0.0144} & \textbf{0.0081} & \textbf{0.0157} & 0.0364 & 0.0210 & 0.0122 & 0.0224 \\
+\colrule
+S+E & 0.0309 & 0.0188 & 0.0118 & 0.0197 & 0.0169 & 0.0097 & 0.0055 & 0.0105 & 0.0380 & 0.0225 & 0.0135 & 0.0240 \\
+S+G & 0.0359 & 0.0222 & 0.0143 & 0.0238 & 0.0212 & 0.0120 & 0.0068 & 0.0129 & 0.0468 & 0.0267 & 0.0156 & 0.0278 \\
+S+K & 0.0313 & 0.0193 & 0.0123 & 0.0205 & 0.0170 & 0.0097 & 0.0055 & 0.0105 & 0.0387 & 0.0226 & 0.0135 & 0.0240 \\
+E+G & 0.0307 & 0.0174 & 0.0104 & 0.0177 & 0.0187 & 0.0092 & 0.0046 & 0.0086 & 0.0377 & 0.0205 & 0.0116 & 0.0205 \\
+E+K & 0.0247 & 0.0141 & 0.0085 & 0.0143 & 0.0144 & 0.0072 & 0.0036 & 0.0069 & 0.0314 & 0.0162 & 0.0087 & 0.0154 \\
+G+K & 0.0265 & 0.0141 & 0.0078 & 0.0139 & 0.0200 & 0.0097 & 0.0047 & 0.0091 & 0.0386 & 0.0207 & 0.0115 & 0.0205 \\
+\colrule
+S+E+G & 0.0362 & 0.0224 & 0.0144 & 0.0240 & 0.0215 & 0.0122 & 0.0069 & 0.0131 & 0.0490 & 0.0277 & 0.0162 & 0.0286 \\
+S+E+K & 0.0318 & 0.0197 & 0.0126 & 0.0209 & 0.0171 & 0.0098 & 0.0056 & 0.0107 & 0.0389 & 0.0227 & 0.0136 & 0.0241 \\
+S+G+K & 0.0366 & 0.0226 & 0.0145 & 0.0241 & 0.0224 & 0.0126$^{\circ}$ & 0.0071 & 0.0135 & 0.0484 & 0.0275 & 0.0161 & 0.0286 \\
+E+G+K & 0.0314 & 0.0177 & 0.0106 & 0.0179 & 0.0232 & 0.0115 & 0.0058 & 0.0109 & 0.0410 & 0.0225 & 0.0128 & 0.0227 \\
+\colrule
+S+E+G+K & \textbf{0.0368} & \textbf{0.0227} & \textbf{0.0146} & \textbf{0.0243} & 0.0223 & 0.0126 & 0.0071 & 0.0135 & \textbf{0.0495} & \textbf{0.0283} & \textbf{0.0167} & \textbf{0.0295} \\
+\colrule
+Hand-set weights & 0.0344 & 0.0216 & 0.0140 & 0.0230 & 0.0208 & 0.0122 & 0.0070 & 0.0133 & 0.0455 & 0.0266 & 0.0159 & 0.0282 \\
+\botrule
+\end{tabular*}
 % END ablation_table
 \end{table}
 
-\textbf{[PENDING: results paragraphs, written from the table builder's summary: (1) the best combination on each dataset and the gain of S+E+G+K over the best single signal and over popularity; (2) the effect of each signal, as the drop when it is removed and the mean gain when it is added; (3) any dataset on which a single signal or a smaller combination beats the hybrid; (4) the selected weights and the gain of tuned over hand-set weights; HitRate@20 and Precision@20 of the main methods.]}
+On Movies \& TV and Industrial \& Scientific, the four-signal hybrid is the best of the 16 combinations on all four measures at both cut-offs. It improves NDCG@20 over the strongest single signal, semantic similarity, by 21.6\% and 26.9\% (most-popular: factors of 2.3 and 1.9) and HitRate@20 from 0.051 to 0.063 and from 0.068 to 0.089. The signals are complementary: LightGCN alone is weaker than semantic retrieval on every dataset, yet semantic plus LightGCN is the best pair everywhere, and removing either from the hybrid lowers NDCG@20 by 8.6--22.0\% (semantic) and 13.4--21.9\% (LightGCN) on the three datasets. Removing the KG score costs 1.5--3.0\% on every dataset ($p<10^{-6}$), and removing EMA 0.7\% and 2.7\% on Movies \& TV and Industrial \& Scientific ($p<0.01$), with no significant effect on Health \& Household.
+
+Health \& Household behaves differently. Semantic similarity, EMA, and LightGCN on their own all rank below most-popular, whereas KG overlap alone, which here matches category paths and brands, is the best combination on every measure and exceeds the hybrid by 14.4\% in NDCG@20; the hybrid ties S+G+K and beats the other 13 combinations. Repeat purchases within a brand or category, which entity overlap captures directly, dominate this domain. The validation split, with one held-out item per user, nevertheless selected a small KG weight, so weights should be tuned per domain on more validation data.
+
+The selected four-signal weights are stable: relative to the semantic score, $\lambda_g=0.8$, $\lambda_e=0.2$--$0.4$, and $\lambda_k=0.05$--$0.1$ on all three datasets. The hand-set weights thus under-weight the graph signal by a factor of four, and the tuned weights improve NDCG@20 over them by 5.4\%, 3.6\%, and 6.5\% ($p<10^{-4}$), although the two tie on Health \& Household at $K=10$.
 
 \subsection{Latency}
 \label{sec:latency}
@@ -454,19 +487,17 @@ Creator matching & 46.2 & 44.4 & 63.1 & 74.1 \\
 Lexical title/keyword matching & 198.9 & 190.8 & 265.7 & 307.2 \\
 Query encoding (Sentence-BERT) & 12.6 & 12.0 & 14.0 & 23.4 \\
 Qdrant HNSW search with payloads & 85.2 & 82.6 & 106.3 & 126.4 \\
-MySQL preference bonus ($B_{\mathit{pref}}$) & 6.4 & 7.2 & 8.5 & 9.5 \\
-LightGCN rerank & 0.07 & 0.07 & 0.13 & 0.16 \\
 EMA rerank & 6.5 & 7.3 & 9.3 & 10.6 \\
 KG/profile rerank & 13.1 & 13.1 & 22.3 & 28.2 \\
 \botrule
 \end{tabular*}
 \end{table}
 
-Over all 700 requests, the median latency is 363~ms (mean 371~ms, p95 455~ms, p99 507~ms). Personalized requests are 28~ms slower at the median than anonymous ones: the MySQL preference, LightGCN, and EMA stages add about 15~ms, and the rest comes from retrieving $5K$ instead of $K$ candidates. An EMA update takes 0.05~ms (p99 0.08~ms over 2,000 updates), so a like or skip is reflected in the very next request without retraining. The dominant costs are the lexical title scan (191~ms), which scans the catalog with pandas on every request, and the Qdrant query (83~ms), which returns up to $5K$ candidates with their payloads. Because the CPU-bound scan is serialized by the Python interpreter lock, one API process sustains 2.7 requests per second, and 3.3 with eight concurrent workers; an inverted title index and several worker processes are the main routes to higher throughput. Qdrant's embedded local mode, used during development, performs exact search in Python and took 1.5~s per query in the same setting, so the server deployment is required for interactive use.
+Over all 700 requests, the median latency is 363~ms (mean 371~ms, p95 455~ms, p99 507~ms). Personalized requests are 28~ms slower at the median than anonymous ones: the MySQL preference bonus (mean 6.4~ms), LightGCN (0.07~ms), and EMA stages add about 15~ms, and the rest comes from retrieving $5K$ instead of $K$ candidates. An EMA update takes 0.05~ms, so a like or skip is reflected in the very next request without retraining. The dominant costs are the lexical title scan (191~ms), which scans the catalog with pandas on every request, and the Qdrant query (83~ms), which returns up to $5K$ candidates with their payloads. Because the CPU-bound scan is serialized by the Python interpreter lock, one API process sustains 2.7 requests per second, and 3.3 with eight concurrent workers; an inverted title index and several worker processes are the main routes to higher throughput.
 
 \subsection{Prototype scenarios}
 \label{sec:scenarios}
-Seventeen scenarios were issued through the deployed endpoint with $K=10$: five person queries (two directors, an author, a singer, and a band), six cross-media intents, and six queries in the health, industrial, and finance verticals (two each). Each runs as a seeded demo user with the viewer age implied by its profile (20 for young adults, 30 for adults, 8 for the family profile); the vertical queries also declare their domain, as the frontend does. Table~\ref{tab:results} reports means by kind of scenario; the result of every scenario is listed in the supplementary material. PersonHit@5 (PH) counts the top-5 results that credit the queried person, ProfileAlign@5 (PA) the top-5 results with a positive profile score (Eq.~\eqref{eq:profile_score}), and KG and Prof.\ are the mean $S_{\mathit{kg}}$ and $S_{\mathit{profile}}$ of the top five. Typed queries have no human labels, so Precision, Recall, NDCG, MAP, and MRR at 10 are computed against rule-based relevance judgments: an item is relevant if the queried person is among its creators, or if its title, categories, creators, or description contain at least two of the scenario's intent terms (and, for a vertical query, it belongs to that vertical). The rule reads catalog metadata only, never a ranker score, and recall divides by the whole relevant set (15 to 6,558 items), so it is bounded by $10/|\mathrm{relevant}|$. The cross-domain rate is the fraction of scenarios whose top ten contains at least two content types.
+Seventeen scenarios were issued through the deployed endpoint with $K=10$, each as a seeded demo user with the viewer age implied by its profile (20, 30, or 8 years; vertical queries also declare their domain): five person queries, six cross-media intents, and six vertical queries (health, industrial, and finance, two each). Table~\ref{tab:results} gives means by kind of scenario, and every scenario is listed in the supplementary material. PersonHit@5 (PH) counts the top-5 results that credit the queried person, ProfileAlign@5 (PA) those with a positive profile score (Eq.~\eqref{eq:profile_score}), and KG and Prof.\ are the mean $S_{\mathit{kg}}$ and $S_{\mathit{profile}}$ of the top five. Typed queries have no human labels, so the rank metrics at 10 use rule-based relevance judgments: an item is relevant if the queried person is among its creators, or if its title, categories, creators, or description contain at least two of the scenario's intent terms (within the declared vertical, if any). The rule reads catalog metadata only, never a ranker score, and recall divides by all relevant items (15 to 6,558), so it is at most $10/|\mathrm{relevant}|$. The cross-domain rate is the fraction of scenarios whose top ten contains at least two content types.
 
 \begin{table}[!ht]
 \centering
@@ -487,24 +518,24 @@ All scenarios & 17 & 0.88 & 1.00 & 0.697 & 0.858 & 0.947 & 0.102 & 0.943 & 0.913
 \end{tabular*}
 \end{table}
 
-All five person queries place four or five of the person's items in the top five; the misses are items that carry the name in the title without listing the person as a creator, such as \emph{James Cameron's Story of Science Fiction}. Every scenario places five profile-aligned items in the top five. Eight of the eleven scenarios without a domain filter return at least two content types ($6$ of $11$ if movies and TV shows count as one medium), the family profile receives only age-appropriate films, and the six vertical scenarios stay in their declared domain by design, so the cross-domain rate is $8/17$ overall. Averaged over the 17 scenarios, P@10 is 0.947, NDCG@10 0.943, MAP@10 0.913, and MRR@10 0.941. Eleven of the twelve topical queries (550 to 6,558 relevant items each) score 1.00 on every rank measure, so they mainly confirm that the results match the intent terms; the person queries are the discriminating cases (mean P@10 0.84, NDCG@10 0.82, MAP@10 0.73, MRR@10 0.80). EMA scores were available for all 170 returned items but a LightGCN score for only seven, because the deployed LightGCN model is trained on the demo log (13 users and 347 items) and rarely covers the candidates of a new query; its contribution is measured by the benchmark instead.
+All five person queries place four or five of the person's items in the top five; the misses carry the name in the title without listing the person as a creator, such as \emph{James Cameron's Story of Science Fiction}. Eight of the eleven scenarios without a domain filter return at least two content types ($6$ of $11$ if movies and TV shows count as one medium), the family profile receives only age-appropriate films, and the vertical scenarios stay in their declared domain by design, so the cross-domain rate is $8/17$ overall. Eleven of the twelve topical queries score 1.00 on every rank measure, so they mainly confirm that results match the intent terms; the person queries discriminate (mean P@10 0.84, NDCG@10 0.82, MAP@10 0.73, MRR@10 0.80). EMA scores were available for all 170 returned items but a LightGCN score for only seven, because the deployed LightGCN model is trained on the demo log (13 users, 347 items); its contribution is measured by the benchmark.
 
-The KG and profile signals have no offline counterpart, so they were ablated in the scenarios by setting their weights to zero; both sub-scores are still computed, so alignment is measured identically. Without the profile score, mean ProfileAlign@5 falls from 1.00 to 0.96, the mean profile score of the top five from 0.858 to 0.795, NDCG@10 from 0.943 to 0.916, and on average 0.71 of the top five items change. The effect is largest for the pop-music user, whose ProfileAlign@5 drops from 5/5 to 2/5 as a concert film replaces an album at the top, and for the broad space-adventure query (profile score 0.896 to 0.560). Without the KG score, the mean KG score of the top five drops from 0.697 to 0.664, NDCG@10 from 0.943 to 0.931, and 0.47 of the top five items change, consistent with its small weight. Person matching is unchanged in all variants, the cross-domain rate rises from $8/17$ to $9/17$ in each because one scenario gains a TV show, and no variant returns an item that the profile marks as unsuitable, because the eligibility filter of Section~\ref{sec:implementation} already removes such items before ranking.
+The KG and profile signals have no offline counterpart, so they were ablated in the scenarios by setting their weights to zero. Without the profile score, mean ProfileAlign@5 falls from 1.00 to 0.96, the mean profile score of the top five from 0.858 to 0.795, NDCG@10 from 0.943 to 0.916, and 0.71 of the top five items change; the effect is largest for the pop-music user (ProfileAlign@5 from 5/5 to 2/5 as a concert film replaces an album) and the broad space-adventure query (profile score 0.896 to 0.560). Without the KG score, the mean KG score falls from 0.697 to 0.664, NDCG@10 from 0.943 to 0.931, and 0.47 of the top five items change. Person matching is unchanged, the cross-domain rate rises from $8/17$ to $9/17$ in both variants (one scenario gains a TV show), and no variant returns an unsuitable item, because the eligibility filter of Section~\ref{sec:implementation} removes such items before ranking.
 
 \section{Conclusion and Future Work}
 \label{sec:conclusion}
-This paper presented a real-time adaptive cross-media recommender that ranks seven content types from one catalog by combining semantic, creator and title, EMA, LightGCN, and KG and profile signals. On three Amazon Reviews 2023 categories, the hybrid with validation-selected weights was the best method on two of them, every signal contributed significantly, and weight selection improved on the hand-set weights; a request takes 363~ms at the median and a feedback update 0.05~ms. Its limitations are the Health \& Household result, where entity overlap alone was best, the demo-only coverage of the deployed LightGCN model, and a throughput of about three requests per second; future work will address them with per-domain weight tuning and an inverted title index, and will add further domains and user studies.
+This paper presented a real-time adaptive cross-media recommender that ranks seven content types from one catalog by combining semantic, creator and title, EMA, LightGCN, and KG and profile signals. On three Amazon Reviews 2023 categories, the hybrid with validation-selected weights was the best of all 16 signal combinations on two of them, the semantic and LightGCN signals contributed most, and weight selection improved on the hand-set weights; a request takes 363~ms at the median and a feedback update 0.05~ms. Its limitations are the Health \& Household result, where entity overlap alone was best, the demo-only coverage of the deployed LightGCN model, and a throughput of about three requests per second; future work will address them with per-domain weight tuning and an inverted title index, and will add further domains and user studies.
 
 \begin{thebibliography}{00}
 
 \bibitem{reimers2019sbert}
-Reimers N, Gurevych I. Sentence-BERT: sentence embeddings using Siamese BERT-networks. In: Proceedings of EMNLP-IJCNLP; 2019. p. 3982--3992.
+Reimers N, Gurevych I. Sentence-BERT: sentence embeddings using Siamese BERT-networks. In: Proc. EMNLP-IJCNLP; 2019. p. 3982--3992.
 
 \bibitem{qdrant}
 Qdrant. Qdrant vector database documentation; 2026. Available from: \url{https://qdrant.tech/documentation/}
 
 \bibitem{he2020lightgcn}
-He X, Deng K, Wang X, Li Y, Zhang Y, Wang M. LightGCN: simplifying and powering graph convolution network for recommendation. In: Proceedings of the 43rd ACM SIGIR Conference; 2020. p. 639--648.
+He X, Deng K, Wang X, Li Y, Zhang Y, Wang M. LightGCN: simplifying and powering graph convolution network for recommendation. In: Proc. 43rd ACM SIGIR; 2020. p. 639--648.
 
 \bibitem{fastapi}
 Ram\'irez S. FastAPI documentation; 2026. Available from: \url{https://fastapi.tiangolo.com/}
@@ -513,16 +544,16 @@ Ram\'irez S. FastAPI documentation; 2026. Available from: \url{https://fastapi.t
 Zhang S, Yao L, Sun A, Tay Y. Deep learning based recommender system: a survey and new perspectives. ACM Computing Surveys 2019;\textbf{52}(1):1--38.
 
 \bibitem{wang2019ngcf}
-Wang X, He X, Wang M, Feng F, Chua TS. Neural graph collaborative filtering. In: Proceedings of the 42nd ACM SIGIR Conference; 2019. p. 165--174.
+Wang X, He X, Wang M, Feng F, Chua TS. Neural graph collaborative filtering. In: Proc. 42nd ACM SIGIR; 2019. p. 165--174.
 
 \bibitem{kang2018sasrec}
-Kang WC, McAuley J. Self-attentive sequential recommendation. In: Proceedings of the IEEE ICDM; 2018. p. 197--206.
+Kang WC, McAuley J. Self-attentive sequential recommendation. In: Proc. IEEE ICDM; 2018. p. 197--206.
 
 \bibitem{wang2019kgat}
-Wang X, He X, Cao Y, Liu M, Chua TS. KGAT: knowledge graph attention network for recommendation. In: Proceedings of the 25th ACM SIGKDD Conference; 2019. p. 950--958.
+Wang X, He X, Cao Y, Liu M, Chua TS. KGAT: knowledge graph attention network for recommendation. In: Proc. 25th ACM SIGKDD; 2019. p. 950--958.
 
 \bibitem{wang2018ripplenet}
-Wang H, Zhang F, Wang J, Zhao M, Li W, Xie X, Guo M. RippleNet: propagating user preferences on the knowledge graph for recommender systems. In: Proceedings of the 27th ACM CIKM; 2018. p. 417--426.
+Wang H, Zhang F, Wang J, Zhao M, Li W, Xie X, Guo M. RippleNet: propagating user preferences on the knowledge graph for recommender systems. In: Proc. 27th ACM CIKM; 2018. p. 417--426.
 
 \bibitem{zang2022cross}
 Zang T, Zhu Y, Liu H, Zhang R, Yu J. A survey on cross-domain recommendation: taxonomies, methods, and future directions. ACM Transactions on Information Systems 2022;\textbf{41}(2).
@@ -531,7 +562,7 @@ Zang T, Zhu Y, Liu H, Zhang R, Yu J. A survey on cross-domain recommendation: ta
 Zhang H, Cheng M, Liu Q, Jiang J, Wang X, Zhang R, Lei C, Chen E. A comprehensive survey on cross-domain recommendation: taxonomy, progress, and prospects. arXiv preprint arXiv:2503.14110; 2025.
 
 \bibitem{wu2024llmrec}
-Wei W, Ren X, Tang J, Wang Q, Su L, Cheng S, Wang J, Yin D, Huang C. LLMRec: large language models with graph augmentation for recommendation. In: Proceedings of the 17th ACM WSDM; 2024. p. 806--815.
+Wei W, Ren X, Tang J, Wang Q, Su L, Cheng S, Wang J, Yin D, Huang C. LLMRec: large language models with graph augmentation for recommendation. In: Proc. 17th ACM WSDM; 2024. p. 806--815.
 
 \bibitem{amrita2023densenet}
 Lakshmi Chetana V, Batchu RK, Devarasetty P, Voddelli S, Prasad DV. Effective movie recommendation based on improved densenet model. Multiagent and Grid Systems 2023;\textbf{19}(2):133--147.
@@ -552,13 +583,13 @@ Keerthika T, Ignisha RG, Aiyyappan MR, Thoshi Babu LS, et al. Enhancing recommen
 Hassanzadeh R, Majidnezhad V, Arasteh B. A novel recommender system using light graph convolutional network and personalized knowledge-aware attention sub-network. Scientific Reports 2025;\textbf{15}:15693.
 
 \bibitem{li2025lightkg}
-Li Y, Wang D, Sun Z, Zhang H, Guo H. LightKG: efficient knowledge-aware recommendations with simplified GNN architecture. In: Proceedings of the 31st ACM SIGKDD Conference, Vol. 2; 2025. p. 1577--1588.
+Li Y, Wang D, Sun Z, Zhang H, Guo H. LightKG: efficient knowledge-aware recommendations with simplified GNN architecture. In: Proc. 31st ACM SIGKDD, Vol. 2; 2025. p. 1577--1588.
 
 \bibitem{xin2025llmcdsr}
 Xin H, Sun Y, Wang C, Xiong H. LLMCDSR: enhancing cross-domain sequential recommendation with large language models. ACM Transactions on Information Systems 2025;\textbf{43}(5):1--33.
 
 \bibitem{liu2025llm4cdsr}
-Liu Q, Zhao X, Wang Y, Zhang Z, Zhong H, Chen C, Li X, Huang W, Tian F. Bridge the domains: large language models enhanced cross-domain sequential recommendation. In: Proceedings of the 48th ACM SIGIR Conference; 2025. p. 1582--1592.
+Liu Q, Zhao X, Wang Y, Zhang Z, Zhong H, Chen C, Li X, Huang W, Tian F. Bridge the domains: large language models enhanced cross-domain sequential recommendation. In: Proc. 48th ACM SIGIR; 2025. p. 1582--1592.
 
 \bibitem{wang2026lecdsr}
 Wang S, Zhu J, Wang K, Ruan S. LeCDSR: large language model enhanced cross-domain sequential recommendation. Information Fusion 2026;\textbf{127}:103762.

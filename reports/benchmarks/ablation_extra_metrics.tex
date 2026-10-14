@@ -1,0 +1,14 @@
+\setlength{\tabcolsep}{3pt}
+\begin{tabular*}{\hsize}{@{\extracolsep{\fill}}lcccccc@{}}
+\toprule
+Method & \multicolumn{2}{c}{Movies \& TV} & \multicolumn{2}{c}{Health \& Household} & \multicolumn{2}{c}{Industrial \& Scientific} \\
+ & HR@20 & P@20 & HR@20 & P@20 & HR@20 & P@20 \\
+\colrule
+Most popular & 0.0368 & 0.0020 & 0.0459 & 0.0024 & 0.0545 & 0.0028 \\
+Semantic only & 0.0513 & 0.0031 & 0.0315 & 0.0017 & 0.0677 & 0.0037 \\
+EMA only & 0.0402 & 0.0023 & 0.0200 & 0.0010 & 0.0457 & 0.0025 \\
+LightGCN only & 0.0468 & 0.0026 & 0.0220 & 0.0012 & 0.0449 & 0.0024 \\
+KG only & 0.0179 & 0.0009 & 0.0489 & 0.0025 & 0.0662 & 0.0036 \\
+Hybrid, tuned & 0.0628 & 0.0037 & 0.0423 & 0.0022 & 0.0886 & 0.0049 \\
+\botrule
+\end{tabular*}
