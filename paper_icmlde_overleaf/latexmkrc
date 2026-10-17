@@ -1,0 +1,12 @@
+# Lets response.tex read the section, table, figure and page numbers of main.tex
+# (xr-hyper \externaldocument). When latexmk compiles response.tex and needs
+# main.aux, this compiles main.tex first. Overleaf's documented setup for xr.
+add_cus_dep( 'tex', 'aux', 0, 'makeexternaldocument' );
+
+sub makeexternaldocument {
+    # Only for the external document; without this test latexmk would loop.
+    if (!($root_filename eq $_[0]))
+    {
+        system( "latexmk -cd -pdf \"$_[0]\"" );
+    }
+}

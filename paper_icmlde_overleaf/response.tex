@@ -17,7 +17,23 @@
 % hyperref) reads them correctly, where plain xr would print all five.
 \usepackage{xr-hyper}
 \usepackage[hidelinks]{hyperref}
-\externaldocument{main}
+% Declaring main.tex/main.aux as dependencies lets latexmk (and the latexmkrc in
+% this folder) compile main.tex before this file on Overleaf.
+\makeatletter
+\newcommand*{\addFileDependency}[1]{%
+  \typeout{(#1)}%
+  \@addtofilelist{#1}%
+  \IfFileExists{#1}{}{\typeout{No file #1.}}%
+}
+\makeatother
+\newcommand*{\myexternaldocument}[1]{%
+  \externaldocument{#1}%
+  \addFileDependency{#1.tex}%
+  \addFileDependency{#1.aux}%
+}
+% The caption labels of main.tex carry its highlight marks; they mean nothing here.
+\providecommand\hlcap{}\providecommand\hlon{}\providecommand\hloff{}\providecommand\hlonline{}
+\myexternaldocument{main}
 \usepackage{enumitem}
 \usepackage{array}
 \usepackage{tabularx}
@@ -69,6 +85,7 @@ We thank the reviewers for their careful reading and constructive comments. We h
   \item \textbf{Related work}: \tabl{tab:novelty} updated and \sect{sec:discussion} extended with 2025--2026 work.
   \item \textbf{Format and language}: Procedia Computer Science template, redrawn figures, shortened captions, and proofreading of the entire manuscript.
 \end{itemize}
+In the revised manuscript, the lines that address each comment and the new or redrawn tables and figures are highlighted in yellow; the font (Comment R1.2), the proofreading (Comment R1.6), and the template (Comment R1.7) apply to the entire manuscript and are not highlighted.
 
 \section*{Numbering in the submitted and revised manuscripts}
 Section, table, figure, and equation numbers differ between the two versions, so each comment below lists its location in both. Page numbers of the submitted version are those of the PDF we submitted; page numbers of the revised version are those of the attached manuscript. A table or figure that appears under the same number in both versions may show different content, as noted.
@@ -243,7 +260,7 @@ Hand-set weights & 0.0344 & 0.0216 & 0.0208 & 0.0122 & 0.0455 & 0.0266 \\
 \where{Table 3 (p.~9).}{\sect{sec:setup} (baselines); \sect{sec:ablation}; \tabl{tab:ablation}.}
 
 \point{R2}{The reproducibility and real-time claims should be strengthened. Please provide complete experimental configurations, including data splitting, LightGCN training parameters, EMA settings, hybrid-score weight selection, and detailed latency/throughput measurements. The manuscript currently acknowledges that production latency benchmarking and larger-scale evaluation remain future work.}
-\response Section~\ref{sec:setup} now specifies the data preparation (rating threshold, $k$-core filtering, user sampling), the chronological split (last two positives for testing, the previous one for validation), the candidate set, the offline counterpart of each signal, the metrics, and the weight-selection grid. Table~\ref{tab:settings} lists all LightGCN and EMA settings and the training time. Section~\ref{sec:latency} and Table~\ref{tab:latency} report latency and throughput measured on 700 requests to the deployed endpoint over the full 120,747-item catalog: median 363~ms (p95 455~ms, p99 507~ms), EMA update 0.05~ms, and 2.7--3.3 requests per second per process. The conclusion no longer lists these evaluations as future work.
+\response Section~\ref{sec:setup} now specifies the data preparation (rating threshold, $k$-core filtering, user sampling), the chronological split (last two positives for testing, the previous one for validation), the candidate set, the offline counterpart of each signal, the metrics, and the weight-selection grid. Table~\ref{tab:settings} lists all LightGCN and EMA settings, and Section~\ref{sec:setup} gives the training time. Section~\ref{sec:latency} and Table~\ref{tab:latency} report latency and throughput measured on 700 requests to the deployed endpoint over the full 120,747-item catalog: median 363~ms (p95 455~ms, p99 507~ms), EMA update 0.05~ms, and 2.7--3.3 requests per second per process. The conclusion no longer lists these evaluations as future work.
 \where{Section 4 (p.~9); Section 5 (p.~10).}{\sect{sec:setup}; \tabl{tab:datasets}; \tabl{tab:settings}; \sect{sec:latency}; \tabl{tab:latency}; \sect{sec:conclusion}.}
 
 %---------------------------------------------------------------------------
@@ -287,8 +304,9 @@ We also updated the following points in the manuscript:
 \begin{itemize}
   \item the authors of reference [12] (LLMRec), in the References;
   \item the graph score, now given as the cosine similarity of normalized embeddings, as implemented (\sect{sec:lightgcn});
-  \item the data sources, now matching the current catalog of seven content types and 120,747 items (\sect{sec:catalog}, \figr{fig:architecture});
-  \item the ranking pipeline, which now also describes creator and title matching and the short-term preference bonus, so that \eqn{eq:hybrid} matches the implementation (\sect{sec:person}, \sect{sec:hybrid}).
+  \item the data sources, now matching the current catalog of seven content types and 120,747 items, with the Last.fm API [26] in place of MusicBrainz (\sect{sec:catalog}, \figr{fig:architecture});
+  \item the ranking pipeline, which now also describes creator and title matching and the short-term preference bonus, so that \eqn{eq:hybrid} matches the implementation (\sect{sec:person}, \sect{sec:hybrid});
+  \item the viewer-age and domain eligibility filter applied before ranking (\sect{sec:overview}).
 \end{itemize}
 
 We hope that the revised manuscript addresses the reviewers' concerns, and we thank them again for their valuable comments.

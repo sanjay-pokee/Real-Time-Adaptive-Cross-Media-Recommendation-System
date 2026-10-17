@@ -91,6 +91,89 @@ p.8: both are too large to fit under their paragraph.
 3. ✅ `reports/submission/1343_revised_version.pdf` = letter (6 p.) + Overleaf paper (10 p.); `1343_response_to_reviewers.pdf`
    = letter alone. No "??" or placeholder in either.
 4. ⏳ Similarity report (≤10%) and acknowledgement email to info@icmlde.org (see Editorial).
+5. ✅ Highlighted version (committee request via faculty, 2026-10-16): changed content shaded light yellow.
+   `reports/submission/1343_revised_version.pdf` is now letter (6 p.) + **highlighted** paper (10 p.), the name ICMLDE
+   requires; `1343_revised_paper_highlighted.pdf` = paper alone; `1343_response_to_reviewers.pdf` = letter. The clean
+   files of 2026-10-14 are in `reports/submission/superseded/`. See "Highlighting" below.
+6. ✅ Full check against the ICMLDE email (2026-10-16), see "Final check" below.
+
+### Highlighting of changes (2026-10-16)
+
+Faculty: "highlight the updates in the paper … some mild colour". First version (superseded) shaded all new content
+(§4–§6 entirely, whole tables and figures). Faculty then asked: **only the lines where a reviewer comment is addressed,
+one or two lines each, not whole paragraphs**. Current highlighting, per comment:
+
+| Comment | Highlighted lines (revised paper) |
+|---|---|
+| R1.1, R1.3, R1.4 | Fig. 1, Fig. 2 and Tables 1–6 shaded **completely** (faculty: tables and figures that were fully changed are highlighted fully; Table 1 rebuilt, Tables 2–6 new, both figures redrawn) |
+| R1.2, R1.7 | — (font and template: entire manuscript) |
+| R1.5 | Citations [18]–[23] in §2 and reference entries [18]–[23] |
+| R1.6 | [7] in §2 (the citation that printed as "[?]"); proofreading of the entire manuscript is not shaded |
+| R2.1 | §2: "Our contribution is therefore not a new neural layer … kept apart." (+ Table 1 caption) |
+| R2.2 | §4: the three Amazon Reviews 2023 categories; "Recall@K, NDCG@K, MAP@K, and MRR@K … K ∈ {10, 20}"; §5.3: "Seventeen scenarios were issued … K = 10" (+ Tables 2, 4, 6 captions) |
+| R2.3 | §4: "The ablation evaluates all 2⁴ = 16 combinations …"; "Each combination has its own weights …"; §5.1: hybrid best of the 16 on two datasets; tuned vs hand-set +5.4/3.6/6.5% |
+| R2.4 | §4: "Most-popular ranking … one source of evidence:"; §5.1: "the empty combination is most-popular ranking, the four single-signal rows are the baselines" |
+| R2.5 | §4: chronological split sentence; "Table 3 lists the settings … influence training"; §5.2: median/p95/p99 latency, throughput clause; §6: "a request takes 363 ms … 0.05 ms" (+ Tables 3, 5 captions) |
+| R3.1 | §3.5: negative-sampling clause; §4 training-settings sentence (shared with R2.5) |
+| R3.2 | §3.4: event-weight sentence; §3.5: positive-edge sentence |
+| R3.3 | §3.4: step η = α min(\|w\|,1) sentence; initialization and "A skip or a low rating moves the profile away from the item" |
+| R3.4 | §3.6: "built … in three steps", the labels (i) Entities / (ii) Relations / (iii) Paths, "count such paths through set intersections" (+ Fig. 2 caption) |
+| R3.5 | §5.3: definition of the cross-domain rate; "Eight of the eleven scenarios … two content types"; "so the cross-domain rate is 8/17 overall" |
+| R3.6 | §5.1: effect of removing each signal (split at the p.7/p.8 break so the shading does not cover Table 4 at the top of p.8); §5.3: "The KG and profile signals … setting their weights to zero" |
+
+Additional updates (data sources, eligibility filter, LLMRec authors, cosine graph score, ranking pipeline) are not
+highlighted. Letter sentence: "the lines that address each comment and the new or redrawn tables and figures are
+highlighted in yellow; the font (R1.2), the proofreading (R1.6), and the template (R1.7) apply to the entire manuscript
+and are not highlighted".
+
+Notes for editing: an end mark must not sit between a letter and the next punctuation (it blocks the font's kerning, e.g.
+"away,"); put it after the punctuation. A highlight that crosses a page break is shaded from the top of the next page, so
+split it at the break when that page starts with a float. `response.tex` defines `\hlcap`, `\hlon`, `\hloff`, `\hlonline`
+as empty in case a caption (and so a label imported from `main.aux`) carries a mark.
+
+Mechanism (`main.tex` preamble): `\hlon … \hloff`, `\hlonline` (from the left margin), `\hlblock … \hlblockend` (floats)
+save positions in `main.aux`; the shading is painted behind each page at shipout. Verified on the local build: all
+glyphs of all 10 pages identical in character and position to the build without highlighting, same 33 labels; the
+letter rebuilt against the highlighted `main.aux` is text-identical to `1343_response_to_reviewers.pdf`.
+`\revhighlightfalse` (line 150) gives the clean paper for the camera-ready version. The highlighted paper is the local
+build (Tectonic): same labels and pages as the Overleaf PDF in `1343_revised_version.pdf`, but a few lines on pp. 2–5
+wrap differently; recompiling the new `main.tex` on Overleaf (pdfLaTeX) gives the Overleaf line breaks.
+
+### Final check against the ICMLDE email (2026-10-16)
+
+Files received on WhatsApp: `Crossmedia_Procedia_Manuscript_15-08-2026-Upd (1).pdf` = submitted paper (same text as
+`overleaf_submitted/main.tex`, 10 p.); `crossmedia_procedia_Manuscript_15_08 (1).pdf` = Overleaf revised paper (same text
+as the paper part of the submission); `1343_revised_version.pdf` = byte-identical to the 2026-10-14 submission file.
+
+- **All 18 comments** (R1.1–R1.7, R2.1–R2.5, R3.1–R3.6) are quoted verbatim in the letter, each with a response and a
+  Submitted/Revised location. Every number in the responses was checked against the paper.
+- **Submitted-version locations** re-read from the submitted PDF: all match (Tables 1–3 p.3/8/9, Figs. 1–3 p.4/7/9,
+  §3.1–3.4 pp.4–5, §3.5–3.6 p.6, §3.7 p.7, §3.8 p.8, §4 p.9, §5 p.10, the five misspellings and "[?]" on the pages given).
+- **Highlights vs. letter:** every revised location the letter cites is shaded, except where the change cannot be
+  shaded (R1.2 font, R1.6 proofreading of the entire manuscript, R1.7 template) or the equation itself is unchanged
+  (Eqs. 3–4 cited in R3.1, Eqs. 6–7 in R3.4; the text that changed around them is shaded).
+- **Letter fixes:** (1) sentence after the main changes on what is highlighted (reworded when the highlighting was
+  narrowed, see above); (2) R2.5 said Table 3 lists the training time, it is in Section 4;
+  (3) Additional updates: Last.fm [26] in place of MusicBrainz, and the viewer-age/domain eligibility filter (§3.1),
+  both shaded in the paper but not mentioned before. Letter still 6 pages, no unresolved references.
+- **ICMLDE instructions:** single PDF named `1343_revised_version` with the response first ✅; page-by-page locations ✅;
+  proofreading ✅; figures original (stated in the letter) ✅; template ✅. Open: similarity ≤10% (last Turnitin 13%
+  before the rewording of 2026-10-14, not re-run since) and its report as a supplementary file; acknowledgement email to
+  info@icmlde.org.
+
+---
+
+### Compilatio check (2026-10-17)
+
+Faculty ran Compilatio on the 2026-10-16 paper (`1343-revised_version-Manuscript-16-10`): 28% "suspicious" =
+**similarities 5%** (below 10%) + **AI detection 16%** + unrecognized language 8% (tables, formulas, names such as Qdrant).
+Faculty: rephrase the sky-blue (AI-detection) passages without changing the meaning, get the 16% below 10%.
+Rephrased all 14 sky-blue passages in plainer wording (abstract sentences 2–3; §2 novelty paragraph; §3.1 eligibility
+filter; §3.2 "add a domain"; §3.4 skip/rescaling/EMA-score sentences; §3.5 graph construction, BPR, negative sampling,
+graph score; §4 split and baselines; §5.1 complementarity and Health & Household; §5.2 latency breakdown; §5.3 relevance
+rule; §6 limitations). Same numbers, citations, labels and highlight positions; the R3.6 highlight still splits at the
+p.7/p.8 break. The affiliation line (also flagged) is fixed template text. Local build: 10 pages, 33/33 labels on the same
+pages as the Overleaf paper, letter text identical to 2026-10-16. Not re-checked in Compilatio yet.
 
 ---
 
@@ -150,6 +233,7 @@ p.8: both are too large to fit under their paragraph.
 | Page limit | ✅ | 10 pages in round 1 and round 2 (ICMLDE 2022–23 limit: 10, extra pages charged); round 2 needed the cuts listed under "Page budget"; re-check on Overleaf |
 | Similarity ≤ 10% + upload similarity report | ⏳ | Day 5 |
 | Single file `1343_revised_version.pdf` with this response appended | ✅ | `reports/submission/1343_revised_version.pdf`: 5-page response + the 10-page Overleaf PDF; standalone `1343_response_to_reviewers.pdf` alongside |
+| Highlight the changes in a mild colour | ✅ | `1343_revised_version.pdf` (letter + highlighted paper, 16 p.) and `1343_revised_paper_highlighted.pdf` (10 p.); see "Highlighting of changes" |
 | Acknowledgement email to info@icmlde.org | ⏳ | |
 
 ---
@@ -200,3 +284,9 @@ p.8: both are too large to fit under their paragraph.
 | 2026-10-14 | Results written: Table 4 (16 combinations + hand-set, inlined), §5.1 rewritten (3 paragraphs), significance/K=10 sentence, training time 17.1 → 17.0 min, abstract, contribution 3 and conclusion now state the 16-combination result; letter Table B inlined and one result sentence added to R2.3 | `main.tex`, `response.tex` | 2.3, 2.4, 3.6 |
 | 2026-10-14 | Page-budget cuts (see "Page budget"): paper back to 10 pages in the faithful build; previews `reports/paper_round2_preview.pdf`, `reports/response_round2_preview.pdf` | `main.tex`, `reports/` | editorial |
 | 2026-10-14 | Overleaf paper checked (10 pages, 33/33 labels on the same pages as the local build); Overleaf letter had unresolved "??" (no `main.aux`), so the locally built letter is used; submission PDFs rebuilt: letter (6 p.) + Overleaf paper (10 p.) | `reports/submission/1343_revised_version.pdf`, `1343_response_to_reviewers.pdf` | all |
+| 2026-10-14 | Turnitin 13% (AI: below the 20% reporting threshold). Matches: the reference list (largest share), the fixed template text (header, running head, copyright and peer-review lines, affiliation), and short body phrases. Reworded the body phrases (contributions sentence, two sentences in §3.5, the I+/I- sentence in §3.7, split and Wilcoxon sentences in §4, hardware sentence in §5.2, first words of §6); same meaning, still 10 pages, all 33 labels on the same pages. Overleaf letter fix: `latexmkrc` + `\myexternaldocument{main}` so Overleaf compiles main.tex before response.tex | `main.tex`, `response.tex`, `latexmkrc` | editorial (similarity) |
+| 2026-10-16 | Changes highlighted in light yellow (faculty/committee request): content changes only, wording-only edits not shaded (see "Highlighting of changes"); layout-neutral marks, all glyphs identical to the unhighlighted build; `\revhighlightfalse` restores the clean paper | `main.tex`, `reports/submission/1343_revised_paper_highlighted.pdf`, `1343_revised_version_highlighted.pdf` | editorial |
+| 2026-10-16 | Final check against the ICMLDE email (see "Final check"); letter: highlighting sentence, R2.5 training-time location corrected, two Additional updates (Last.fm, eligibility filter); `1343_revised_version.pdf` now letter + highlighted paper, clean 2026-10-14 files moved to `superseded/` | `response.tex`, `reports/submission/` | all, editorial |
+| 2026-10-16 | Highlighting narrowed on faculty request: only the 1–2 lines answering each comment (table of lines under "Highlighting of changes"); caption labels shaded with `\hlcap`; letter sentence updated; all 10 pages glyph-identical to the clean build, 33 labels unchanged, letter 6 pages; broad version moved to `superseded/` | `main.tex`, `response.tex`, `reports/submission/` | all |
+| 2026-10-16 | Faculty: fully changed tables and figures highlighted fully: all six tables and both figures shaded completely (caption-only marks removed); letter sentence adds "and the new or redrawn tables and figures"; glyphs and labels unchanged, letter 6 pages | `main.tex`, `response.tex`, `reports/submission/` | R1.1, R1.3, R1.4, R2.x |
+| 2026-10-17 | Compilatio (AI detection 16%, similarity 5%): 14 sky-blue passages rephrased (see "Compilatio check"); still 10 pages, labels and highlights unchanged in position; `1343_revised_paper_highlighted.pdf` and `1343_revised_version.pdf` rebuilt (local build), 2026-10-16 versions moved to `superseded/` | `main.tex`, `reports/submission/` | editorial |
