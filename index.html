@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="AI-powered cross-media recommendation system for movies, books, and music using semantic and graph-based signals." />
+    <title>Nexus - AI Recommendation Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Declared here rather than via @import in globals.css: an @import inside
+         a stylesheet cannot start downloading until that stylesheet has itself
+         been fetched and parsed, which serialises two round trips before any
+         text can paint in its real face. -->
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script>
+      /* Applied before first paint, so the page never flashes the wrong ground.
+         The key is versioned: the surface is light-first now, and a browser
+         holding the previous "dark" preference would otherwise open the
+         redesign in the variant it was not designed around. */
+      (function () {
+        try {
+          var saved = localStorage.getItem('nexus-theme-v3') || 'dark';
+          document.documentElement.setAttribute('data-theme', saved);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="./assets/index-DYGy3fhU.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-B3XE__l1.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
