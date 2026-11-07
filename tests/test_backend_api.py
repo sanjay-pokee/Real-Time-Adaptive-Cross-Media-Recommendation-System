@@ -13,11 +13,17 @@ from backend.qdrant_recommender import QdrantRecommender
 
 
 class FakeRecommender:
-    def __init__(self):
+    def __init__(self, corrections=None):
         self.audiences = []
+        self.corrections = corrections or {}
+        self.queries = []
+
+    def correct_query(self, query):
+        return self.corrections.get(query)
 
     def recommend(self, query, top_k=10, content_type=None, user_id=None, audience=None):
         self.audiences.append(audience)
+        self.queries.append(query)
         return [
             {
                 "global_id": "movie:test:1",
@@ -81,6 +87,35 @@ def test_recommend_endpoint_returns_results():
     app.dependency_overrides.clear()
 
 
+def test_recommend_searches_the_corrected_query_and_says_so():
+    fake = FakeRecommender(corrections={"intersteller": "interstellar"})
+    app.dependency_overrides[get_recommender] = lambda: fake
+    client = TestClient(app)
+
+    response = client.post("/recommend", json={"query": "intersteller", "top_k": 1})
+
+    assert response.status_code == 200
+    assert response.json()["query"] == "intersteller"
+    assert response.json()["corrected_query"] == "interstellar"
+    assert fake.queries == ["interstellar"]
+    app.dependency_overrides.clear()
+
+
+def test_spellcheck_off_searches_the_query_exactly_as_typed():
+    fake = FakeRecommender(corrections={"intersteller": "interstellar"})
+    app.dependency_overrides[get_recommender] = lambda: fake
+    client = TestClient(app)
+
+    response = client.post(
+        "/recommend", json={"query": "intersteller", "top_k": 1, "spellcheck": False}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["corrected_query"] is None
+    assert fake.queries == ["intersteller"]
+    app.dependency_overrides.clear()
+
+
 ADULT_ROW = {
     "global_id": "movie:test:18",
     "content_type": "movie",
@@ -104,6 +139,9 @@ class GatedPathBugRecommender:
 
     def __init__(self):
         self.audiences = []
+
+    def correct_query(self, query):
+        return None
 
     def recommend(self, query, top_k=10, content_type=None, user_id=None, audience=None):
         return self._respond(audience)

@@ -167,6 +167,15 @@ How the results are merged:
 
 Every match is whole-word: haystacks are space-padded and tokenized, so "inception" does not match the brand "Skinception". The haystacks are built once with vectorized pandas operations. A per-row version took 15–49 s per request at this catalog size.
 
+### Typos and nonsense (`backend/query_vocabulary.py`)
+
+SBERT embeds a misspelling or a keyboard mash like any other text, and its nearest neighbours score like real matches. "qwertyuiop" scored 0.53, above the real searches "dog" (0.46) and "f1" (0.48). Over 53 real and 25 mashed queries the best-match scores overlap from 0.45 to 0.54, so no cosine cut-off can separate them. The catalogue's own words can: the vocabulary counts how many of the 120,747 rows use each word.
+
+- **Typo correction:** a word in fewer than 2 rows that is one edit from a known word (two edits from 8 letters) is corrected before searching. Ties go to the usual slips (a doubled letter typed once, two letters swapped), then to the pair that forms a title phrase. "hary poter" becomes "harry potter", not the commoner "hard power". The response's `corrected_query` says what was searched, the UI shows "Showing results for … / Search instead for …", and `"spellcheck": false` searches the query as typed. A query that already names a title or creator is never corrected.
+- **Nonsense gate:** if no word of the query (stop words aside) is in the catalogue, the vector search is skipped, and only creator and title matches can appear. "qzxv blorf wumple" returns nothing instead of ten arbitrary items.
+
+The vocabulary takes about 10 s to build with the other lookup tables, so `warm_up()` builds them at startup instead of in the first search.
+
 ---
 
 ## Audience eligibility
@@ -358,7 +367,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/recommend -ContentType
   -Body '{"query":"space adventure with aliens","user_id":"user_scifi","top_k":5,"age":15}'
 ```
 
-Each result carries:
+The response's `corrected_query` is set when a typo was fixed before searching (send `"spellcheck": false` to turn that off). Each result carries:
 - **scores:** `score`, plus the per-signal `semantic_score`, `graph_score`, `ema_score`, `kg_score` and `profile_score`;
 - `match_kind` (creator / title / keyword) for lexical hits;
 - the audience fields.
@@ -505,7 +514,7 @@ tests/              pytest suite
 ## Testing
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests/ -q     # 328 passed
+.\.venv\Scripts\python.exe -m pytest tests/ -q     # 356 passed
 ```
 
 The suite covers:
@@ -518,6 +527,8 @@ The suite covers:
 - the fetchers (Open Library, the Last.fm adult filter)
 - evaluation-report consistency
 - the API contract, including a regression test that an internal error is never retried without the eligibility gate
+- accounts: sign-up, login, lockout, Google linking and the per-account access guard
+- typo correction (title phrases beat commoner words, titles are never "corrected") and the nonsense gate
 
 No server is required.
 
@@ -540,3 +551,4 @@ No server is required.
 - **Score breakdown:** once a user is selected, the UI's "semantic" segment includes the profile bonus.
 - **Accounts:** no email verification or password reset (both need an email sender), and the login lockout lives in memory, so it resets when the server restarts.
 - **Search mode:** embedded Qdrant is used for development. A production deployment would run Qdrant as a server with HNSW and payload indexes on the filter fields.
+- **What SBERT cannot do:** all-MiniLM-L6-v2 is English-only and small. Riddle-style plot descriptions miss ("botanist abandoned on the red planet" does not find *The Martian*), queries in other languages fall back to word overlap, and negation is ignored ("not sad" reads as "sad"). Fixing the first two means a larger or multilingual model and re-embedding the catalogue.

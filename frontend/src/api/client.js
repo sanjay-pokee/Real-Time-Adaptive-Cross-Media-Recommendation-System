@@ -102,10 +102,13 @@ export async function getRecommendations({
   domain = null,
   age = null,
   safe_mode = false,
+  // false searches the query exactly as typed - the "Search instead for"
+  // link - rather than the backend's typo-corrected version of it.
+  spellcheck = true,
 }) {
   if (DEMO) return demoRecommend({ query, user_id, top_k, content_type, domain, age, safe_mode });
   const res = await api.post('/recommend', {
-    query, user_id, top_k, content_type, domain, age, safe_mode,
+    query, user_id, top_k, content_type, domain, age, safe_mode, spellcheck,
   });
   return res.data;
 }

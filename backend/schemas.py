@@ -49,6 +49,13 @@ class RecommendRequest(BaseModel):
         False,
         description="Cap results at family-appropriate content regardless of age.",
     )
+    spellcheck: bool = Field(
+        True,
+        description=(
+            "Fix near-miss typos before searching. The response's corrected_query "
+            "says what was searched; send false to search the query exactly as typed."
+        ),
+    )
 
 
 class ItemRecommendRequest(BaseModel):
@@ -108,6 +115,9 @@ class RecommendationItem(BaseModel):
 
 class RecommendResponse(BaseModel):
     query: str
+    # Set when a typo was fixed before searching: the results answer this
+    # query, not the one typed, and the UI has to say so.
+    corrected_query: str | None = None
     top_k: int
     content_type: str | None
     domain: str | None = None

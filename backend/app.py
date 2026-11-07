@@ -68,6 +68,7 @@ def _audience_for(payload: RecommendRequest | ItemRecommendRequest) -> AudienceC
 async def lifespan(app: FastAPI):
     # ---- startup ----
     app.state.recommender = QdrantRecommender()
+    app.state.recommender.warm_up()
 
     app.state.mysql_store = MySQLStore()
 
@@ -448,8 +449,9 @@ def recommend(
     # error has to surface as a 500, never as unfiltered results.
     try:
         audience = _audience_for(payload)
+        corrected = recommender.correct_query(payload.query) if payload.spellcheck else None
         results = recommender.recommend(
-            payload.query,
+            corrected or payload.query,
             top_k=payload.top_k,
             content_type=payload.content_type,
             user_id=payload.user_id,
@@ -466,6 +468,7 @@ def recommend(
 
     return RecommendResponse(
         query=payload.query,
+        corrected_query=corrected,
         top_k=payload.top_k,
         content_type=payload.content_type,
         domain=payload.domain,

@@ -141,6 +141,7 @@ pywinpty==2.0.15
 PyYAML==6.0.2
 pyzmq==26.4.0
 qrcode==7.4.2
+rapidfuzz==3.14.6
 redis==7.4.0
 referencing==0.36.2
 regex==2024.11.6

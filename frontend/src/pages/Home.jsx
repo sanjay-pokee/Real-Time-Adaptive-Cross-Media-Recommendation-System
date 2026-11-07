@@ -102,6 +102,9 @@ export default function Home({ authenticatedUser, onLogout }) {
   // results heading claimed to describe results it had nothing to do with
   // the moment someone typed without pressing Search.
   const [resultQuery, setResultQuery] = useState('');
+  // What the backend actually searched when it fixed a typo in resultQuery;
+  // null when it searched the query as typed.
+  const [correctedQuery, setCorrectedQuery] = useState(null);
   const [drawer, setDrawer] = useState({
     open: false,
     title: '',
@@ -298,10 +301,12 @@ export default function Home({ authenticatedUser, onLogout }) {
         domain: scope.domain,
         age: scope.age,
         safe_mode: scope.safeMode,
+        spellcheck: overrides.spellcheck ?? true,
       });
       if (isStale()) return;
       const nextResults = data.results || [];
       setResults(nextResults);
+      setCorrectedQuery(data.corrected_query || null);
       // The advisory is a property of the response, not of the selector: the
       // backend decides whether this particular result set needs one.
       setAdvisory(data.advisory || null);
@@ -710,8 +715,25 @@ export default function Home({ authenticatedUser, onLogout }) {
                   {/* The heading is the query the *displayed* results came
                       from, so it is set as a masthead rather than a caption. */}
                   <h2 className="display mt-2 truncate text-[2rem] leading-tight text-ink sm:text-[2.6rem]">
-                    {resultQuery}
+                    {correctedQuery || resultQuery}
                   </h2>
+                  {/* Results for a corrected query are not results for what
+                      was typed, so say so, and keep the typed query one click
+                      away in case it was meant: a rare title can look like a
+                      typo. */}
+                  {correctedQuery && (
+                    <p className="mt-2 text-[13px] text-ink-muted">
+                      Showing results for <span className="font-semibold text-ink">{correctedQuery}</span>.
+                      {' '}Search instead for{' '}
+                      <button
+                        type="button"
+                        onClick={() => handleSearch(resultQuery, { spellcheck: false })}
+                        className="font-semibold text-accent underline underline-offset-2"
+                      >
+                        {resultQuery}
+                      </button>
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -943,7 +965,9 @@ export default function Home({ authenticatedUser, onLogout }) {
                         goes unmentioned. */}
                     <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-ink-muted">
                       Nothing matched <span className="font-semibold text-ink">{resultQuery}</span>
-                      {contentType || activeDomain ? ' within the current scope.' : '.'}
+                      {contentType || activeDomain
+                        ? ' within the current scope.'
+                        : '. None of its words appear in the catalogue - check the spelling, or describe what you want in a few words.'}
                     </p>
                     {(contentType || activeDomain) && (
                       <div className="mt-4 flex flex-wrap items-center justify-center gap-2">

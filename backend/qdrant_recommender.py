@@ -21,6 +21,7 @@ from backend.ema_recommender import EMAEmbeddingStore
 from backend.graph_recommender import GraphEmbeddingStore
 from backend.knowledge_graph import CatalogKnowledgeGraph
 from backend.mysql_store import MySQLStore
+from backend.query_vocabulary import QueryVocabulary
 from backend.settings import Settings, get_settings
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -123,13 +124,20 @@ class QdrantRecommender:
         ]
         exact_ids = person_ids | {item["global_id"] for item in lexical_results}
 
-        query_vector = self.model.encode(
-            [query],
-            convert_to_numpy=True,
-            normalize_embeddings=True,
-        ).astype(np.float32)[0]
         search_k = max(top_k * 5 if user_id else top_k, top_k + len(exact_ids))
-        results = self._search_vector(query_vector, search_k, content_type, audience)
+        if self._query_vocabulary().has_known_word(_tokenize_lookup_text(query).split()):
+            query_vector = self.model.encode(
+                [query],
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+            ).astype(np.float32)[0]
+            results = self._search_vector(query_vector, search_k, content_type, audience)
+        else:
+            # Not one word of the query appears anywhere in the catalogue, so
+            # its nearest vectors are arbitrary and would be served as if they
+            # answered it - see backend/query_vocabulary.py. Creator and title
+            # matches found above still stand.
+            results = []
         if exact_ids:
             results = [item for item in results if item["global_id"] not in exact_ids]
             results = person_results + lexical_results + results
@@ -170,6 +178,56 @@ class QdrantRecommender:
         results = self._ema_rerank(results, user_id)
         results = self._knowledge_graph_rerank(source_text, results, user_id)
         return results[:top_k]
+
+    def correct_query(self, query: str) -> str | None:
+        """The query with near-miss typos fixed, or None when it needs none.
+
+        Kept apart from recommend() so the caller can tell the user what was
+        searched instead and offer the query exactly as typed.
+        """
+        words = _tokenize_lookup_text(query).split()
+        vocabulary = self._query_vocabulary()
+        corrected = vocabulary.correct(words)
+        if corrected is None:
+            return None
+
+        # A word seen in a single row may be that row's whole title or name -
+        # a song called "Blxt" - so a query that already finds one as typed is
+        # left alone. Unseen words cannot be, so the scan is skipped for them.
+        replaced = [word for word, fixed in zip(words, corrected) if word != fixed]
+        if any(vocabulary.rows.get(word, 0) for word in replaced):
+            phrase = f" {' '.join(words)} "
+            if (
+                self._title_haystack().str.contains(phrase, regex=False).any()
+                or self._creator_haystack().str.contains(phrase, regex=False).any()
+            ):
+                return None
+        return " ".join(corrected)
+
+    def warm_up(self) -> None:
+        """Build the lookup tables now rather than inside the first search.
+
+        Each is built on first use and reused after. Together they take several
+        seconds, which the first search used to pay on top of its own work -
+        close to the frontend's 15 s timeout once the vocabulary was added.
+        """
+        self._query_vocabulary()
+        self._keyword_haystack()
+        self._popularity_rank()
+
+    def _query_vocabulary(self) -> QueryVocabulary:
+        """Word counts over the catalogue, for typo and noise detection; built once."""
+        cached = getattr(self, "_query_vocabulary_cache", None)
+        if cached is not None and cached.catalog_rows == len(self.catalog):
+            return cached
+
+        vocabulary = QueryVocabulary.build(
+            self._fulltext_haystack(),
+            self._title_haystack(),
+            self._creator_haystack(),
+        )
+        self._query_vocabulary_cache = vocabulary
+        return vocabulary
 
     def _search_vector(
         self,
@@ -388,8 +446,14 @@ class QdrantRecommender:
             column("title") + " " + column("categories") + " "
             + column("description").str.slice(0, 1000)
         ).str.lower()
-        combined = combined.str.normalize("NFKD").str.replace(
-            r"[^a-z0-9]+", " ", regex=True
+        # Accents are dropped before punctuation is. NFKD splits "í" into "i"
+        # plus a combining mark, and the mark alone matched [^a-z0-9], so
+        # "película" was indexed as two words, "peli cula", that no query - which
+        # strips the mark - could ever match.
+        combined = (
+            combined.str.normalize("NFKD")
+            .str.replace(r"[̀-ͯ]", "", regex=True)
+            .str.replace(r"[^a-z0-9]+", " ", regex=True)
         )
         haystack = " " + combined.str.strip() + " "
         self._fulltext_haystack_cache = haystack

@@ -61,6 +61,9 @@ class FakeAccountStore:
 
 
 class FakeRecommender:
+    def correct_query(self, query):
+        return None
+
     def recommend(self, query, top_k=10, content_type=None, user_id=None, audience=None):
         return []
 
