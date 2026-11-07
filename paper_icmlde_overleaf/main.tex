@@ -148,7 +148,7 @@
 % so line breaks, page breaks, and page numbers are identical with and without
 % it. Needs two compilations.
 \newif\ifrevhighlight
-\revhighlighttrue
+\revhighlightfalse
 \definecolor{revhl}{RGB}{255,245,180}
 \makeatletter
 \ifdefined\pdfsavepos\else
@@ -280,16 +280,17 @@
 \begin{document}
 \begin{frontmatter}
 
-\dochead{International Conference on Machine Learning and Data Engineering}
+\dochead{5th International Conference on Machine Learning and Data Engineering}
 
 \title{Real-Time Adaptive Cross-Media Recommendation Using Semantic Embeddings, Knowledge Graph Scoring, and Graph Collaborative Learning}
 
-\author[a]{Sanjay A. K.}
-\author[a]{Eswara Raj M.}
-\author[a]{Aditya Vijay}
-\author[a]{Himaneesh Reddy Jangalapalli}
-\author[a]{Bagavathi Sivakumar P.\corref{cor1}}
-\author[a]{Krishna Priya G.\corref{cor1}}
+% Names joined with ~ so that no name is split across lines.
+\author[a]{Sanjay~A.~K.}
+\author[a]{Eswara~Raj~M.}
+\author[a]{Aditya~Vijay}
+\author[a]{Himaneesh~Reddy~Jangalapalli}
+\author[a]{Bagavathi~Sivakumar~P.\corref{cor1}}
+\author[a]{Krishna~Priya~G.\corref{cor1}}
 
 \address[a]{Department of Computer Science and Engineering, Amrita School of Computing, Coimbatore, Amrita Vishwa Vidyapeetham, India}
 
@@ -318,7 +319,7 @@ These capabilities are rarely combined in one multi-domain pipeline: graph model
     \item A quantitative evaluation on three public interaction datasets, comprising single-signal baselines, an ablation over all 16 combinations of the four signals, validation-based weight selection, latency measurements, and scenario tests of the deployed system.
 \end{enumerate}
 
-\section{Related Work and Novelty}
+\section{Related work and novelty}
 \label{sec:discussion}
 Collaborative filtering learns from behavior and content-based recommendation from item metadata, and hybrid approaches combine the two to reduce the cold-start problem \cite{zhang2019deep}. NGCF applies graph convolution to the user--item graph, and LightGCN simplifies it by keeping only neighborhood propagation \cite{wang2019ngcf,he2020lightgcn}; here LightGCN is a reranking signal for users with interaction history rather than the candidate generator. Sequential recommenders such as SASRec model the order of user actions within a single domain \hlon \cite{kang2018sasrec}\hloff{}, and Sentence-BERT embeddings \cite{reimers2019sbert} let items of different media share one vector space before any interactions exist. KGAT and RippleNet propagate preferences over knowledge-graph relations such as directed-by \cite{wang2019kgat,wang2018ripplenet}. Cross-domain recommendation transfers preferences between domains, mostly between two \cite{zang2022cross}, and a recent survey extends the scope to multi-domain transfer \cite{zhang2025survey}; large language models augmented with graph structure have also been used for relevance and explanation \cite{wu2024llmrec}. Studies from Amrita Vishwa Vidyapeetham have addressed cold-start prediction, collaborative filtering, sparse data, dual-feedback personalization, and community-aware recommendation \cite{amrita2023densenet,amrita2023adamvrgo,amrita2024sparse,amrita2025dualfeedback,amrita2026svd}, but not the integration of heterogeneous media into one pipeline.
 
@@ -517,7 +518,7 @@ where $S_{\mathit{sem}}$ is replaced by the fixed lexical score for creator and 
 \end{equation}
 with $\mathcal{I}^{+}_u$ and $\mathcal{I}^{-}_u$ holding the items this user has already rated positively or negatively; both are demoted so that unseen items rise. For known users, $5K$ candidates are retrieved before reranking, so that personalization can promote items from outside the initial top $K$. The deployed system uses the hand-set weights $\lambda_g=0.20$, $\lambda_e=0.15$, $\lambda_k=0.08$, and $\lambda_p=0.10$; Section~\ref{sec:results} compares them with weights selected on a validation split.
 
-\section{Experimental Setup}
+\section{Experimental setup}
 \label{sec:setup}
 An offline benchmark on public interaction data measures every signal of Eq.~\eqref{eq:hybrid} under identical conditions; scenario tests of the deployed system cover the query- and profile-dependent behavior.
 
@@ -647,7 +648,7 @@ KG/profile rerank & 13.1 & 13.1 & 22.3 & 28.2 \\
 
 \subsection{Prototype scenarios}
 \label{sec:scenarios}
-\hlon Seventeen scenarios were issued through the deployed endpoint with $K=10$\hloff{}, each as a seeded demo user with the viewer age implied by its profile (20, 30, or 8 years; vertical queries also declare their domain): five person queries, six cross-media intents, and six vertical queries (health, industrial, and finance, two each). Table~\ref{tab:results} gives means by kind of scenario, and every scenario is listed in the supplementary material. PersonHit@5 (PH) counts the top-5 results that credit the queried person, ProfileAlign@5 (PA) those with a positive profile score (Eq.~\eqref{eq:profile_score}), and KG and Prof.\ are the mean $S_{\mathit{kg}}$ and $S_{\mathit{profile}}$ of the top five. No one labeled the results of these typed queries, so the rank metrics at 10 use a fixed relevance rule: an item is relevant if the queried person is among its creators, or if at least two of the scenario's intent terms appear in its title, categories, creators, or description (inside the declared vertical, if any). The rule uses catalog metadata only, never a ranker score; recall is divided by all relevant items (15 to 6,558), so it cannot exceed $10/|\mathrm{relevant}|$. \hlon The cross-domain rate is the fraction of scenarios whose top ten contains at least two content types.\hloff{}
+\hlon Seventeen scenarios were issued through the deployed endpoint with $K=10$\hloff{}, each as a seeded demo user with the viewer age implied by its profile (20, 30, or 8 years; vertical queries also declare their domain): five person queries, six cross-media intents, and six vertical queries (health, industrial, and finance, two each). Table~\ref{tab:results} gives means by kind of scenario.PersonHit@5 (PH) counts the top-5 results that credit the queried person, ProfileAlign@5 (PA) those with a positive profile score (Eq.~\eqref{eq:profile_score}), and KG and Prof.\ are the mean $S_{\mathit{kg}}$ and $S_{\mathit{profile}}$ of the top five. No one labeled the results of these typed queries, so the rank metrics at 10 use a fixed relevance rule: an item is relevant if the queried person is among its creators, or if at least two of the scenario's intent terms appear in its title, categories, creators, or description (inside the declared vertical, if any). The rule uses catalog metadata only, never a ranker score; recall is divided by all relevant items (15 to 6,558), so it cannot exceed $10/|\mathrm{relevant}|$. \hlon The cross-domain rate is the fraction of scenarios whose top ten contains at least two content types.\hloff{}
 
 \begin{table}[!ht]
 \hlblock
@@ -672,9 +673,9 @@ All scenarios & 17 & 0.88 & 1.00 & 0.697 & 0.858 & 0.947 & 0.102 & 0.943 & 0.913
 
 All five person queries place four or five of the person's items in the top five; the misses carry the name in the title without listing the person as a creator, such as \emph{James Cameron's Story of Science Fiction}. \hlon Eight of the eleven scenarios without a domain filter return at least two content types\hloff{} ($6$ of $11$ if movies and TV shows count as one medium), the family profile receives only age-appropriate films, and the vertical scenarios stay in their declared domain by design, \hlon so the cross-domain rate is $8/17$ overall\hloff{}. Eleven of the twelve topical queries score 1.00 on every rank measure, so they mainly confirm that results match the intent terms; the person queries discriminate (mean P@10 0.84, NDCG@10 0.82, MAP@10 0.73, MRR@10 0.80). EMA scores were available for all 170 returned items but a LightGCN score for only seven, because the deployed LightGCN model is trained on the demo log (13 users, 347 items); its contribution is measured by the benchmark.
 
-\hlon The KG and profile signals have no offline counterpart, so they were ablated in the scenarios by setting their weights to zero.\hloff{} Without the profile score, mean ProfileAlign@5 falls from 1.00 to 0.96, the mean profile score of the top five from 0.858 to 0.795, NDCG@10 from 0.943 to 0.916, and 0.71 of the top five items change; the effect is largest for the pop-music user (ProfileAlign@5 from 5/5 to 2/5 as a concert film replaces an album) and the broad space-adventure query (profile score 0.896 to 0.560). Without the KG score, the mean KG score falls from 0.697 to 0.664, NDCG@10 from 0.943 to 0.931, and 0.47 of the top five items change. Person matching is unchanged, the cross-domain rate rises from $8/17$ to $9/17$ in both variants (one scenario gains a TV show), and no variant returns an unsuitable item, because the eligibility filter of Section~\ref{sec:implementation} removes such items before ranking.
+\hlon The KG and profile signals have no offline counterpart, so they were ablated in the scenarios by setting their weights to zero.\hloff{} Without the profile score, mean ProfileAlign@5 falls from 1.00 to 0.96, the mean profile score of the top five from 0.858 to 0.795, NDCG@10 from 0.943 to 0.916, and 0.71 of the top five items change; the effect is largest for the pop-music user (ProfileAlign@5 from 5/5 to 2/5 as a concert film replaces an album) and the broad space-adventure query (profile score 0.896 to 0.560). Without the KG score, the mean KG score falls from 0.697 to 0.664, NDCG@10 from 0.943 to 0.931, and 0.47 of the top five items change. Person matching is unchanged, the cross-domain rate rises from $8/17$ to $9/17$ in both variants (one scenario gains a TV show), and no variant returns an unsuitable item, because the eligibility filter of Section~\ref{sec:overview} removes such items before ranking.
 
-\section{Conclusion and Future Work}
+\section{Conclusion and future work}
 \label{sec:conclusion}
 We have described a real-time adaptive cross-media recommender that ranks seven content types from one catalog by combining semantic, creator and title, EMA, LightGCN, and KG and profile signals. On three Amazon Reviews 2023 categories, the hybrid with validation-selected weights was the best of all 16 signal combinations on two of them, the semantic and LightGCN signals contributed most, and weight selection improved on the hand-set weights; \hlon a request takes 363~ms at the median and a feedback update 0.05~ms\hloff{}. Three limitations remain: entity overlap alone was best on Health \& Household, the deployed LightGCN model covers only the demo users, and one process serves about three requests per second. We plan to tune the weights per domain, add an inverted title index, and extend the system to more domains and user studies.
 

@@ -27,3 +27,5 @@ embeddings/*.csv
 .env
 qdrant_storage/
 
+# Conference template download (26 MB); the files the paper needs are in reports/submission/camera_ready/
+paper_icmlde_overleaf/Template_PROCS_ICMLDE_2026/

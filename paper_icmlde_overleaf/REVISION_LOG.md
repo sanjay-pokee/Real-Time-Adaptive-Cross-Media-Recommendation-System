@@ -177,6 +177,36 @@ pages as the Overleaf paper, letter text identical to 2026-10-16. Not re-checked
 
 ---
 
+### Camera-ready check against the acceptance email (2026-10-26)
+
+Deadline for registration and the camera-ready upload (Google form): **27 October 2026**.
+Files: `reports/submission/camera_ready/PROCS_ICMLDE2026_Sanjay.pdf` and `PROCS_ICMLDE2026_Sanjay_source.zip`
+(named "procedia acronym_conference acronym_authorslastname" as the template asks; the zip holds the .tex, the PDF and
+the unchanged 2026 template files, and compiles on its own with pdfLaTeX to the same 10 pages). The .tex is `main.tex`
+with the round-2 highlighting macros and marks removed (pixel-identical output, since `\revhighlightfalse`).
+All template files (`ecrc.sty`, `elsarticle.cls`, `framed.sty`, `.bst`, logos) are byte-identical to the 2026 template.
+
+| Rule | Status |
+|---|---|
+| i, xi. Times, body 10 pt regular, paragraph indent | ✅ template `times` option (Nimbus Roman = Times); no sans or typewriter text outside the template header |
+| ii. Title 17 pt regular | ✅ template |
+| iii. Authors 13 pt, no Mr/Dr/Prof. | ✅; names now unbreakable (`~`), "Bagavathi Sivakumar P." was split across two lines |
+| iv. Affiliation 8 pt italic | ✅ template |
+| v. Abstract heading bold 9 pt, text 9 pt regular | ✅ template |
+| vi. Keywords 8 pt, non-italic, semicolons | ✅ template (`\sep` prints "; ") |
+| vii. Headings bold 10 pt, first letter capital only, numbered 1, 2…; subheadings italic 1.1… | ✅ fixed: "Related Work and Novelty", "Experimental Setup", "Conclusion and Future Work" → sentence case |
+| viii. "Fig. 1." 8 pt, centred | ✅ template; both captions are one line, so centred |
+| ix. "Table 1." 8 pt, no dash | ✅ template |
+| x. Equations numbered (1)…(9) on the right | ✅ |
+| xii. Acknowledgements/References heading bold, unnumbered | ✅ References; no Acknowledgements section (optional) |
+| xiii. References 8 pt, "[n]" then the entry | ✅; entries in the Vancouver numbered style the PROCS template names for Procedia Computer Science |
+| Similarity ≤ 10% (Turnitin) on the camera-ready | ⏳ to run on the final PDF |
+
+Also fixed: §5.3 said "every scenario is listed in the supplementary material" (the per-scenario table was in the
+response letter, which is not published) → clause removed; the eligibility filter is now referenced as §3.1, not §3.
+
+---
+
 ## Reviewer #1
 
 | # | Comment | Status | What we changed | Where (paper) | Where (files) |
@@ -290,3 +320,5 @@ pages as the Overleaf paper, letter text identical to 2026-10-16. Not re-checked
 | 2026-10-16 | Highlighting narrowed on faculty request: only the 1–2 lines answering each comment (table of lines under "Highlighting of changes"); caption labels shaded with `\hlcap`; letter sentence updated; all 10 pages glyph-identical to the clean build, 33 labels unchanged, letter 6 pages; broad version moved to `superseded/` | `main.tex`, `response.tex`, `reports/submission/` | all |
 | 2026-10-16 | Faculty: fully changed tables and figures highlighted fully: all six tables and both figures shaded completely (caption-only marks removed); letter sentence adds "and the new or redrawn tables and figures"; glyphs and labels unchanged, letter 6 pages | `main.tex`, `response.tex`, `reports/submission/` | R1.1, R1.3, R1.4, R2.x |
 | 2026-10-17 | Compilatio (AI detection 16%, similarity 5%): 14 sky-blue passages rephrased (see "Compilatio check"); still 10 pages, labels and highlights unchanged in position; `1343_revised_paper_highlighted.pdf` and `1343_revised_version.pdf` rebuilt (local build), 2026-10-16 versions moved to `superseded/` | `main.tex`, `reports/submission/` | editorial |
+| 2026-10-24 | Camera-ready (acceptance email): `ecrc.sty` replaced by the 2026 template version (copyright 2026, ICMLDE2026 peer-review line, running head 2026); `\revhighlightfalse` so the PDF has no shading. Not compiled locally (no TeX install); compile in Overleaf and check page count | `ecrc.sty`, `main.tex` | camera-ready |
+| 2026-10-26 | Camera-ready checked rule by rule against the acceptance email (see "Camera-ready check"): section headings in sentence case, author names unbreakable, "supplementary material" clause removed, eligibility-filter reference §3 → §3.1; compiled with MiKTeX pdfLaTeX: 10 pages. Clean source without highlighting macros + PDF packaged; old `procs_icmlde_camera_ready_DRAFT.pdf` moved to `superseded/` | `main.tex`, `reports/submission/camera_ready/` | camera-ready |
