@@ -7,24 +7,31 @@ Run locally:
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend import auth
 from backend.audience import AudienceContext
 from backend.domains import get_registry
 from backend.ema_recommender import EMAEmbeddingStore
-from backend.mysql_store import MySQLStore
+from backend.mysql_store import AccountExistsError, MySQLStore
 from backend.qdrant_recommender import QdrantRecommender
 from backend.schemas import (
+    AccountResponse,
+    AuthConfigResponse,
     DomainSummary,
     DomainsResponse,
+    GoogleLoginRequest,
     InteractionRequest,
     InteractionResponse,
     ItemRecommendRequest,
     ItemRecommendResponse,
+    LoginRequest,
     RecommendRequest,
     RecommendResponse,
+    SignupRequest,
     SuggestItem,
     SuggestResponse,
     UserInteractionState,
@@ -113,7 +120,12 @@ def get_recommender(request: Request) -> QdrantRecommender:
 
 
 def get_mysql_store(request: Request) -> MySQLStore:
-    return request.app.state.mysql_store
+    # Every endpoint that takes a user id now needs the store for the account
+    # check, including /recommend. A client that skipped the lifespan (a bare
+    # TestClient) gets a fresh one; it opens a connection per call, so it costs
+    # nothing until a request actually names an account.
+    store = getattr(request.app.state, "mysql_store", None)
+    return store if store is not None else MySQLStore()
 
 
 def get_ema_store(request: Request) -> EMAEmbeddingStore | None:
@@ -251,11 +263,184 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+# ---------------------------------------------------------------------------
+# Accounts (see backend/auth.py)
+# ---------------------------------------------------------------------------
+
+@app.get("/auth/config", response_model=AuthConfigResponse)
+def auth_config(store: MySQLStore = Depends(get_mysql_store)) -> AuthConfigResponse:
+    return AuthConfigResponse(google_client_id=store.settings.google_client_id)
+
+
+@app.post("/auth/signup", response_model=AccountResponse, status_code=201)
+def signup(
+    payload: SignupRequest,
+    response: Response,
+    store: MySQLStore = Depends(get_mysql_store),
+) -> AccountResponse:
+    email = auth.normalize_email(payload.email)
+    display_name = payload.display_name.strip()
+    if not display_name:
+        raise HTTPException(status_code=400, detail="Enter your name.")
+    auth.check_password(payload.password)
+
+    try:
+        existing = store.get_account_by_email(email)
+        if existing is not None:
+            raise _account_exists(existing)
+        account = store.create_account(
+            auth.new_account_id(),
+            email,
+            display_name,
+            password_hash=auth.hash_password(payload.password),
+        )
+        return _start_session(response, store, account)
+    except HTTPException:
+        raise
+    except AccountExistsError as exc:
+        raise _account_exists(None) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Could not create the account: {exc}") from exc
+
+
+@app.post("/auth/login", response_model=AccountResponse)
+def login(
+    payload: LoginRequest,
+    response: Response,
+    store: MySQLStore = Depends(get_mysql_store),
+) -> AccountResponse:
+    email = payload.email.strip().lower()
+    wait = auth.login_throttle.retry_after_minutes(email)
+    if wait:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many wrong passwords. Try again in {wait} minute{'s' if wait != 1 else ''}.",
+        )
+
+    try:
+        account = store.get_account_by_email(email)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Could not check the account: {exc}") from exc
+
+    if account is not None and not account.get("password_hash"):
+        raise HTTPException(
+            status_code=400,
+            detail="This email signs in with Google. Use the Google button.",
+        )
+    if not auth.verify_password(account["password_hash"] if account else None, payload.password):
+        auth.login_throttle.fail(email)
+        raise HTTPException(status_code=401, detail="Wrong email or password.")
+    auth.login_throttle.reset(email)
+
+    try:
+        return _start_session(response, store, account)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Could not start the session: {exc}") from exc
+
+
+@app.post("/auth/google", response_model=AccountResponse)
+def login_with_google(
+    payload: GoogleLoginRequest,
+    response: Response,
+    store: MySQLStore = Depends(get_mysql_store),
+) -> AccountResponse:
+    client_id = store.settings.google_client_id
+    if not client_id:
+        raise HTTPException(status_code=503, detail="Google sign-in is not set up on this server.")
+    try:
+        claims = auth.verify_google_credential(payload.credential, client_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail="Google sign-in could not be verified.") from exc
+    if not claims.get("email_verified"):
+        raise HTTPException(status_code=401, detail="This Google account's email is not verified.")
+
+    google_sub = str(claims["sub"])
+    email = str(claims["email"]).strip().lower()
+    display_name = (str(claims.get("name") or "").strip() or email.split("@")[0])[:120]
+
+    try:
+        account = store.get_account_by_google_sub(google_sub)
+        if account is None:
+            account = store.get_account_by_email(email)
+            if account is None:
+                account = store.create_account(
+                    auth.new_account_id(), email, display_name, google_sub=google_sub
+                )
+            elif account.get("google_sub"):
+                # Same address, different Google identity: the address was
+                # reassigned, and the account belongs to its previous owner.
+                raise HTTPException(
+                    status_code=409,
+                    detail="This email is linked to a different Google account.",
+                )
+            else:
+                # Someone signed up with this email and a password. Google has
+                # now proven who owns the address, so it becomes the same
+                # account - see MySQLStore.link_google_account for why the
+                # password goes.
+                store.link_google_account(account["user_id"], google_sub)
+                account = store.get_account(account["user_id"])
+        return _start_session(response, store, account)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Could not sign in with Google: {exc}") from exc
+
+
+@app.post("/auth/logout")
+def logout(
+    request: Request,
+    response: Response,
+    store: MySQLStore = Depends(get_mysql_store),
+) -> dict[str, str]:
+    token = request.cookies.get(auth.SESSION_COOKIE)
+    if token:
+        try:
+            store.delete_session(auth.hash_token(token))
+        except Exception:
+            pass  # the cookie is cleared regardless; the row expires on its own
+    auth.clear_session_cookie(response, store.settings)
+    return {"status": "logged_out"}
+
+
+@app.get("/auth/me", response_model=AccountResponse)
+def me(request: Request, store: MySQLStore = Depends(get_mysql_store)) -> AccountResponse:
+    try:
+        account = auth.session_account(request, store)
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Could not check the session: {exc}") from exc
+    if account is None:
+        raise HTTPException(status_code=401, detail="Not logged in.")
+    return auth.account_response(account)
+
+
+def _start_session(response: Response, store: MySQLStore, account: dict[str, Any]) -> AccountResponse:
+    token, token_hash = auth.new_session_token()
+    store.create_session(token_hash, account["user_id"], store.settings.session_days)
+    auth.set_session_cookie(response, token, store.settings)
+    return auth.account_response(account)
+
+
+def _account_exists(account: dict[str, Any] | None) -> HTTPException:
+    if account is not None and not account.get("password_hash"):
+        detail = "An account with this email signs in with Google. Use the Google button."
+    else:
+        detail = "An account with this email already exists. Log in instead."
+    return HTTPException(status_code=409, detail=detail)
+
+
+# ---------------------------------------------------------------------------
+# Recommendations and interactions
+# ---------------------------------------------------------------------------
+
 @app.post("/recommend", response_model=RecommendResponse)
 def recommend(
     payload: RecommendRequest,
+    request: Request,
     recommender: QdrantRecommender = Depends(get_recommender),
+    store: MySQLStore = Depends(get_mysql_store),
 ) -> RecommendResponse:
+    auth.require_user_access(payload.user_id, request, store)
     # Deliberately no retry without ``audience``. A fallback used to catch
     # TypeError and call recommend(query, top_k, content_type) again, so any
     # TypeError raised *inside* the recommender re-ran the search with no
@@ -292,8 +477,11 @@ def recommend(
 @app.post("/recommend/item", response_model=ItemRecommendResponse)
 def recommend_from_item(
     payload: ItemRecommendRequest,
+    request: Request,
     recommender: QdrantRecommender = Depends(get_recommender),
+    store: MySQLStore = Depends(get_mysql_store),
 ) -> ItemRecommendResponse:
+    auth.require_user_access(payload.user_id, request, store)
     # No retry without ``audience`` - see recommend() above.
     try:
         audience = _audience_for(payload)
@@ -326,9 +514,11 @@ def recommend_from_item(
 @app.post("/interactions", response_model=InteractionResponse)
 def log_interaction(
     payload: InteractionRequest,
+    request: Request,
     store: MySQLStore = Depends(get_mysql_store),
     ema_store: EMAEmbeddingStore | None = Depends(get_ema_store),
 ) -> InteractionResponse:
+    auth.require_user_access(payload.user_id, request, store)
     try:
         if not store.content_exists(payload.entity_id):
             raise HTTPException(
@@ -372,10 +562,12 @@ def log_interaction(
 def get_interaction_state(
     user_id: str,
     entity_id: str,
+    request: Request,
     store: MySQLStore = Depends(get_mysql_store),
 ) -> UserInteractionState:
     """Return the current interaction state (likes, bookmarks, rating, etc.) for
     a specific user + content entity combination."""
+    auth.require_user_access(user_id, request, store)
     try:
         state = store.get_user_interaction_state(user_id, entity_id)
     except Exception as exc:

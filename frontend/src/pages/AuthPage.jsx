@@ -1,9 +1,24 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Lock, Mail, Sparkles, UserPlus } from 'lucide-react';
 import { USERS } from '../components/UserSelector';
+import GoogleSignInButton from '../components/GoogleSignInButton';
+import {
+  ACCOUNTS_ENABLED, apiErrorMessage, getAuthConfig, login, loginWithGoogle, signup,
+} from '../api/client';
+import { accountToSessionUser } from '../utils/session';
 
-const DEMO_PASSWORD = 'demo123';
+const MIN_PASSWORD_LENGTH = 8;
+
+// Real accounts first; the demo personas stay one tab away, because the panel
+// demo and the paper's scenarios run on their seeded histories.
+const TABS = ACCOUNTS_ENABLED
+  ? [
+      { value: 'login', label: 'Log in' },
+      { value: 'signup', label: 'Sign up' },
+      { value: 'demo', label: 'Demo' },
+    ]
+  : [{ value: 'demo', label: 'Demo' }];
 
 const PITCH = [
   { value: 'Qdrant', label: 'Vector retrieval over one unified catalogue' },
@@ -39,23 +54,30 @@ const FEATURED_USERS = FEATURED_USER_IDS
   .map((id) => USERS.find((user) => user.id === id))
   .filter(Boolean);
 
-function initialsFromName(name) {
-  return (
-    name
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join('') || 'NU'
-  );
-}
-
 export default function AuthPage({ onAuth }) {
-  const [mode, setMode] = useState('login');
+  const [mode, setMode] = useState(TABS[0].value);
   const [selectedUserId, setSelectedUserId] = useState(USERS[0].id);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState(null);
+
+  // The Google button appears only when the backend has a client id. If the
+  // backend is down this fails quietly; the email form reports it on submit.
+  useEffect(() => {
+    if (!ACCOUNTS_ENABLED) return undefined;
+    let cancelled = false;
+    getAuthConfig()
+      .then((config) => {
+        if (!cancelled) setGoogleClientId(config.google_client_id || null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // The auth screen used to force `dark` regardless of preference, on the
   // reasoning that it is the product's first impression. Under the editorial
@@ -68,35 +90,45 @@ export default function AuthPage({ onAuth }) {
     [selectedUserId]
   );
 
+  function switchMode(value) {
+    setMode(value);
+    setError('');
+    setPassword('');
+  }
+
+  function handleDemo(event) {
+    event.preventDefault();
+    onAuth({ ...selectedUser, authType: 'demo' });
+  }
+
+  async function submitAccount(request) {
+    setError('');
+    setBusy(true);
+    try {
+      onAuth(accountToSessionUser(await request()));
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function handleLogin(event) {
     event.preventDefault();
-    setError('');
-    onAuth({ ...selectedUser, authType: 'demo' });
+    submitAccount(() => login({ email, password }));
   }
 
   function handleSignup(event) {
     event.preventDefault();
-    setError('');
-    const cleanName = name.trim();
-    const cleanEmail = email.trim();
-
-    if (!cleanName || !cleanEmail) {
-      setError('Enter a name and email to create a demo account.');
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Use at least ${MIN_PASSWORD_LENGTH} characters for the password.`);
       return;
     }
+    submitAccount(() => signup({ email, password, display_name: name }));
+  }
 
-    onAuth({
-      id: `demo_${
-        cleanEmail.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'user'
-      }`,
-      label: cleanName,
-      email: cleanEmail,
-      initials: initialsFromName(cleanName),
-      // Kept in sync with --irid-1 by hand: this value is stored on the session
-      // object, so it cannot be a CSS variable.
-      accent: '#4dd9ff',
-      authType: 'signup',
-    });
+  function handleGoogle(credential) {
+    submitAccount(() => loginWithGoogle(credential));
   }
 
   return (
@@ -187,43 +219,46 @@ export default function AuthPage({ onAuth }) {
 
             <div className="panel panel-lit p-6 sm:p-7">
               {/* ---- mode switch ---- */}
-              <div className="mb-6 grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface-3 p-1">
-                {['login', 'signup'].map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setMode(value)}
-                    aria-pressed={mode === value}
-                    className="relative rounded-lg px-4 py-2 text-[13px] font-semibold transition-colors"
-                    style={{ color: mode === value ? 'var(--accent-ink)' : 'var(--ink-faint)' }}
-                  >
-                    {/* One indicator slides between the two tabs rather than
-                        each tab fading its own background in and out. */}
-                    {mode === value ? (
-                      <motion.span
-                        layoutId="auth-mode-pill"
-                        transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                        className="absolute inset-0 rounded-lg"
-                        style={{
-                          background: 'linear-gradient(120deg in oklab, var(--accent), var(--accent-2))',
-                          boxShadow: 'var(--shadow-accent)',
-                        }}
-                      />
-                    ) : null}
-                    <span className="relative">
-                      {value === 'login' ? 'Log in' : 'Sign up'}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              {TABS.length > 1 && (
+                <div
+                  className="mb-6 grid gap-1 rounded-xl border border-line bg-surface-3 p-1"
+                  style={{ gridTemplateColumns: `repeat(${TABS.length}, minmax(0, 1fr))` }}
+                >
+                  {TABS.map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => switchMode(value)}
+                      aria-pressed={mode === value}
+                      className="relative rounded-lg px-4 py-2 text-[13px] font-semibold transition-colors"
+                      style={{ color: mode === value ? 'var(--accent-ink)' : 'var(--ink-faint)' }}
+                    >
+                      {/* One indicator slides between the tabs rather than
+                          each tab fading its own background in and out. */}
+                      {mode === value ? (
+                        <motion.span
+                          layoutId="auth-mode-pill"
+                          transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                          className="absolute inset-0 rounded-lg"
+                          style={{
+                            background: 'linear-gradient(120deg in oklab, var(--accent), var(--accent-2))',
+                            boxShadow: 'var(--shadow-accent)',
+                          }}
+                        />
+                      ) : null}
+                      <span className="relative">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
-              {mode === 'login' ? (
-                <form onSubmit={handleLogin} className="space-y-5">
+              {mode === 'demo' ? (
+                <form onSubmit={handleDemo} className="space-y-5">
                   <div>
-                    <h2 className="display text-2xl font-bold text-ink">Welcome back</h2>
+                    <h2 className="display text-2xl font-bold text-ink">Try a demo profile</h2>
                     <p className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">
                       Each demo profile carries its own interaction history, so the
-                      ranking signals differ per user.
+                      ranking signals differ per user. No account needed.
                     </p>
                   </div>
 
@@ -264,54 +299,83 @@ export default function AuthPage({ onAuth }) {
                     </div>
                   </div>
 
-                  <p className="panel-flat px-3.5 py-2.5 text-[11.5px] text-ink-muted">
-                    Demo password:{' '}
-                    <span className="font-mono font-semibold text-ink">{DEMO_PASSWORD}</span>
-                  </p>
-
                   <button type="submit" className="btn btn-primary w-full py-3">
                     Continue as {selectedUser.label}
                     <ArrowRight size={15} />
                   </button>
                 </form>
               ) : (
-                <form onSubmit={handleSignup} className="space-y-4">
+                <form onSubmit={mode === 'login' ? handleLogin : handleSignup} className="space-y-4">
                   <div>
-                    <h2 className="display text-2xl font-bold text-ink">Create demo account</h2>
+                    <h2 className="display text-2xl font-bold text-ink">
+                      {mode === 'login' ? 'Welcome back' : 'Create your account'}
+                    </h2>
                     <p className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">
-                      Creates a local profile for this browser session.
+                      {mode === 'login'
+                        ? 'Log in to pick up where you left off.'
+                        : 'What you like, rate or skip is saved to your account and shapes what you are shown next.'}
                     </p>
                   </div>
 
-                  <Labelled label="Name" icon={UserPlus}>
-                    <input
-                      value={name}
-                      onChange={(event) => setName(event.target.value)}
-                      className="field py-2.5 pl-10 pr-3"
-                      placeholder="Sanjay Kumar"
-                    />
-                  </Labelled>
+                  {googleClientId && (
+                    <>
+                      <GoogleSignInButton
+                        clientId={googleClientId}
+                        text={mode === 'login' ? 'signin_with' : 'signup_with'}
+                        onCredential={handleGoogle}
+                        onError={setError}
+                      />
+                      <div className="flex items-center gap-3 text-[11px] font-medium text-ink-faint">
+                        <span className="h-px flex-1 bg-line" />
+                        or with email
+                        <span className="h-px flex-1 bg-line" />
+                      </div>
+                    </>
+                  )}
+
+                  {mode === 'signup' && (
+                    <Labelled label="Name" icon={UserPlus}>
+                      <input
+                        value={name}
+                        onChange={(event) => setName(event.target.value)}
+                        className="field w-full py-2.5 pl-10 pr-3"
+                        placeholder="Sanjay Kumar"
+                        autoComplete="name"
+                        maxLength={120}
+                        required
+                      />
+                    </Labelled>
+                  )}
 
                   <Labelled label="Email" icon={Mail}>
                     <input
                       type="email"
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
-                      className="field py-2.5 pl-10 pr-3"
+                      className="field w-full py-2.5 pl-10 pr-3"
                       placeholder="you@example.com"
+                      autoComplete="email"
+                      maxLength={254}
+                      required
                     />
                   </Labelled>
 
                   <Labelled label="Password" icon={Lock}>
                     <input
                       type="password"
-                      className="field py-2.5 pl-10 pr-3"
-                      placeholder="Any dummy password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      className="field w-full py-2.5 pl-10 pr-3"
+                      placeholder={mode === 'signup' ? `At least ${MIN_PASSWORD_LENGTH} characters` : ''}
+                      autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                      maxLength={128}
+                      required
                     />
                   </Labelled>
 
                   {error && (
                     <p
+                      role="alert"
                       className="rounded-xl px-3 py-2 text-[12px] font-medium"
                       style={{
                         color: 'var(--bad)',
@@ -322,8 +386,8 @@ export default function AuthPage({ onAuth }) {
                     </p>
                   )}
 
-                  <button type="submit" className="btn btn-primary w-full py-3">
-                    Create account
+                  <button type="submit" disabled={busy} className="btn btn-primary w-full py-3">
+                    {busy ? 'One moment…' : mode === 'login' ? 'Log in' : 'Create account'}
                     <ArrowRight size={15} />
                   </button>
                 </form>

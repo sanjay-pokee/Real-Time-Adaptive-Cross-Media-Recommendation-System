@@ -77,7 +77,44 @@ TABLE_SQL = [
         ON DELETE CASCADE
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS users (
+      -- Real accounts only, with acct_ ids. The demo personas (user_scifi, ...)
+      -- have no row here: they are shared sandboxes, not anyone's account.
+      user_id VARCHAR(191) PRIMARY KEY,
+      email VARCHAR(254) NOT NULL,
+      display_name VARCHAR(120) NOT NULL,
+      -- NULL for an account that signs in with Google only.
+      password_hash VARCHAR(255),
+      -- Google's stable account id ("sub"), which survives an email change.
+      google_sub VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      last_login_at TIMESTAMP NULL,
+      UNIQUE KEY uq_users_email (email),
+      UNIQUE KEY uq_users_google_sub (google_sub)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      -- SHA-256 of the cookie value, never the value itself, so a copy of
+      -- this table does not hand out working sessions.
+      token_hash CHAR(64) PRIMARY KEY,
+      user_id VARCHAR(191) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      expires_at TIMESTAMP NOT NULL,
+      INDEX idx_sessions_user (user_id),
+      CONSTRAINT fk_session_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE
+    )
+    """,
 ]
+
+ACCOUNT_COLUMNS = "user_id, email, display_name, password_hash, google_sub"
+
+
+class AccountExistsError(Exception):
+    """Raised when an email or Google account is already registered."""
 
 
 # Applied after TABLE_SQL on every init. CREATE TABLE IF NOT EXISTS silently
@@ -540,6 +577,126 @@ class MySQLStore:
             conn.close()
 
         return len(interactions)
+
+    # ---- accounts and sessions ------------------------------------------
+
+    def create_account(
+        self,
+        user_id: str,
+        email: str,
+        display_name: str,
+        password_hash: str | None = None,
+        google_sub: str | None = None,
+    ) -> dict[str, Any]:
+        conn = self._connect_database()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO users (user_id, email, display_name, password_hash, google_sub)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    (user_id, email, display_name, password_hash, google_sub),
+                )
+            conn.commit()
+        except Exception as exc:
+            # 1062 is a duplicate key: the email (or Google account) was taken
+            # between the caller's lookup and this insert.
+            if getattr(exc, "errno", None) == 1062:
+                raise AccountExistsError(email) from exc
+            raise
+        finally:
+            conn.close()
+        return self.get_account(user_id)
+
+    def get_account(self, user_id: str) -> dict[str, Any] | None:
+        return self._fetch_account("user_id = %s", user_id)
+
+    def get_account_by_email(self, email: str) -> dict[str, Any] | None:
+        return self._fetch_account("email = %s", email)
+
+    def get_account_by_google_sub(self, google_sub: str) -> dict[str, Any] | None:
+        return self._fetch_account("google_sub = %s", google_sub)
+
+    def link_google_account(self, user_id: str, google_sub: str) -> None:
+        """Attach a Google identity to an existing email account.
+
+        The password is removed and every open session ends. Sign-up never
+        verified that the person who set the password owns the address, and
+        Google just did: keeping the password would let whoever registered
+        someone else's email first keep a key to that person's account.
+        """
+        conn = self._connect_database()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE users SET google_sub = %s, password_hash = NULL WHERE user_id = %s",
+                    (google_sub, user_id),
+                )
+                cursor.execute("DELETE FROM user_sessions WHERE user_id = %s", (user_id,))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def create_session(self, token_hash: str, user_id: str, days: int) -> None:
+        conn = self._connect_database()
+        try:
+            with conn.cursor() as cursor:
+                # Expired rows are swept here rather than by a job: a user's own
+                # old sessions go whenever they log in again.
+                cursor.execute(
+                    "DELETE FROM user_sessions WHERE user_id = %s AND expires_at <= NOW()",
+                    (user_id,),
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO user_sessions (token_hash, user_id, expires_at)
+                    VALUES (%s, %s, DATE_ADD(NOW(), INTERVAL %s DAY))
+                    """,
+                    (token_hash, user_id, days),
+                )
+                cursor.execute(
+                    "UPDATE users SET last_login_at = NOW() WHERE user_id = %s",
+                    (user_id,),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_session_account(self, token_hash: str) -> dict[str, Any] | None:
+        conn = self._connect_database()
+        try:
+            with conn.cursor(dictionary=True) as cursor:
+                cursor.execute(
+                    """
+                    SELECT u.user_id, u.email, u.display_name, u.password_hash, u.google_sub
+                    FROM user_sessions s
+                    JOIN users u ON u.user_id = s.user_id
+                    WHERE s.token_hash = %s AND s.expires_at > NOW()
+                    """,
+                    (token_hash,),
+                )
+                return cursor.fetchone()
+        finally:
+            conn.close()
+
+    def delete_session(self, token_hash: str) -> None:
+        conn = self._connect_database()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("DELETE FROM user_sessions WHERE token_hash = %s", (token_hash,))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _fetch_account(self, where: str, value: str) -> dict[str, Any] | None:
+        conn = self._connect_database()
+        try:
+            with conn.cursor(dictionary=True) as cursor:
+                cursor.execute(f"SELECT {ACCOUNT_COLUMNS} FROM users WHERE {where}", (value,))
+                return cursor.fetchone()
+        finally:
+            conn.close()
 
     def _connect_database(self):
         connector = self._connector()

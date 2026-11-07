@@ -12,6 +12,33 @@
       "port": 5173
     },
     {
+      "name": "frontend-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "preview"
+      ],
+      "cwd": "frontend",
+      "port": 4173,
+      "autoPort": false
+    },
+    {
+      "name": "frontend-demo",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "preview",
+        "--outDir",
+        "dist-demo",
+        "--port",
+        "4174",
+        "--strictPort"
+      ],
+      "cwd": "frontend",
+      "port": 4174,
+      "autoPort": false
+    },
+    {
       "name": "backend",
       "runtimeExecutable": ".venv/Scripts/python.exe",
       "runtimeArgs": [

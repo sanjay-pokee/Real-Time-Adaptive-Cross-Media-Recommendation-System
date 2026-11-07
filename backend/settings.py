@@ -44,6 +44,13 @@ class Settings:
         "CONTENT_EMBEDDING_INDEX_PATH",
         str(PROJECT_ROOT / "embeddings" / "content_embedding_index.csv"),
     )
+    # Accounts. The Google client id is public (it ships in the page), so it is
+    # served to the frontend from GET /auth/config rather than duplicated there.
+    google_client_id: str | None = os.getenv("GOOGLE_CLIENT_ID") or None
+    session_days: int = int(os.getenv("SESSION_DAYS", "30"))
+    # Set to 1 once the site is served over HTTPS; a Secure cookie is never
+    # sent over plain http://localhost, so it must stay off for local runs.
+    cookie_secure: bool = os.getenv("COOKIE_SECURE", "0") == "1"
 
 
 def get_settings() -> Settings:

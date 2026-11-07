@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Home from './pages/Home';
 import AuthPage from './pages/AuthPage';
 import { InteractionProvider } from './context/InteractionContext';
+import { getMe, logout } from './api/client';
+import { accountToSessionUser } from './utils/session';
 
 const SESSION_KEY = 'nexus_demo_session';
 
@@ -21,6 +23,15 @@ function readSession() {
   }
 }
 
+function saveSession(user) {
+  try {
+    if (user) window.localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    else window.localStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* storage unavailable - the session still lives in memory */
+  }
+}
+
 /**
  * The auth <-> app swap is a plain conditional render, deliberately.
  *
@@ -33,22 +44,41 @@ function readSession() {
 export default function App() {
   const [sessionUser, setSessionUser] = useState(readSession);
 
+  // For a real account the saved copy is only a hint: the cookie behind it
+  // may have expired or been logged out elsewhere. The app renders from the
+  // hint, so there is no flash of the login screen, and the server confirms
+  // it here. Only a 401 logs out; a backend that is down is not a logout.
+  useEffect(() => {
+    if (readSession()?.authType !== 'account') return undefined;
+    let cancelled = false;
+    getMe()
+      .then((account) => {
+        if (cancelled) return;
+        const user = accountToSessionUser(account);
+        setSessionUser(user);
+        saveSession(user);
+      })
+      .catch((error) => {
+        if (cancelled || error?.response?.status !== 401) return;
+        setSessionUser(null);
+        saveSession(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function handleAuth(user) {
     setSessionUser(user);
-    try {
-      window.localStorage.setItem(SESSION_KEY, JSON.stringify(user));
-    } catch {
-      /* storage unavailable - the session still lives in memory */
-    }
+    saveSession(user);
   }
 
   function handleLogout() {
+    // Fire and forget: the local session ends either way, and a failed call
+    // only leaves a server-side row that expires on its own.
+    if (sessionUser?.authType === 'account') logout().catch(() => {});
     setSessionUser(null);
-    try {
-      window.localStorage.removeItem(SESSION_KEY);
-    } catch {
-      /* nothing to clean up */
-    }
+    saveSession(null);
   }
 
   return (

@@ -182,3 +182,36 @@ class DomainSummary(BaseModel):
 class DomainsResponse(BaseModel):
     domains: list[DomainSummary]
     content_types: list[str]
+
+
+# Accounts. Lengths are capped here; the rules a person can act on (a valid
+# email, an 8-character password) are checked in backend.auth so the client
+# gets one readable sentence back instead of a validation error list.
+
+class SignupRequest(BaseModel):
+    email: str = Field(..., max_length=254)
+    password: str = Field(..., max_length=128)
+    display_name: str = Field(..., max_length=120)
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(..., max_length=254)
+    password: str = Field(..., max_length=128)
+
+
+class GoogleLoginRequest(BaseModel):
+    # The ID token (a JWT) that Sign in with Google hands the page.
+    credential: str = Field(..., min_length=1, max_length=8192)
+
+
+class AccountResponse(BaseModel):
+    user_id: str
+    email: str
+    display_name: str
+    has_password: bool
+    has_google: bool
+
+
+class AuthConfigResponse(BaseModel):
+    # Null when GOOGLE_CLIENT_ID is unset; the login page then hides the button.
+    google_client_id: str | None = None

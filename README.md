@@ -333,10 +333,23 @@ Interactive docs are at `http://127.0.0.1:8000/docs`.
 | POST | `/recommend/item` | "More like this" for a `global_id`, through the same eligibility gate |
 | POST | `/interactions` | Log view / click / like / bookmark / rating / skip / complete; updates the EMA vector |
 | GET | `/interactions/{user_id}/{entity_id}` | Current toggle state and rating for a user–item pair |
+| GET | `/auth/config` | The Google client id, or null when Google sign-in is off |
+| POST | `/auth/signup` | Create an email + password account and start a session |
+| POST | `/auth/login` | Email + password login; five wrong passwords lock the email for 15 minutes |
+| POST | `/auth/google` | Sign in with a Google ID token, verified server-side |
+| POST | `/auth/logout` | End the session |
+| GET | `/auth/me` | The logged-in account, or 401 |
 | GET | `/` | Index |
+
+Accounts (`backend/auth.py`):
+- **Ids:** real accounts get `acct_` ids. A request that names one, in `/recommend`, `/recommend/item` or `/interactions`, needs that account's session, or it gets 401 (no session) or 403 (someone else's). The demo personas need no login.
+- **Sessions:** a random token in an HttpOnly, SameSite=Lax cookie (`nexus_session`), stored as a SHA-256 hash in `user_sessions` and deleted on logout.
+- **Passwords:** Argon2id hashes in `users`. There is no email verification or password reset, since the deployment sends no email.
+- **Google:** when a Google account's verified email matches an email account, the two become one and the old password is removed, because sign-up never proved who owned that address.
 
 Error codes:
 - **400:** bad input — unknown domain or content type, an empty query, or an unknown `entity_id`.
+- **401 / 403:** a missing or wrong session for an account id.
 - **503:** Qdrant, the model or the artifacts are unavailable.
 - **500:** an internal error. The endpoints never fall back to an unfiltered search.
 
@@ -355,7 +368,7 @@ Each result carries:
 ## Frontend
 
 - **Stack:** React 19, Vite, Tailwind CSS, framer-motion and axios.
-- **Size:** 19 components and 2 pages — a demo login with personas, and the main search page.
+- **Size:** 20 components and 2 pages — the login page (email, Google, or a demo persona), and the main search page.
 - **Requests:** go through Vite's `/api` proxy, with a 15 s timeout.
 
 Features:
@@ -402,6 +415,9 @@ Key variables:
 | `LIGHTGCN_WEIGHT` | 0.2 |
 | `EMA_WEIGHT` | 0.15 |
 | `EMA_ALPHA` | 0.25 |
+| `GOOGLE_CLIENT_ID` | — (Google button hidden). A "Web application" client from Google Cloud Console; add `http://localhost` and `http://localhost:5173` as authorized JavaScript origins |
+| `SESSION_DAYS` | 30 |
+| `COOKIE_SECURE` | 0 — set to 1 once the site is served over HTTPS |
 
 ### 2. Fetch data (optional if `datasets/` is already populated)
 
@@ -522,5 +538,5 @@ No server is required.
   - It has no time decay or session boundary.
 - **Database connections:** MySQL connections are opened per call, with no pooling.
 - **Score breakdown:** once a user is selected, the UI's "semantic" segment includes the profile bonus.
-- **Login:** the login screen is a demo with personas, not real authentication.
+- **Accounts:** no email verification or password reset (both need an email sender), and the login lockout lives in memory, so it resets when the server restarts.
 - **Search mode:** embedded Qdrant is used for development. A production deployment would run Qdrant as a server with HNSW and payload indexes on the filter fields.
