@@ -3,7 +3,11 @@
 % --- Packages (template set, plus url/tikz/amsmath for figures and formulae) ---
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
+% Vector fonts everywhere: without these, the T1 sans-serif (diagrams) and
+% typewriter (code) text are embedded as blurry Type 3 bitmaps.
+\usepackage{lmodern}                % typewriter text -> Latin Modern Mono (vector)
 \usepackage{mathptmx} % Times New Roman font for professional document typography
+\usepackage[scaled=0.92]{helvet}    % diagram text -> Helvetica (vector)
 \usepackage{graphicx}
 \usepackage[margin=0.8in]{geometry}
 \usepackage{xcolor}
@@ -73,14 +77,14 @@
 % --- Team & Guide Details ---
 \noindent
 \begin{center}
-    \renewcommand{\arraystretch}{1.45}
+    \renewcommand{\arraystretch}{1.75}
     \setlength{\tabcolsep}{6pt}
-    \begin{tabular}{|l|p{4.4cm}|p{4.6cm}|p{3.0cm}|}
+    \begin{tabular}{|l|p{4.4cm}|p{5.1cm}|p{2.6cm}|}
         \hline
         \multicolumn{2}{|c|}{\textbf{Team Members}} & \textbf{Project Guides} & \textbf{Project Type} \\
         \hline
         \small CB.SC.U4CSE23051 & \small \raggedright Sanjay A. K. &
-        \multirow{4}{=}{\raggedright \small \textbf{Dr. Bagavathi Sivakumar P.} \newline \textit{\fillin{Designation}, Dept. of CSE} \newline \textbf{Dr. Krishna Priya G.} \newline \textit{\fillin{Designation}, Dept. of CSE}} &
+        \multirow{4}{=}{\raggedright \small \textbf{Dr. Bagavathi Sivakumar P.} \newline \textit{Associate Professor and Chairperson, School of Computing} \newline \textbf{Dr. Krishna Priya G.} \newline \textit{Assistant Professor (OC), Dept. of CSE}} &
         \multirow{4}{=}{\raggedright \small \textbf{Type 3} \newline Software-Based Project} \\ \cline{1-2}
         \small CB.SC.U4CSE23022 & \small Eswara Raj M. & & \\ \cline{1-2}
         \small CB.SC.U4CSE23324 & \small Aditya Vijay & & \\ \cline{1-2}
@@ -182,13 +186,13 @@ The system is a layered three-tier application with a separate offline pipeline 
 
 % Data tier
 \node[dbox, text width=4.4cm, below=1.05cm of fuse.south west, anchor=north west] (d1) {\textbf{Qdrant}\\ 120,747 $\times$ 384 vectors\\ + audience payload};
-\node[dbox, text width=4.4cm, right=0.3cm of d1] (d2) {\textbf{MySQL 8} (pooled)\\ 6 tables: catalogue, events,\\ profiles, users, sessions, lockout};
+\node[dbox, text width=4.4cm, right=0.3cm of d1] (d2) {\textbf{MySQL 8} (pooled), 6 tables\\ catalogue, events, profiles,\\ users, sessions, lockout};
 \node[dbox, text width=4.4cm, right=0.3cm of d2] (d3) {\textbf{Artefacts}\\ LightGCN embeddings (.npz),\\ SBERT matrix (.npy)};
-\node[tier, draw=teal!70!black, fit=(d1)(d3), label={[lbl, text=teal!70!black, anchor=south west]north west:DATA}] (data) {};
+\node[tier, draw=teal!70!black, fit=(d1)(d2)(d3), label={[lbl, text=teal!70!black, anchor=south west]north west:DATA}] (data) {};
 
 % Offline pipeline
 \node[obox, right=1.2cm of c4.north east, anchor=north west] (o1) {TMDb, Open Library,\\ Last.fm, Spotify CSV,\\ Amazon Reviews 2023};
-\node[obox, below=0.45cm of o1] (o2) {Catalogue build\\ 20 columns, audience tagging};
+\node[obox, below=0.45cm of o1] (o2) {Catalogue build\\ 20 columns,\\ audience tagging};
 \node[obox, below=0.45cm of o2] (o3) {SBERT encoding\\ (hash-cached, GPU)};
 \node[obox, below=0.45cm of o3] (o4) {Qdrant + MySQL load};
 \node[obox, below=0.45cm of o4] (o5) {LightGCN / NeuMF training\\ (Kaggle T4, RTX 3050)};
@@ -440,15 +444,13 @@ MySQL holds six tables (Fig.~\ref{fig:er}). \texttt{content\_entities} mirrors t
         \hline
         Source Code Repository & \url{https://github.com/sanjay-pokee/Real-Time-Adaptive-Cross-Media-Recommendation-System}; README covers setup, API, evaluation and limitations; CI on every push. & Completed \\
         \hline
-        Research Publication & ``Real-Time Adaptive Cross-Media Recommendation Using Semantic Embeddings, Knowledge Graph Scoring, and Graph Collaborative Learning'', ICMLDE 2026, Procedia Computer Science \cite{ak2026crossmedia}. & Accepted \\
+        Individual Online Certifications & Sanjay A. K.: Recommender Systems: Evaluation and Metrics (Coursera, Univ. of Minnesota, 15 h); Eswara Raj M.: Nearest Neighbor Collaborative Filtering (Coursera, Univ. of Minnesota, 14 h); Aditya Vijay: Databases and SQL for Data Science with Python (Coursera, IBM, 20 h); Himaneesh Reddy J.: Recommendation Systems on Google Cloud (Google Cloud Skills Boost, 16 h). & Completed \\
         \hline
-        Individual Online Certifications & Sanjay A. K.: Recommender Systems: Evaluation and Metrics (Coursera, Univ. of Minnesota, 15 h); Eswara Raj M.: Nearest Neighbor Collaborative Filtering (Coursera, Univ. of Minnesota, 14 h); Aditya Vijay: Databases and SQL for Data Science with Python (Coursera, IBM, 20 h); Himaneesh Reddy J.: Recommendation Systems on Google Cloud (Google Cloud Skills Boost, 16 h). & \fillin{confirm} \\
+        Group TEA Deliverable 1 & Research paper ``Real-Time Adaptive Cross-Media Recommendation Using Semantic Embeddings, Knowledge Graph Scoring, and Graph Collaborative Learning'', accepted at ICMLDE 2026 (Procedia Computer Science) \cite{ak2026crossmedia}; camera-ready submitted; to be presented at the conference on 27 November 2026. & Accepted \\
         \hline
-        Group TEA Deliverable 1 & \fillin{Title and details of Group Activity 1} & \fillin{status} \\
+        Group TEA Deliverable 2 & -- & Not undertaken \\
         \hline
-        Group TEA Deliverable 2 & \fillin{Title and details of Group Activity 2} & \fillin{status} \\
-        \hline
-        Group TEA Deliverable 3 & \fillin{Title and details of Group Activity 3} & \fillin{status} \\
+        Group TEA Deliverable 3 & -- & Not undertaken \\
         \hline
     \end{tabular}
     \caption{Summary of Completed Project and Technical Enrichment Deliverables}
