@@ -107,6 +107,9 @@ class RecommendationItem(BaseModel):
     # Declared here or Pydantic drops it before the client ever sees it.
     match_kind: str | None = None
     semantic_score: float | None = None
+    # Category / content-type affinity and repeat-item penalties from the
+    # interaction history; already included in "score".
+    preference_bonus: float | None = None
     graph_score: float | None = None
     ema_score: float | None = None
     kg_score: float | None = None
@@ -220,6 +223,23 @@ class AccountResponse(BaseModel):
     display_name: str
     has_password: bool
     has_google: bool
+    # Zero for a new account, which is how the client knows to offer the
+    # "pick a few things you like" step before the first search.
+    interaction_count: int = 0
+
+
+class StarterItem(BaseModel):
+    global_id: str
+    content_type: str
+    title: str
+    creators: str = ""
+    image_url: str = ""
+    # The genre this item was picked to stand for, shown on its card.
+    genre: str = ""
+
+
+class StarterItemsResponse(BaseModel):
+    items: list[StarterItem]
 
 
 class AuthConfigResponse(BaseModel):

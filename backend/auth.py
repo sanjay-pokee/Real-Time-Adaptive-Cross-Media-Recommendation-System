@@ -133,13 +133,14 @@ def require_user_access(user_id: str | None, request: Request, store: Any) -> No
         raise HTTPException(status_code=403, detail="This request is for a different account.")
 
 
-def account_response(account: dict[str, Any]) -> AccountResponse:
+def account_response(account: dict[str, Any], interaction_count: int = 0) -> AccountResponse:
     return AccountResponse(
         user_id=account["user_id"],
         email=account["email"],
         display_name=account["display_name"],
         has_password=bool(account.get("password_hash")),
         has_google=bool(account.get("google_sub")),
+        interaction_count=interaction_count,
     )
 
 
@@ -194,3 +195,48 @@ class LoginThrottle:
 
 
 login_throttle = LoginThrottle()
+
+
+class StoredLoginThrottle:
+    """LoginThrottle's contract, kept in MySQL so a restart does not unlock an email.
+
+    Every count comes from the ``login_failures`` table, so it also holds across
+    several server processes. If that table cannot be read or written, it falls
+    back to the in-memory throttle: a broken lockout table must never stop
+    people logging in, and the in-memory limit still applies meanwhile.
+    """
+
+    def __init__(self, store: Any, fallback: LoginThrottle, limit: int = 5, window_seconds: int = 15 * 60) -> None:
+        self.store = store
+        self.fallback = fallback
+        self.limit = limit
+        self.window = window_seconds
+
+    def retry_after_minutes(self, key: str) -> int:
+        try:
+            count, seconds_left = self.store.login_failures_within(key, self.window)
+        except Exception:
+            return self.fallback.retry_after_minutes(key)
+        if count < self.limit:
+            return 0
+        return max(1, math.ceil(seconds_left / 60))
+
+    def fail(self, key: str) -> None:
+        try:
+            self.store.record_login_failure(key)
+        except Exception:
+            self.fallback.fail(key)
+
+    def reset(self, key: str) -> None:
+        self.fallback.reset(key)
+        try:
+            self.store.clear_login_failures(key)
+        except Exception:
+            pass
+
+
+def throttle_for(store: Any) -> LoginThrottle | StoredLoginThrottle:
+    """The MySQL-backed throttle when the store supports it, else the in-memory one."""
+    if hasattr(store, "record_login_failure"):
+        return StoredLoginThrottle(store, fallback=login_throttle)
+    return login_throttle

@@ -1,0 +1,34 @@
+{
+  "model": "neumf",
+  "dataset": "Movies_and_TV.csv",
+  "k": 20,
+  "metrics": {
+    "users_evaluated": 49958,
+    "hit_rate": 0.03444893710717002,
+    "recall": 0.03444893710717002,
+    "precision": 0.0017224468553585013,
+    "ndcg": 0.01375153493024826,
+    "mrr": 0.00813618191362168
+  },
+  "config": {
+    "gmf_dim": 32,
+    "mlp_dim": 64,
+    "mlp_layers": [
+      64,
+      32,
+      16
+    ],
+    "negatives": 4,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "epochs": 20,
+    "batch_size": 4096,
+    "seed": 42
+  },
+  "graph": {
+    "users": 50000,
+    "items": 52263,
+    "interactions": 914346,
+    "final_train_loss": 0.049508
+  }
+}

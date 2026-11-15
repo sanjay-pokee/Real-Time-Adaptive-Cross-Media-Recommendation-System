@@ -44,11 +44,13 @@ class GraphEmbeddingStore:
         for item in candidates:
             graph_score = self.score(user_id, str(item.get("global_id", "")))
             updated = dict(item)
-            semantic_score = float(updated.get("score", 0.0))
-            updated["semantic_score"] = semantic_score
+            running_score = float(updated.get("score", 0.0))
+            # The personalisation re-rank runs first and adds its bonus to "score";
+            # report retrieval without it, or the UI shows that bonus as "Semantic".
+            updated["semantic_score"] = running_score - float(updated.get("preference_bonus") or 0.0)
             updated["graph_score"] = graph_score
             if graph_score is not None:
-                updated["score"] = semantic_score + graph_weight * graph_score
+                updated["score"] = running_score + graph_weight * graph_score
             reranked.append(updated)
         reranked.sort(key=lambda row: float(row.get("score", 0.0)), reverse=True)
         return reranked

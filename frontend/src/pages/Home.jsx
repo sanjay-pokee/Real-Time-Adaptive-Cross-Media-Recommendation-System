@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 
 import { checkHealth, getDomains, getRecommendations, getSimilarItems } from '../api/client';
+import AccountDialog from '../components/AccountDialog';
 import AdvisoryBanner from '../components/AdvisoryBanner';
 import AISignalsPanel from '../components/AISignalsPanel';
 import AudienceControls from '../components/AudienceControls';
@@ -70,7 +71,7 @@ function useTheme() {
   return [theme, () => setTheme((value) => (value === 'dark' ? 'light' : 'dark'))];
 }
 
-export default function Home({ authenticatedUser, onLogout }) {
+export default function Home({ authenticatedUser, onLogout, onAccountDeleted }) {
   const availableUsers = useMemo(() => {
     if (!authenticatedUser || USERS.some((user) => user.id === authenticatedUser.id)) return USERS;
     return [authenticatedUser, ...USERS];
@@ -399,24 +400,32 @@ export default function Home({ authenticatedUser, onLogout }) {
           <div className="ml-auto flex items-center gap-2">
             <BackendStatus status={backendStatus} onRetry={pingBackend} />
 
-            <div className="hidden items-center gap-2 rounded-xl border border-line bg-surface-3 px-2 py-1.5 md:flex">
-              <span
-                className="flex h-6 w-6 items-center justify-center rounded-lg text-[9px] font-bold text-white"
-                style={{ background: activeUser.accent }}
-              >
-                {activeUser.initials}
-              </span>
-              <span className="text-[12px] font-semibold text-ink">{activeUser.label}</span>
-            </div>
+            {/* A real account opens its account dialog from the chip. A demo
+                persona has no account to manage, and keeps the plain label. */}
+            {authenticatedUser?.authType === 'account' ? (
+              <AccountDialog user={authenticatedUser} chip={activeUser} onDeleted={onAccountDeleted} />
+            ) : (
+              <div className="hidden items-center gap-2 rounded-xl border border-line bg-surface-3 px-2 py-1.5 md:flex">
+                <span
+                  className="flex h-6 w-6 items-center justify-center rounded-lg text-[9px] font-bold text-white"
+                  style={{ background: activeUser.accent }}
+                >
+                  {activeUser.initials}
+                </span>
+                <span className="text-[12px] font-semibold text-ink">{activeUser.label}</span>
+              </div>
+            )}
 
             <button
               type="button"
               onClick={() => setRefineOpen(true)}
               className="btn"
               title="Filters, audience and profile"
+              aria-label="Refine: filters, audience and profile"
             >
               <SlidersHorizontal size={13} />
-              Refine
+              {/* Icon only on phones, where the account chip needs the room. */}
+              <span className="hidden sm:inline">Refine</span>
               {activeFilters > 0 && (
                 <span
                   className="num ml-0.5 rounded-full px-1.5 text-[10px] font-bold"

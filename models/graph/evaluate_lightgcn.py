@@ -64,7 +64,15 @@ def split_holdout_by_user(
 def train_for_evaluation(
     training_rows: pd.DataFrame,
     config: LightGCNConfig,
+    normalize: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, list[str], list[str], pd.DataFrame]:
+    """Train LightGCN and return its final embeddings.
+
+    ``normalize=True`` (the default, and what the backend serves) L2-normalises
+    the embeddings, so ranking is by cosine. ``False`` keeps the raw vectors, so
+    ranking is by the dot product BPR was trained with - the vector length,
+    which carries item popularity, then counts.
+    """
     torch.manual_seed(config.seed)
     rng = np.random.default_rng(config.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -145,9 +153,10 @@ def train_for_evaluation(
 
     idx_to_user = sorted(user_to_idx, key=user_to_idx.get)
     idx_to_item = sorted(item_to_idx, key=item_to_idx.get)
+    finish = _normalize_rows if normalize else (lambda values: values)
     return (
-        _normalize_rows(user_embeddings.detach().cpu().numpy().astype(np.float32)),
-        _normalize_rows(item_embeddings.detach().cpu().numpy().astype(np.float32)),
+        finish(user_embeddings.detach().cpu().numpy().astype(np.float32)),
+        finish(item_embeddings.detach().cpu().numpy().astype(np.float32)),
         idx_to_user,
         idx_to_item,
         training,
@@ -352,6 +361,7 @@ def run_evaluation(
     eval_batch_size: int = 2048,
     report_path: Path | None = None,
     dataset_name: str = "mysql",
+    scoring: str = "cosine",
 ) -> RankingMetrics:
     if interactions is None:
         from backend.mysql_store import MySQLStore
@@ -379,7 +389,9 @@ def run_evaluation(
             )
         return metrics
 
-    user_embeddings, item_embeddings, user_ids, item_ids, mapped_train = train_for_evaluation(train_rows, config)
+    user_embeddings, item_embeddings, user_ids, item_ids, mapped_train = train_for_evaluation(
+        train_rows, config, normalize=scoring == "cosine"
+    )
     metrics = evaluate_rankings(
         user_embeddings,
         item_embeddings,
@@ -390,13 +402,13 @@ def run_evaluation(
         k=k,
         eval_batch_size=eval_batch_size,
     )
-    _print_metrics("LightGCN holdout evaluation", k, metrics)
+    _print_metrics(f"LightGCN holdout evaluation ({scoring} scoring)", k, metrics)
     if report_path:
         write_report(
             report_path,
             metrics,
             k,
-            model="lightgcn",
+            model="lightgcn" if scoring == "cosine" else f"lightgcn_{scoring}",
             dataset=dataset_name,
             config=config,
             graph={
@@ -453,6 +465,12 @@ def main() -> None:
         default="none",
         help="Run a non-learned baseline instead of training LightGCN.",
     )
+    parser.add_argument(
+        "--scoring",
+        choices=["cosine", "dot"],
+        default="cosine",
+        help="cosine = normalised embeddings, as the backend serves them; dot = raw BPR dot product.",
+    )
     # Benchmark-dataset source (omit to evaluate from MySQL logs).
     parser.add_argument("--dataset", type=Path, default=None)
     parser.add_argument("--min-rating", type=float, default=4.0)
@@ -501,6 +519,7 @@ def main() -> None:
         eval_batch_size=args.eval_batch_size,
         report_path=args.report,
         dataset_name=str(args.dataset) if args.dataset else "mysql",
+        scoring=args.scoring,
     )
 
 

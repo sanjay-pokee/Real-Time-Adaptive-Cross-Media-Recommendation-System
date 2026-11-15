@@ -44,7 +44,8 @@ Liking an item changes the next search immediately, with no retraining.
 | LightGCN vs popularity, Recall@20 | **1.59x** on Movies & TV, **1.24x** on Industrial & Scientific, 0.55x on Health & Household (Amazon Reviews 2023) |
 | Real-time adaptation | EMA taste vector (α = 0.25), updated on every interaction, no retraining |
 | Explainability | Per-signal score breakdown plus counterfactual re-ranking in the UI |
-| Tests | 328 passing (`pytest`) |
+| NCF baseline (NeuMF), Recall@20 | **1.19x** LightGCN on Movies & TV, **1.27x** on Industrial & Scientific (same split and metrics) |
+| Tests | 381 passing (`pytest`), run by GitHub Actions on every push |
 
 ---
 
@@ -129,10 +130,13 @@ TMDb franchise names and keywords are appended to `categories`, so a keyword sea
 
 ### Database
 
-`backend/mysql_store.py` creates three tables and runs idempotent migrations on every init.
+`backend/mysql_store.py` creates six tables and runs idempotent migrations on every init (`python -m scripts.init_mysql`). Connections come from one shared pool of 10 (`mysql.connector.pooling`); a burst beyond that connects directly instead of failing. Pooled, a profile-plus-state read takes 3.9 ms against 18 ms when every call opened its own connection.
 
 | Table | Purpose | Notes |
 | --- | --- | --- |
+| `users` | Email / Google accounts | Argon2id password hash, Google `sub` |
+| `user_sessions` | Login sessions | SHA-256 of the cookie token, never the token |
+| `login_failures` | Wrong-password log | Makes the login lockout survive a restart; misses older than a day are pruned |
 | `content_entities` | Catalog mirror | Primary key `global_id`, `utf8mb4_bin` (IDs are case-sensitive); `MEDIUMTEXT` descriptions |
 | `user_profiles` | Preferences JSON and EMA vector JSON | Upserted by the EMA update and the seed script |
 | `user_interactions` | Append-only event log | Index on `(user_id, timestamp)`; foreign key to the catalog with `ON DELETE CASCADE` |
@@ -307,6 +311,17 @@ To reproduce, run each `evaluate_lightgcn --report` into `reports/benchmarks/`, 
 python -m scripts.build_benchmark_table   # writes reports/domain_benchmark_table.{md,tex}
 ```
 
+### NeuMF baseline (Neural Collaborative Filtering)
+
+`models/graph/neumf.py` implements NeuMF (GMF + MLP towers, pointwise log loss, 4 sampled negatives per positive). `models.graph.evaluate_neumf` runs it through the same preparation, split and metrics as LightGCN, on graphs of exactly the same size.
+
+| Domain | Popularity R@20 | LightGCN R@20 | NeuMF R@20 | NeuMF NDCG@20 | NeuMF vs LightGCN |
+| --- | --- | --- | --- | --- | --- |
+| Movies & TV | 0.0182 | 0.0288 | 0.0344 | 0.0138 | **1.19x** |
+| Industrial & Scientific | 0.0264 | 0.0326 | 0.0416 | 0.0180 | **1.27x** |
+
+NeuMF's non-linear interaction function beats LightGCN on both domains measured. Health & Household was not rerun (its rating file is not on the training machine), and each model has one seed. Full table, configuration and commands: `reports/neumf_comparison.md`.
+
 ### Constraint cost
 
 ```powershell
@@ -347,14 +362,20 @@ Interactive docs are at `http://127.0.0.1:8000/docs`.
 | POST | `/auth/login` | Email + password login; five wrong passwords lock the email for 15 minutes |
 | POST | `/auth/google` | Sign in with a Google ID token, verified server-side |
 | POST | `/auth/logout` | End the session |
-| GET | `/auth/me` | The logged-in account, or 401 |
+| GET | `/auth/me` | The logged-in account (with its `interaction_count`), or 401 |
+| DELETE | `/auth/me` | Delete the logged-in account and everything recorded about it |
+| GET | `/onboarding/items` | The starter picks a new account chooses from |
 | GET | `/` | Index |
 
 Accounts (`backend/auth.py`):
 - **Ids:** real accounts get `acct_` ids. A request that names one, in `/recommend`, `/recommend/item` or `/interactions`, needs that account's session, or it gets 401 (no session) or 403 (someone else's). The demo personas need no login.
 - **Sessions:** a random token in an HttpOnly, SameSite=Lax cookie (`nexus_session`), stored as a SHA-256 hash in `user_sessions` and deleted on logout.
 - **Passwords:** Argon2id hashes in `users`. There is no email verification or password reset, since the deployment sends no email.
+- **Lockout:** each wrong password is a row in `login_failures`, timed by the MySQL server clock, so the 15-minute lock survives a restart and holds across server processes. If that table cannot be reached, an in-memory throttle takes over rather than blocking logins.
 - **Google:** when a Google account's verified email matches an email account, the two become one and the old password is removed, because sign-up never proved who owned that address.
+- **First visit:** an account with no interactions is offered 22 starter picks (one per genre across movies, shows, books and music) before its first search. Each pick is saved as an ordinary `like`, so the EMA taste vector and the LightGCN training log start from the person's own taste rather than from nothing. Movies and shows are ranked by popularity and rating together, because TMDb popularity alone means "trending now"; books and music by popularity, because book ratings rest on a handful of votes.
+- **Deleting:** `DELETE /auth/me` removes the account's interactions, profile (preferences and EMA vector), sessions and user row in one transaction. It only ever acts on the session's own account. The UI asks for confirmation in a native modal `<dialog>`, with focus starting on Cancel.
+- **Privacy note:** the login and sign-up forms say what is saved (name, email, and what you like, rate, skip or open) and that it can all be deleted, before anyone hands over an email.
 
 Error codes:
 - **400:** bad input — unknown domain or content type, an empty query, or an unknown `entity_id`.
@@ -377,7 +398,7 @@ The response's `corrected_query` is set when a typo was fixed before searching (
 ## Frontend
 
 - **Stack:** React 19, Vite, Tailwind CSS, framer-motion and axios.
-- **Size:** 20 components and 2 pages — the login page (email, Google, or a demo persona), and the main search page.
+- **Size:** 21 components and 3 pages — the login page (email, Google, or a demo persona), the "pick a few things you like" page for a new account, and the main search page.
 - **Requests:** go through Vite's `/api` proxy, with a 15 s timeout.
 
 Features:
@@ -489,6 +510,14 @@ uvicorn backend.app:app            # ~40 s to load the model, catalog and Qdrant
 cd frontend; npm run dev           # http://localhost:5173
 ```
 
+Or start the demo deployment in one command: it checks MySQL, builds the frontend for production, starts the API, waits until it is healthy, and serves the build on port 4173 with `/api` proxied to the API.
+
+```powershell
+.\scripts\demo_up.ps1              # http://localhost:4173
+.\scripts\demo_up.ps1 -Public      # also a temporary https://*.trycloudflare.com link (email login works; Google sign-in does not)
+.\scripts\demo_up.ps1 -Stop        # stop everything it started
+```
+
 ---
 
 ## Repository layout
@@ -514,7 +543,7 @@ tests/              pytest suite
 ## Testing
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest tests/ -q     # 356 passed
+.\.venv\Scripts\python.exe -m pytest tests/ -q     # 381 passed
 ```
 
 The suite covers:
@@ -527,10 +556,15 @@ The suite covers:
 - the fetchers (Open Library, the Last.fm adult filter)
 - evaluation-report consistency
 - the API contract, including a regression test that an internal error is never retried without the eligibility gate
-- accounts: sign-up, login, lockout, Google linking and the per-account access guard
+- accounts: sign-up, login, lockout (including after a restart, and with the lockout table down), Google linking, the per-account access guard and account deletion
+- the MySQL connection pool: shared across store instances, falls back to a direct connection when exhausted or unbuildable
+- the score breakdown: `semantic_score` excludes the personalisation bonus, which the API returns as `preference_bonus`
+- starter picks: one per genre, eligible for an unknown-age viewer, with cover art and a decent rating
 - typo correction (title phrases beat commoner words, titles are never "corrected") and the nonsense gate
+- NeuMF: the all-items scorer equals pairwise scoring, sampled negatives are never observed items, training learns a planted structure
+- interaction toggles: an un-like is not counted as a second like, and the interaction-history profile query runs
 
-No server is required.
+No server is required. `.github/workflows/ci.yml` runs the suite on Windows (the requirements pin `pywin32`) and lints and builds the frontend.
 
 ---
 
@@ -543,12 +577,11 @@ No server is required.
   - The benchmark uses leave-one-out with a single seed. A global time split and confidence intervals would be stricter.
 - **Hypothesis to test (Health result):** LightGCN is trained with a dot product but served (and evaluated) with cosine. Normalizing removes the popularity information carried in an item vector's length. That may explain the Health result.
 - **Book and music maturity:** these labels are keyword heuristics; only movies carry board certifications.
-- **Interaction toggles:** un-toggling a like posts a second `like` event. The state endpoint reads it correctly by parity, but the EMA update and the profile bonus count it as another positive.
 - **EMA update:**
   - It is a read-modify-write with no locking.
   - It has no time decay or session boundary.
-- **Database connections:** MySQL connections are opened per call, with no pooling.
-- **Score breakdown:** once a user is selected, the UI's "semantic" segment includes the profile bonus.
-- **Accounts:** no email verification or password reset (both need an email sender), and the login lockout lives in memory, so it resets when the server restarts.
+- **Accounts:** no email verification or password reset (both need an email sender).
+- **Deployment:** the system runs on one machine. `scripts/demo_up.ps1 -Public` gives a temporary public link through a Cloudflare quick tunnel; there is no permanent host and no container image yet (Docker is not set up on the development machine).
+- **LightGCN scoring:** the backend and the paper rank LightGCN by cosine. On Industrial & Scientific the raw dot product BPR was trained with scores Recall@20 0.0589 against 0.0326 (`reports/neumf_comparison.md`). Serving it needs a rescaling step first, because the other fused signals are on a 0-1 cosine scale.
 - **Search mode:** embedded Qdrant is used for development. A production deployment would run Qdrant as a server with HNSW and payload indexes on the filter fields.
 - **What SBERT cannot do:** all-MiniLM-L6-v2 is English-only and small. Riddle-style plot descriptions miss ("botanist abandoned on the red planet" does not find *The Martian*), queries in other languages fall back to word overlap, and negation is ignored ("not sad" reads as "sad"). Fixing the first two means a larger or multilingual model and re-embedding the catalogue.

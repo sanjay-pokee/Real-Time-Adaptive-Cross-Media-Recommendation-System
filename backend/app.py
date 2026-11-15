@@ -16,7 +16,7 @@ from backend import auth
 from backend.audience import AudienceContext
 from backend.domains import get_registry
 from backend.ema_recommender import EMAEmbeddingStore
-from backend.mysql_store import AccountExistsError, MySQLStore
+from backend.mysql_store import TOGGLE_EVENTS, AccountExistsError, MySQLStore
 from backend.qdrant_recommender import QdrantRecommender
 from backend.schemas import (
     AccountResponse,
@@ -32,6 +32,8 @@ from backend.schemas import (
     RecommendRequest,
     RecommendResponse,
     SignupRequest,
+    StarterItem,
+    StarterItemsResponse,
     SuggestItem,
     SuggestResponse,
     UserInteractionState,
@@ -311,7 +313,8 @@ def login(
     store: MySQLStore = Depends(get_mysql_store),
 ) -> AccountResponse:
     email = payload.email.strip().lower()
-    wait = auth.login_throttle.retry_after_minutes(email)
+    throttle = auth.throttle_for(store)
+    wait = throttle.retry_after_minutes(email)
     if wait:
         raise HTTPException(
             status_code=429,
@@ -329,9 +332,9 @@ def login(
             detail="This email signs in with Google. Use the Google button.",
         )
     if not auth.verify_password(account["password_hash"] if account else None, payload.password):
-        auth.login_throttle.fail(email)
+        throttle.fail(email)
         raise HTTPException(status_code=401, detail="Wrong email or password.")
-    auth.login_throttle.reset(email)
+    throttle.reset(email)
 
     try:
         return _start_session(response, store, account)
@@ -408,18 +411,57 @@ def logout(
 def me(request: Request, store: MySQLStore = Depends(get_mysql_store)) -> AccountResponse:
     try:
         account = auth.session_account(request, store)
+        if account is None:
+            raise HTTPException(status_code=401, detail="Not logged in.")
+        return auth.account_response(account, store.count_interactions(account["user_id"]))
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"Could not check the session: {exc}") from exc
-    if account is None:
-        raise HTTPException(status_code=401, detail="Not logged in.")
-    return auth.account_response(account)
+
+
+@app.delete("/auth/me")
+def delete_me(
+    request: Request,
+    response: Response,
+    store: MySQLStore = Depends(get_mysql_store),
+) -> dict[str, str]:
+    """Delete the logged-in account and everything recorded about it.
+
+    Only the session's own account can be deleted - there is no user_id in the
+    request to get wrong or to forge.
+    """
+    try:
+        account = auth.session_account(request, store)
+        if account is None:
+            raise HTTPException(status_code=401, detail="Not logged in.")
+        store.delete_account(account["user_id"])
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Could not delete the account: {exc}") from exc
+    auth.clear_session_cookie(response, store.settings)
+    return {"status": "deleted"}
+
+
+@app.get("/onboarding/items", response_model=StarterItemsResponse)
+def onboarding_items(
+    recommender: QdrantRecommender = Depends(get_recommender),
+) -> StarterItemsResponse:
+    """Items a new account can pick from, so its first results are already its own."""
+    return StarterItemsResponse(
+        items=[
+            StarterItem(**{key: str(value) for key, value in item.items() if key in StarterItem.model_fields})
+            for item in recommender.starter_items()
+        ]
+    )
 
 
 def _start_session(response: Response, store: MySQLStore, account: dict[str, Any]) -> AccountResponse:
     token, token_hash = auth.new_session_token()
     store.create_session(token_hash, account["user_id"], store.settings.session_days)
     auth.set_session_cookie(response, token, store.settings)
-    return auth.account_response(account)
+    return auth.account_response(account, store.count_interactions(account["user_id"]))
 
 
 def _account_exists(account: dict[str, Any] | None) -> HTTPException:
@@ -532,7 +574,14 @@ def log_interaction(
                 ),
             )
         store.log_interaction(payload.model_dump())
-        if ema_store is not None:
+        # The buttons are toggles, so the same event logged a second time switches
+        # it off. Un-liking must not pull the taste vector toward the item again.
+        switched_off = (
+            ema_store is not None
+            and payload.event_type in TOGGLE_EVENTS
+            and not store.get_user_interaction_state(payload.user_id, payload.entity_id)[payload.event_type]
+        )
+        if ema_store is not None and not switched_off:
             current_vector = store.get_user_ema_vector(payload.user_id)
             updated_vector = ema_store.update_profile_vector(
                 current_vector,

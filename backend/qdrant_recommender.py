@@ -55,6 +55,27 @@ RESULT_COLUMNS = [
 ]
 
 
+# The "pick a few things you like" step offers one item per (type, genre). A
+# spread of tastes teaches the profile more than the most popular items would:
+# by TMDb popularity those are mostly this year's releases. Genres whose top
+# item is mislabelled are left out - Spotify files a Brazilian funk remix
+# under "edm", and the top "biography" is a German edition.
+STARTER_GENRES = {
+    "movie": ["action", "comedy", "horror", "animation", "science fiction", "romance", "thriller", "documentary"],
+    "show": ["drama", "comedy", "crime", "anime", "sci-fi & fantasy"],
+    "book": ["fantasy", "romance", "mystery", "science fiction", "self-help"],
+    "music": ["pop", "rap", "rock", "r&b"],
+}
+# Ratings are on a different scale per source - TMDb 0-10, books 1-5 - and
+# music has none, so each type gets its own floor or no floor at all.
+STARTER_MIN_RATING = {"movie": 6.5, "show": 7.0, "book": 3.5}
+# Where popularity is ranked together with rating. TMDb popularity is
+# "trending now", so alone it offers this year's releases over Jaws and The
+# Dark Knight; book ratings come from a handful of votes, so blending them in
+# surfaces obscure titles instead.
+STARTER_BLEND_RATING = {"movie", "show"}
+
+
 @dataclass
 class QdrantRecommender:
     catalog_path: Path = CATALOG_PATH
@@ -203,6 +224,55 @@ class QdrantRecommender:
             ):
                 return None
         return " ".join(corrected)
+
+    def starter_items(self) -> list[dict[str, Any]]:
+        """Well-known items across genres, for a new account to pick from.
+
+        Per (type, genre), the best-known item with cover art and a decent
+        rating that the unknown-age default may see - a new account has not
+        said how old it is. The catalogue does not change while the process
+        runs, so this is worked out once.
+        """
+        cached = getattr(self, "_starter_items_cache", None)
+        if cached is not None:
+            return cached
+
+        catalog = self.catalog
+        audience = AudienceContext()
+        images = catalog.get("image_url", pd.Series("", index=catalog.index)).fillna("").astype(str)
+        genres_per_row = (
+            catalog["categories"].fillna("").astype(str).str.lower().str.split(",")
+            .map(lambda parts: {part.strip() for part in parts})
+        )
+        popularity = pd.to_numeric(catalog.get("popularity", 0), errors="coerce").fillna(0)
+        rating = pd.to_numeric(
+            catalog.get("rating", pd.Series(float("nan"), index=catalog.index)), errors="coerce"
+        )
+
+        picks: list[dict[str, Any]] = []
+        chosen: set[Any] = set()
+        for content_type, genres in STARTER_GENRES.items():
+            candidates = (catalog["content_type"] == content_type) & images.ne("")
+            if content_type in STARTER_MIN_RATING:
+                candidates &= rating.ge(STARTER_MIN_RATING[content_type])
+            standing = popularity[candidates].rank(pct=True)
+            if content_type in STARTER_BLEND_RATING:
+                standing = standing + rating[candidates].rank(pct=True)
+            ranked = standing.sort_values(ascending=False, kind="stable").index
+            for genre in genres:
+                for index in ranked:
+                    if index in chosen or genre not in genres_per_row[index]:
+                        continue
+                    row = catalog.loc[index]
+                    item = {column: _clean_value(row.get(column, "")) for column in RESULT_COLUMNS}
+                    if not is_eligible(item, audience):
+                        continue
+                    chosen.add(index)
+                    picks.append({**item, "genre": genre})
+                    break
+
+        self._starter_items_cache = picks
+        return picks
 
     def warm_up(self) -> None:
         """Build the lookup tables now rather than inside the first search.
@@ -663,6 +733,7 @@ class QdrantRecommender:
 
             personalized = dict(item)
             personalized["score"] = score + bonus
+            personalized["preference_bonus"] = bonus
             reranked.append(personalized)
 
         reranked.sort(key=lambda item: item["score"], reverse=True)

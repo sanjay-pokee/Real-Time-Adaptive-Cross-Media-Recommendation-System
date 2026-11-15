@@ -390,6 +390,13 @@ export default function AuthPage({ onAuth }) {
                     {busy ? 'One moment…' : mode === 'login' ? 'Log in' : 'Create account'}
                     <ArrowRight size={15} />
                   </button>
+
+                  {/* Said before anyone hands over an email, not after. */}
+                  <p className="text-[11.5px] leading-relaxed text-ink-faint">
+                    We save your name, email and what you like, rate, skip or open, only to tune your
+                    results. Nothing is shared or sold, and you can delete your account and all of it
+                    at any time from your account menu.
+                  </p>
                 </form>
               )}
             </div>

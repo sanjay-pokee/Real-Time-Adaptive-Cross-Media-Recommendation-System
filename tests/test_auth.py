@@ -22,6 +22,7 @@ class FakeAccountStore:
         self.settings = Settings(google_client_id=google_client_id)
         self.accounts = {}
         self.sessions = {}
+        self.interactions = {}
 
     def create_account(self, user_id, email, display_name, password_hash=None, google_sub=None):
         if self.get_account_by_email(email) or (google_sub and self.get_account_by_google_sub(google_sub)):
@@ -58,6 +59,14 @@ class FakeAccountStore:
 
     def delete_session(self, token_hash):
         self.sessions.pop(token_hash, None)
+
+    def count_interactions(self, user_id):
+        return self.interactions.get(user_id, 0)
+
+    def delete_account(self, user_id):
+        self.accounts.pop(user_id, None)
+        self.interactions.pop(user_id, None)
+        self.sessions = {k: v for k, v in self.sessions.items() if v != user_id}
 
 
 class FakeRecommender:
@@ -299,3 +308,42 @@ def test_demo_personas_need_no_login(store):
     response = TestClient(app).post("/recommend", json={"query": "space adventure", "user_id": "user_scifi"})
 
     assert response.status_code == 200
+
+
+def test_the_account_reports_how_much_it_has_done(store):
+    client = TestClient(app)
+    account_id = _signup(client).json()["user_id"]
+    # A new account has nothing yet, which is the client's cue for onboarding.
+    assert client.get("/auth/me").json()["interaction_count"] == 0
+
+    store.interactions[account_id] = 4
+
+    assert client.get("/auth/me").json()["interaction_count"] == 4
+
+
+def test_deleting_an_account_removes_it_and_ends_the_session(store):
+    owner = TestClient(app)
+    account_id = _signup(owner).json()["user_id"]
+    store.interactions[account_id] = 7
+    other = TestClient(app)
+    other_id = _signup(other, email="ravi@example.com", name="Ravi").json()["user_id"]
+    token = owner.cookies.get(auth.SESSION_COOKIE)
+
+    response = owner.delete("/auth/me")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "deleted"}
+    assert account_id not in store.accounts and account_id not in store.interactions
+    assert TestClient(app, cookies={auth.SESSION_COOKIE: token}).get("/auth/me").status_code == 401
+    # The email is free again, and nobody else's account was touched.
+    assert _signup(TestClient(app)).status_code == 201
+    assert other.get("/auth/me").json()["user_id"] == other_id
+
+
+def test_deleting_needs_a_session(store):
+    _signup(TestClient(app))
+
+    response = TestClient(app).delete("/auth/me")
+
+    assert response.status_code == 401
+    assert len(store.accounts) == 1

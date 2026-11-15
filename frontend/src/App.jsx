@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import Home from './pages/Home';
 import AuthPage from './pages/AuthPage';
+import OnboardingPage from './pages/OnboardingPage';
 import { InteractionProvider } from './context/InteractionContext';
 import { getMe, logout } from './api/client';
-import { accountToSessionUser } from './utils/session';
+import { accountToSessionUser, markOnboarded, needsOnboarding } from './utils/session';
 
 const SESSION_KEY = 'nexus_demo_session';
 
@@ -81,6 +82,20 @@ export default function App() {
     saveSession(null);
   }
 
+  // The server has already ended the session and cleared the cookie.
+  function handleAccountDeleted() {
+    setSessionUser(null);
+    saveSession(null);
+  }
+
+  // Also called by "Skip for now", with zero: either way the step is done.
+  function handleOnboarded(picked) {
+    markOnboarded(sessionUser.id);
+    const user = { ...sessionUser, interactionCount: (sessionUser.interactionCount || 0) + picked };
+    setSessionUser(user);
+    saveSession(user);
+  }
+
   return (
     <InteractionProvider>
       {/* The iridescent field the glass refracts. Behind both pages so it
@@ -120,10 +135,16 @@ export default function App() {
         </filter>
       </svg>
 
-      {sessionUser ? (
-        <Home authenticatedUser={sessionUser} onLogout={handleLogout} />
-      ) : (
+      {!sessionUser ? (
         <AuthPage onAuth={handleAuth} />
+      ) : needsOnboarding(sessionUser) ? (
+        <OnboardingPage user={sessionUser} onDone={handleOnboarded} />
+      ) : (
+        <Home
+          authenticatedUser={sessionUser}
+          onLogout={handleLogout}
+          onAccountDeleted={handleAccountDeleted}
+        />
       )}
     </InteractionProvider>
   );

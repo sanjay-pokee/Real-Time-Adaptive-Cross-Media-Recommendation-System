@@ -188,3 +188,41 @@ def test_ema_embedding_store_negative_interaction_moves_away(tmp_path):
     vector = store.update_profile_vector([], "i1", "skip", 1, alpha=1.0)
 
     assert store.score(vector, "i1") == pytest.approx(-1.0)
+
+
+def test_dot_scoring_keeps_raw_embeddings_and_cosine_normalises():
+    from models.graph.evaluate_lightgcn import train_for_evaluation
+    from models.graph.lightgcn import LightGCNConfig
+
+    rows = pd.DataFrame(
+        [{"user_id": f"u{u}", "entity_id": f"i{(u + j) % 6}", "event_type": "like"} for u in range(6) for j in range(3)]
+    )
+    config = LightGCNConfig(embedding_dim=8, num_layers=2, epochs=2, batch_size=8, seed=1)
+
+    cosine_users, cosine_items, *_ = train_for_evaluation(rows, config)
+    dot_users, dot_items, *_ = train_for_evaluation(rows, config, normalize=False)
+
+    assert np.allclose(np.linalg.norm(cosine_users, axis=1), 1.0, atol=1e-5)
+    assert np.allclose(np.linalg.norm(cosine_items, axis=1), 1.0, atol=1e-5)
+    assert not np.allclose(np.linalg.norm(dot_items, axis=1), 1.0, atol=1e-3)
+    # Same seed, same training: cosine is exactly the normalised dot-product embedding.
+    assert np.allclose(cosine_items, dot_items / np.linalg.norm(dot_items, axis=1, keepdims=True), atol=1e-5)
+
+
+def test_graph_rerank_reports_semantic_score_without_the_preference_bonus(tmp_path):
+    # Regression: the personalisation bonus is added to "score" before this step,
+    # and copying "score" into semantic_score made the UI label the bonus "Semantic".
+    artifact_path = tmp_path / "lightgcn_embeddings.npz"
+    np.savez_compressed(
+        artifact_path,
+        user_ids=np.array(["u1"], dtype=object),
+        item_ids=np.array(["i1"], dtype=object),
+        user_embeddings=np.array([[1.0, 0.0]], dtype=np.float32),
+        item_embeddings=np.array([[1.0, 0.0]], dtype=np.float32),
+    )
+    store = GraphEmbeddingStore(artifact_path)
+
+    [item] = store.rerank("u1", [{"global_id": "i1", "score": 1.3, "preference_bonus": 0.4}], graph_weight=0.2)
+
+    assert item["semantic_score"] == pytest.approx(0.9)
+    assert item["score"] == pytest.approx(1.3 + 0.2)  # ranking still uses the full score

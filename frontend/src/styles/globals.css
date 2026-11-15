@@ -377,6 +377,40 @@
   }
   .btn-ghost:hover { background: var(--surface-2); color: var(--ink); border-color: transparent; }
 
+  .btn-danger {
+    background: var(--bad);
+    border-color: transparent;
+    color: white;
+    font-weight: 600;
+  }
+  .btn-danger:hover {
+    background: color-mix(in oklab, var(--bad) 86%, black);
+    border-color: transparent;
+  }
+  .btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* A native modal <dialog>. The browser supplies the top layer, the inert
+     page, focus containment and Esc; this only styles the sheet. */
+  .dialog-sheet {
+    width: min(440px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-4);
+    overflow: auto;
+  }
+  /* Both rules, or a scroll inside the dialog or over the backdrop scrolls
+     the page behind it. */
+  .dialog-sheet:modal { overscroll-behavior: contain; }
+  .dialog-sheet::backdrop {
+    background: color-mix(in oklab, black 45%, transparent);
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
+
   .chip {
     display: inline-flex;
     align-items: center;

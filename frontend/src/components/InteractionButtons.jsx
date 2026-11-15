@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { Bookmark, Check, Eye, Heart, Loader2, SkipForward, Star } from 'lucide-react';
 import { useState } from 'react';
 import { postInteraction } from '../api/client';
-import { useInteractionState } from '../context/InteractionContext';
+import { useInteractionState } from '../context/useInteractionState';
 
 const ACTIONS = [
   { type: 'view', icon: Eye, label: 'Mark viewed', tint: 'var(--accent)' },

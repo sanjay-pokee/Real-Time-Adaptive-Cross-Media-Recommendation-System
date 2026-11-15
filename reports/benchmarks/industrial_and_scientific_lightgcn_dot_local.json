@@ -1,0 +1,27 @@
+{
+  "model": "lightgcn_dot",
+  "dataset": "Industrial_and_Scientific.csv",
+  "k": 20,
+  "metrics": {
+    "users_evaluated": 33929,
+    "hit_rate": 0.058858203896371836,
+    "recall": 0.058858203896371836,
+    "precision": 0.0029429101948185922,
+    "ndcg": 0.02538516910378168,
+    "mrr": 0.016204438027476203
+  },
+  "config": {
+    "embedding_dim": 64,
+    "num_layers": 3,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "epochs": 60,
+    "batch_size": 4096,
+    "seed": 42
+  },
+  "graph": {
+    "users": 33959,
+    "items": 19024,
+    "interactions": 238752
+  }
+}

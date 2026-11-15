@@ -71,6 +71,21 @@ export async function getMe() {
   return res.data;
 }
 
+/** Permanently deletes the logged-in account, its interactions and its taste profile. */
+export async function deleteAccount() {
+  const res = await api.delete('/auth/me');
+  return res.data;
+}
+
+/**
+ * Items a new account picks from before its first search.
+ * Returns: { items: [{ global_id, content_type, title, creators, image_url, genre }] }
+ */
+export async function getStarterItems() {
+  const res = await api.get('/onboarding/items');
+  return res.data;
+}
+
 export async function checkHealth() {
   if (DEMO) return demoHealth();
   const res = await api.get('/health');

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -106,6 +107,16 @@ TABLE_SQL = [
       CONSTRAINT fk_session_user
         FOREIGN KEY (user_id) REFERENCES users(user_id)
         ON DELETE CASCADE
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS login_failures (
+      -- One row per wrong password, so a lockout survives a server restart.
+      -- Keyed by the email that was typed, which need not belong to an account.
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      email VARCHAR(254) NOT NULL,
+      failed_at DATETIME(6) NOT NULL,
+      INDEX idx_login_failures_email (email, failed_at)
     )
     """,
 ]
@@ -511,7 +522,7 @@ class MySQLStore:
         category_weights: dict[str, float] = {}
         content_type_weights: dict[str, float] = {}
 
-        for row in rows:
+        for row in active_interactions(rows):
             weight = _interaction_weight(row["event_type"], row.get("event_value"))
             entity_id = row["entity_id"]
             if weight > 0:
@@ -542,9 +553,11 @@ class MySQLStore:
                 ORDER BY timestamp DESC, id DESC
                 LIMIT %s
             """
-            return pd.read_sql(query, conn, params=(limit,))
+            frame = pd.read_sql(query, conn, params=(limit,))
         finally:
             conn.close()
+        # A toggled-off like must not become a LightGCN edge or an EMA step on replay.
+        return pd.DataFrame(active_interactions(frame.to_dict("records")), columns=frame.columns)
 
 
     def bulk_log_interactions(self, interactions: list[dict[str, Any]]) -> int:
@@ -689,6 +702,97 @@ class MySQLStore:
         finally:
             conn.close()
 
+    def count_interactions(self, user_id: str) -> int:
+        conn = self._connect_database()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT COUNT(*) FROM user_interactions WHERE user_id = %s", (user_id,)
+                )
+                return int(cursor.fetchone()[0])
+        finally:
+            conn.close()
+
+    def delete_account(self, user_id: str) -> None:
+        """Remove an account and everything recorded about it, in one transaction.
+
+        Interactions and the profile row (preferences and the EMA taste vector)
+        are keyed by user_id with no foreign key to users, so they have to be
+        deleted by name; sessions would cascade but are deleted explicitly too.
+        """
+        conn = self._connect_database()
+        try:
+            with conn.cursor() as cursor:
+                try:
+                    # Wrong-password records for the account's email. Optional: a
+                    # database set up before this table existed has none, and a
+                    # failed statement does not abort a MySQL transaction.
+                    cursor.execute(
+                        "DELETE lf FROM login_failures lf JOIN users u ON u.email = lf.email "
+                        "WHERE u.user_id = %s",
+                        (user_id,),
+                    )
+                except Exception:
+                    pass
+                for table in ("user_interactions", "user_profiles", "user_sessions", "users"):
+                    cursor.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+    def record_login_failure(self, email: str) -> None:
+        conn = self._connect_database()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO login_failures (email, failed_at) VALUES (%s, UTC_TIMESTAMP(6))",
+                    (email,),
+                )
+                # A miss older than a day can never lock anyone again.
+                cursor.execute(
+                    "DELETE FROM login_failures WHERE email = %s AND failed_at < UTC_TIMESTAMP(6) - INTERVAL 1 DAY",
+                    (email,),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def login_failures_within(self, email: str, window_seconds: int) -> tuple[int, float]:
+        """(wrong passwords inside the window, seconds until the oldest of them leaves it).
+
+        Both times come from the MySQL server clock, so app servers whose clocks
+        disagree still agree on the lockout.
+        """
+        conn = self._connect_database()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT COUNT(*), TIMESTAMPDIFF(MICROSECOND, UTC_TIMESTAMP(6), MIN(failed_at))
+                    FROM login_failures
+                    WHERE email = %s AND failed_at > UTC_TIMESTAMP(6) - INTERVAL %s SECOND
+                    """,
+                    (email, int(window_seconds)),
+                )
+                count, offset_us = cursor.fetchone()
+        finally:
+            conn.close()
+        if not count:
+            return 0, 0.0
+        return int(count), window_seconds + float(offset_us) / 1_000_000
+
+    def clear_login_failures(self, email: str) -> None:
+        conn = self._connect_database()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("DELETE FROM login_failures WHERE email = %s", (email,))
+            conn.commit()
+        finally:
+            conn.close()
+
     def _fetch_account(self, where: str, value: str) -> dict[str, Any] | None:
         conn = self._connect_database()
         try:
@@ -699,14 +803,29 @@ class MySQLStore:
             conn.close()
 
     def _connect_database(self):
+        """A connection from the shared pool; ``close()`` hands it back.
+
+        Every request used to open a fresh TCP connection and log in to MySQL.
+        Connections now come from one pool per database, shared by every
+        MySQLStore instance (the recommender builds a new one per request). A
+        burst bigger than the pool falls back to a direct connection rather
+        than failing, so the pool can only make a request faster, never break it.
+        """
         connector = self._connector()
-        return connector.connect(
-            host=self.settings.mysql_host,
-            port=self.settings.mysql_port,
-            user=self.settings.mysql_user,
-            password=self.settings.mysql_password,
-            database=self.settings.mysql_database,
-        )
+        params = {
+            "host": self.settings.mysql_host,
+            "port": self.settings.mysql_port,
+            "user": self.settings.mysql_user,
+            "password": self.settings.mysql_password,
+            "database": self.settings.mysql_database,
+        }
+        pool = _shared_pool(connector, params)
+        if pool is not None:
+            try:
+                return pool.get_connection()
+            except connector.errors.PoolError:
+                pass  # every pooled connection is busy
+        return connector.connect(**params)
 
     def _connector(self):
         try:
@@ -717,6 +836,82 @@ class MySQLStore:
                 "Install it with: pip install mysql-connector-python"
             ) from exc
         return mysql.connector
+
+
+POOL_SIZE = 10  # FastAPI runs sync endpoints on up to 40 threads; extra callers connect directly
+_POOLS: dict[tuple, Any] = {}
+_POOLS_LOCK = threading.Lock()
+
+
+def _shared_pool(connector: Any, params: dict[str, Any]) -> Any | None:
+    """The process-wide pool for these credentials, created on first use.
+
+    Returns None when a pool cannot be created (for example, the database does
+    not exist yet). Failure is not cached, so the next call tries again.
+    """
+    key = (params["host"], params["port"], params["user"], params["database"])
+    with _POOLS_LOCK:
+        pool = _POOLS.get(key)
+        if pool is None:
+            try:
+                pool = connector.pooling.MySQLConnectionPool(
+                    pool_name=f"nexus_{abs(hash(key)) % 10**8}",
+                    pool_size=POOL_SIZE,
+                    pool_reset_session=True,  # a returned connection never leaks a transaction or session state
+                    **params,
+                )
+            except Exception:
+                return None
+            _POOLS[key] = pool
+        return pool
+
+
+# The UI's interaction buttons are toggles: a second click logs the same event
+# again to switch it off, and get_user_interaction_state reads the state by parity.
+TOGGLE_EVENTS = frozenset({"view", "like", "bookmark", "skip", "complete"})
+
+
+def active_interactions(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collapse a raw event log into the interactions that are currently in effect.
+
+    ``rows`` must be ordered newest first. A toggle counts once, and only if it
+    was clicked an odd number of times - so un-liking an item no longer reads as
+    a second like. A rating counts once, with its most recent value. Any other
+    event (click) counts every time, as before.
+    """
+    counts: dict[tuple[str, str, str], int] = {}
+    for row in rows:
+        key = (str(row.get("user_id", "")), str(row["entity_id"]), str(row["event_type"]).lower())
+        counts[key] = counts.get(key, 0) + 1
+
+    active: list[dict[str, Any]] = []
+    emitted: set[tuple[str, str, str]] = set()
+    for row in rows:
+        key = (str(row.get("user_id", "")), str(row["entity_id"]), str(row["event_type"]).lower())
+        event = key[2]
+        if event not in TOGGLE_EVENTS and event != "rating":
+            active.append(row)
+            continue
+        if key in emitted:
+            continue
+        emitted.add(key)
+        if event == "rating" or counts[key] % 2 == 1:
+            active.append(row)
+    return active
+
+
+def _interaction_weight(event_type: str, event_value: Any) -> float:
+    # Imported lazily so the MySQL scripts don't pay for importing torch.
+    from models.graph.lightgcn import interaction_weight
+
+    return interaction_weight(event_type, _number_or_none(event_value))
+
+
+def _split_categories(value: Any) -> list[str]:
+    # Must split exactly like backend.qdrant_recommender._split_categories, which
+    # looks these weights up per result.
+    text = str(value or "").lower()
+    return [part.strip() for part in text.split(",") if part.strip()]
 
 
 def _clean(value: Any) -> str:
