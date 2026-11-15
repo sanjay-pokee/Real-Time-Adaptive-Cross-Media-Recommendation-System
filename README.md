@@ -44,7 +44,7 @@ Liking an item changes the next search immediately, with no retraining.
 | LightGCN vs popularity, Recall@20 | **1.59x** on Movies & TV, **1.24x** on Industrial & Scientific, 0.55x on Health & Household (Amazon Reviews 2023) |
 | Real-time adaptation | EMA taste vector (α = 0.25), updated on every interaction, no retraining |
 | Explainability | Per-signal score breakdown plus counterfactual re-ranking in the UI |
-| NCF baseline (NeuMF), Recall@20 | **1.19x** LightGCN on Movies & TV, **1.27x** on Industrial & Scientific (same split and metrics) |
+| NCF baseline (NeuMF), Recall@20 | Beats cosine-scored LightGCN (1.19x / 1.27x), but LightGCN scored by dot product beats NeuMF: **1.32x** on Movies & TV, **1.42x** on Industrial & Scientific |
 | Tests | 381 passing (`pytest`), run by GitHub Actions on every push |
 
 ---
@@ -315,12 +315,15 @@ python -m scripts.build_benchmark_table   # writes reports/domain_benchmark_tabl
 
 `models/graph/neumf.py` implements NeuMF (GMF + MLP towers, pointwise log loss, 4 sampled negatives per positive). `models.graph.evaluate_neumf` runs it through the same preparation, split and metrics as LightGCN, on graphs of exactly the same size.
 
-| Domain | Popularity R@20 | LightGCN R@20 | NeuMF R@20 | NeuMF NDCG@20 | NeuMF vs LightGCN |
-| --- | --- | --- | --- | --- | --- |
-| Movies & TV | 0.0182 | 0.0288 | 0.0344 | 0.0138 | **1.19x** |
-| Industrial & Scientific | 0.0264 | 0.0326 | 0.0416 | 0.0180 | **1.27x** |
+| Domain (Recall@20) | Popularity | LightGCN, cosine | NeuMF | LightGCN, dot product |
+| --- | --- | --- | --- | --- |
+| Movies & TV | 0.0182 | 0.0288 | 0.0344 | **0.0454** |
+| Industrial & Scientific | 0.0264 | 0.0326 | 0.0416 | **0.0589** |
 
-NeuMF's non-linear interaction function beats LightGCN on both domains measured. Health & Household was not rerun (its rating file is not on the training machine), and each model has one seed. Full table, configuration and commands: `reports/neumf_comparison.md`.
+- **Cosine vs dot product:** the backend and the paper rank LightGCN by cosine (normalised embeddings). Against that, NeuMF is 1.19x / 1.27x better. Ranked by the raw dot product BPR was trained with, LightGCN beats NeuMF by 1.32x / 1.42x: normalising discards the item popularity carried in vector length. `python -m models.graph.evaluate_lightgcn --scoring dot` reproduces it; the cosine rerun matches the Kaggle numbers exactly.
+- **Caveats:** one seed per model, no tuning for either, and Health & Household was not rerun (its rating file is not on the training machine).
+
+Full table (NDCG, MRR), configuration and commands: `reports/neumf_comparison.md` (`python -m scripts.build_neumf_table`).
 
 ### Constraint cost
 
@@ -582,6 +585,6 @@ No server is required. `.github/workflows/ci.yml` runs the suite on Windows (the
   - It has no time decay or session boundary.
 - **Accounts:** no email verification or password reset (both need an email sender).
 - **Deployment:** the system runs on one machine. `scripts/demo_up.ps1 -Public` gives a temporary public link through a Cloudflare quick tunnel; there is no permanent host and no container image yet (Docker is not set up on the development machine).
-- **LightGCN scoring:** the backend and the paper rank LightGCN by cosine. On Industrial & Scientific the raw dot product BPR was trained with scores Recall@20 0.0589 against 0.0326 (`reports/neumf_comparison.md`). Serving it needs a rescaling step first, because the other fused signals are on a 0-1 cosine scale.
+- **LightGCN scoring:** the backend and the paper rank LightGCN by cosine. Ranked by the raw dot product BPR was trained with, Recall@20 rises from 0.0288 to 0.0454 on Movies & TV and from 0.0326 to 0.0589 on Industrial & Scientific (`reports/neumf_comparison.md`). Serving it needs a rescaling step first, because the other fused signals are on a 0-1 cosine scale.
 - **Search mode:** embedded Qdrant is used for development. A production deployment would run Qdrant as a server with HNSW and payload indexes on the filter fields.
 - **What SBERT cannot do:** all-MiniLM-L6-v2 is English-only and small. Riddle-style plot descriptions miss ("botanist abandoned on the red planet" does not find *The Martian*), queries in other languages fall back to word overlap, and negation is ignored ("not sad" reads as "sad"). Fixing the first two means a larger or multilingual model and re-embedding the catalogue.

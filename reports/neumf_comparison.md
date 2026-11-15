@@ -11,6 +11,7 @@ a domain ran on the same graph (checked when this table is built).
 | --- | --- | --- | --- | --- | --- | --- |
 | Movies & TV | Popularity | 0.0182 | 0.0080 | 0.0052 | 1.00x | 0.63x |
 | Movies & TV | LightGCN, cosine (Kaggle run, as in the paper) | 0.0288 | 0.0125 | 0.0080 | 1.59x | 1.00x |
+| Movies & TV | LightGCN, dot product (rerun on this laptop) | 0.0454 | 0.0194 | 0.0121 | 2.50x | 1.58x |
 | Movies & TV | NeuMF | 0.0344 | 0.0138 | 0.0081 | 1.90x | 1.19x |
 | | *graph: 50,000 users, 52,263 items, 914,346 train interactions* | | | | | |
 | Industrial & Scientific | Popularity | 0.0264 | 0.0111 | 0.0070 | 1.00x | 0.81x |

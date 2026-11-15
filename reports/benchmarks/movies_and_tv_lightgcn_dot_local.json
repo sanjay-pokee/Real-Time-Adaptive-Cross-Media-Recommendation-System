@@ -1,0 +1,27 @@
+{
+  "model": "lightgcn_dot",
+  "dataset": "Movies_and_TV.csv",
+  "k": 20,
+  "metrics": {
+    "users_evaluated": 49958,
+    "hit_rate": 0.04543816806117138,
+    "recall": 0.04543816806117138,
+    "precision": 0.002271908403058569,
+    "ndcg": 0.019376443363205063,
+    "mrr": 0.012137570153632593
+  },
+  "config": {
+    "embedding_dim": 64,
+    "num_layers": 3,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "epochs": 60,
+    "batch_size": 4096,
+    "seed": 42
+  },
+  "graph": {
+    "users": 50000,
+    "items": 52263,
+    "interactions": 914346
+  }
+}
