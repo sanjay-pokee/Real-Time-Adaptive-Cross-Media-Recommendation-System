@@ -29,3 +29,14 @@ qdrant_storage/
 
 # Conference template download (26 MB); the files the paper needs are in reports/submission/camera_ready/
 paper_icmlde_overleaf/Template_PROCS_ICMLDE_2026/
+
+# College report/slide template download (not our work)
+Presentation_Report_Guideline_16th November_LaTeX_Source/
+
+# LaTeX build by-products (the PDF and .tex are tracked)
+*.aux
+*.bbl
+*.blg
+*.out
+*.toc
+*.synctex.gz
