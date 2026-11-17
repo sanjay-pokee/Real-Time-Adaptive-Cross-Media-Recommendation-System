@@ -79,11 +79,17 @@ export async function demoRecommend({ query, user_id, top_k = 10, content_type =
   const scope = { domain, content_type, age, safe_mode };
   const recAge = safe_mode ? 7 : age;
   let results = null;
+  let recorded = {};
 
   // 1. Recorded for exactly this viewer and scope (or unpersonalised).
   const exact = snap.recommend[recKey(user_id, query, domain, recAge)]
     || snap.recommend[recKey(null, query, domain, recAge)];
-  if (exact) results = hydrate(snap, exact).filter((item) => eligible(item, scope));
+  if (exact) {
+    results = hydrate(snap, exact).filter((item) => eligible(item, scope));
+    // What the live API said about this exact search: a typo it fixed, or a
+    // title it withheld for this viewer's age.
+    recorded = { corrected_query: exact.corrected_query || null, notice: exact.notice || null };
+  }
 
   // 2. Same query recorded under another scope, re-filtered for this one.
   if (!results?.length) {
@@ -104,6 +110,7 @@ export async function demoRecommend({ query, user_id, top_k = 10, content_type =
   return settle({
     query, top_k, content_type, domain,
     advisory: advisoryFor(snap, domain, results),
+    ...recorded,
     results,
   });
 }

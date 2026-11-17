@@ -10,10 +10,17 @@ import { motion } from 'framer-motion';
  * alone would look broken. Setting all three makes each chip a complete,
  * self-explanatory scenario.
  *
- * `age: null` is meaningful and deliberate on the last two: it exercises the
- * undeclared-age path rather than being an omission.
+ * `age: null` is meaningful and deliberate where it appears: it exercises the
+ * undeclared-age path rather than being an omission. The 18+ answers (Peaky
+ * Blinders, most 90s classics) need an age, so those chips declare 25.
  */
 const CHIPS = [
+  // --- describe it, don't name it -------------------------------------
+  { tag: 'Plot',     label: 'man relives the same day over and over',          domain: null, age: null },
+  { tag: 'Plot',     label: 'old man flies his house with balloons',           domain: null, age: null },
+  { tag: 'Plot',     label: 'gangster in england with brothers who wears caps', domain: null, age: 25 },
+  { tag: 'Decade',   label: '90s movies',                                       domain: null, age: 25 },
+  { tag: 'Like',     label: 'movies like inception',                            domain: null, age: 25 },
   // --- entertainment -------------------------------------------------
   { tag: 'Sci-fi',   label: 'space adventure with aliens', domain: null,      age: null },
   { tag: 'Kids',     label: 'fun adventure',               domain: null,      age: 8    },
@@ -28,6 +35,9 @@ const CHIPS = [
 ];
 
 const TAG_TINT = {
+  Plot:       'var(--accent)',
+  Decade:     'var(--dom-entertainment)',
+  Like:       'var(--sig-kg)',
   'Sci-fi':   'var(--dom-entertainment)',
   Kids:       'var(--mat-all_ages)',
   Contrast:   'var(--mat-adult)',
