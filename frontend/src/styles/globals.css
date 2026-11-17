@@ -92,6 +92,9 @@
     --sig-profile:  oklch(74% 0.160 305);
     --sig-ema:      oklch(78% 0.130 215);
     --sig-graph:    oklch(74% 0.110 180);
+    --sig-kg:       oklch(76% 0.150 60);
+    --sig-match:    oklch(86% 0.120 95);
+    --sig-popularity: oklch(72% 0.150 350);
 
     --ok:   oklch(80% 0.160 122);
     --warn: oklch(82% 0.150 85);
@@ -167,6 +170,9 @@
     --sig-profile:  oklch(48% 0.150 305);
     --sig-ema:      oklch(50% 0.120 215);
     --sig-graph:    oklch(48% 0.100 180);
+    --sig-kg:       oklch(52% 0.140 60);
+    --sig-match:    oklch(50% 0.110 95);
+    --sig-popularity: oklch(50% 0.150 350);
 
     --ok:   oklch(46% 0.140 128);
     --warn: oklch(56% 0.140 80);

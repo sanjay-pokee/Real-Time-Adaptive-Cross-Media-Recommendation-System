@@ -40,6 +40,8 @@ export default {
           graph: 'var(--sig-graph)',
           ema: 'var(--sig-ema)',
           kg: 'var(--sig-kg)',
+          match: 'var(--sig-match)',
+          popularity: 'var(--sig-popularity)',
           profile: 'var(--sig-profile)',
         },
         type: {

@@ -225,3 +225,60 @@ def test_person_query_prioritizes_creator_matches_then_general_recommendations()
         "General Result 2",
     ]
     assert len({item["global_id"] for item in results}) == len(results)
+
+
+def _suggest_catalog():
+    rows = [
+        ("movie:s:1", "movie", "The Godfather", "Francis Ford Coppola, Marlon Brando", "Crime", "adult", 18),
+        ("movie:s:2", "movie", "The Godfather Part II", "Francis Ford Coppola, Al Pacino", "Crime", "adult", 18),
+        ("book:s:3", "book", "The Godfather", "Mario Puzo", "Crime", "teen", 13),
+    ]
+    return pd.DataFrame(rows, columns=["global_id", "content_type", "title", "creators", "categories",
+                                       "maturity", "audience_min_age"]).assign(risk_tier=0, domain="entertainment")
+
+
+@pytest.mark.parametrize("params, titles", [
+    ({}, ["The Godfather"]),                                         # no age: teen ceiling, only Puzo's novel
+    ({"age": 15}, ["The Godfather"]),
+    ({"age": 25}, ["The Godfather", "The Godfather Part II"]),
+    ({"age": 25, "safe_mode": "true"}, []),                          # safe mode stops below 13
+])
+def test_suggestions_only_offer_what_the_viewer_may_open(params, titles):
+    rec = QdrantRecommender.__new__(QdrantRecommender)
+    rec.catalog = _suggest_catalog()
+    app.dependency_overrides[get_recommender] = lambda: rec
+    try:
+        response = TestClient(app).get("/search/suggest", params={"q": "godf", **params})
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 200
+    suggestions = response.json()["suggestions"]
+    assert [s["label"] for s in suggestions if s["kind"] == "title"] == titles
+    hints = [s["hint"] for s in suggestions if s["kind"] == "title"]
+    assert all(h.startswith(("Book", "Movie")) for h in hints)
+
+
+def test_people_count_only_the_titles_the_viewer_may_open():
+    rec = QdrantRecommender.__new__(QdrantRecommender)
+    rec.catalog = _suggest_catalog()
+    app.dependency_overrides[get_recommender] = lambda: rec
+    try:
+        client = TestClient(app)
+        teen = client.get("/search/suggest", params={"q": "coppola"}).json()["suggestions"]
+        adult = client.get("/search/suggest", params={"q": "coppola", "age": 30}).json()["suggestions"]
+    finally:
+        app.dependency_overrides.clear()
+    assert teen == []                                                    # all his titles here are 18+
+    assert adult == [{"label": "Francis Ford Coppola", "hint": "Actor / Director - 2 titles",
+                      "kind": "person", "query": "Francis Ford Coppola"}]
+
+
+def test_eligible_mask_agrees_with_is_eligible():
+    from backend.audience import AudienceContext, is_eligible
+
+    rec = QdrantRecommender.__new__(QdrantRecommender)
+    rec.catalog = _suggest_catalog()
+    for audience in [AudienceContext(), AudienceContext(age=15), AudienceContext(age=30),
+                     AudienceContext(age=30, safe_mode=True)]:
+        expected = [is_eligible(row, audience) for row in rec.catalog.to_dict("records")]
+        assert rec.eligible_mask(audience).tolist() == expected

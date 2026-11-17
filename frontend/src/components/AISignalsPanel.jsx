@@ -1,10 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
-import { Activity, Brain, ChevronDown, Layers, Network, Share2, UserRoundCog } from 'lucide-react';
+import { Activity, Brain, ChevronDown, Layers, Network, Share2, Star, TextSearch, UserRoundCog } from 'lucide-react';
 import { SIGNALS } from '../utils/scoring';
 
 const ICONS = {
+  match: TextSearch,
   semantic: Brain,
+  popularity: Star,
   graph: Network,
   ema: Activity,
   kg: Share2,
@@ -57,7 +59,7 @@ export default function AISignalsPanel({ topResult }) {
           >
             <div className="space-y-3 border-t border-line px-4 py-3.5">
               <p className="text-[11px] leading-relaxed text-ink-muted">
-                Sentence-BERT retrieves candidates from Qdrant, then each signal
+                BGE-small embeddings retrieve candidates from Qdrant, then each signal
                 below adds weighted points to produce the final ranking score.
               </p>
 

@@ -3,33 +3,57 @@
  *
  * The backend fuses signals additively (see backend/qdrant_recommender.py):
  *
- *   final = semantic
- *         + LIGHTGCN_WEIGHT * graph      (backend/settings.py, default 0.20)
- *         + EMA_WEIGHT      * ema        (backend/settings.py, default 0.15)
- *         + KG_WEIGHT       * kg         (backend/knowledge_graph.py, default 0.08)
- *         + personalisation bonus        (category / content-type affinity)
+ *   final = match (exact name/title) or semantic (cosine)
+ *         + POPULARITY_WEIGHT * popularity (backend/settings.py, default 0.30)
+ *         + LIGHTGCN_WEIGHT   * graph      (backend/settings.py, default 0.20)
+ *         + EMA_WEIGHT        * ema        (backend/settings.py, default 0.15)
+ *         + KG_WEIGHT         * kg         (backend/settings.py, default 0.20;
+ *                                           0.80 on "more like this")
+ *         + personalisation bonus and profile match
  *
  * Because it is a plain weighted sum we can show exactly how many points each
  * signal contributed to the number the ranking actually used - which is a far
  * more honest explanation than plotting the raw signal values side by side.
+ * A result may carry `signal_weights` (e.g. {kg: 0.8}) when its path weighs a
+ * signal differently from the defaults below.
  */
 
 export const WEIGHTS = {
+  match: 1.0,
   semantic: 1.0,
+  popularity: 0.30,
   graph: 0.20,
   ema: 0.15,
-  kg: 0.08,
+  kg: 0.20,
 };
 
 export const SIGNALS = [
+  {
+    key: 'match',
+    field: 'match_score',
+    label: 'Name match',
+    color: 'var(--sig-match)',
+    weight: WEIGHTS.match,
+    what: 'The query is this exact title, or names its creator.',
+    whyOff: 'Found by meaning, not by an exact title or creator name.',
+  },
   {
     key: 'semantic',
     field: 'semantic_score',
     label: 'Semantic',
     color: 'var(--sig-semantic)',
     weight: WEIGHTS.semantic,
-    what: 'Sentence-BERT similarity between your query and the item text.',
+    what: 'BGE-small embedding similarity between your query and the item text or synopsis.',
     whyOff: 'Exact title/creator match - retrieved without vector search.',
+  },
+  {
+    key: 'popularity',
+    field: 'popularity_score',
+    label: 'Popularity',
+    color: 'var(--sig-popularity)',
+    weight: WEIGHTS.popularity,
+    what: 'How established the item is: TMDb votes, ratings or reviews, scaled per source.',
+    whyOff: 'No popularity data for this item.',
   },
   {
     key: 'graph',
@@ -55,7 +79,7 @@ export const SIGNALS = [
     label: 'Knowledge graph',
     color: 'var(--sig-kg)',
     weight: WEIGHTS.kg,
-    what: 'Proximity between query entities and item entities in the catalog graph.',
+    what: 'Entities the query names (people, franchises, genres, keywords) and graph paths to items you like or chose.',
     whyOff: 'No shared entities between the query and this item.',
   },
 ];
@@ -85,14 +109,15 @@ export function decomposeScore(result) {
       inactive.push({ ...signal, raw });
       continue;
     }
+    const weight = num(result?.signal_weights?.[signal.key]) ?? signal.weight;
     parts.push({
       key: signal.key,
       label: signal.label,
       color: signal.color,
       what: signal.what,
       raw,
-      weight: signal.weight,
-      points: raw * signal.weight,
+      weight,
+      points: raw * weight,
     });
   }
 

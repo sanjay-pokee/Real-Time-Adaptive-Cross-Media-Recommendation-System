@@ -163,11 +163,17 @@ export async function getUserInteractionState(userId, entityId) {
 
 /**
  * Fetch autocomplete suggestions for a partial query.
+ * `audience` ({ age, safeMode, domain }) limits them to what this viewer may
+ * open, under the same policy as /recommend.
  * Returns: { q, suggestions: [{ label, hint, kind, query }] }
  */
-export async function getSuggestions(q, limit = 8) {
+export async function getSuggestions(q, limit = 8, audience = {}) {
   if (DEMO) return demoSuggest(q, limit);
-  const res = await api.get('/search/suggest', { params: { q, limit } });
+  const params = { q, limit };
+  if (audience.age !== null && audience.age !== undefined) params.age = audience.age;
+  if (audience.safeMode) params.safe_mode = true;
+  if (audience.domain) params.domain = audience.domain;
+  const res = await api.get('/search/suggest', { params });
   return res.data;
 }
 

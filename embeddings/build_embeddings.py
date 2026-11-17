@@ -1,4 +1,4 @@
-"""Generate and incrementally update Sentence-BERT embeddings for the content catalog.
+"""Generate and incrementally update text embeddings for the content catalog (EMBEDDING_MODEL).
 
 Behavior
 --------
@@ -33,7 +33,11 @@ EMBEDDINGS_DIR = PROJECT_ROOT / "embeddings"
 NPY_PATH = EMBEDDINGS_DIR / "content_embeddings.npy"
 INDEX_PATH = EMBEDDINGS_DIR / "content_embedding_index.csv"
 
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+from backend.settings import get_settings  # noqa: E402
+
+# The encoder is a setting (EMBEDDING_MODEL): the index records it per row, so
+# a model change re-encodes every row and an unchanged model reuses them all.
+EMBEDDING_MODEL = get_settings().embedding_model
 EMBEDDING_VERSION = "1"
 
 INDEX_COLUMNS = [

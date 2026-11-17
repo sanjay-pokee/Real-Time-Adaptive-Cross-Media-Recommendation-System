@@ -45,9 +45,11 @@ class GraphEmbeddingStore:
             graph_score = self.score(user_id, str(item.get("global_id", "")))
             updated = dict(item)
             running_score = float(updated.get("score", 0.0))
-            # The personalisation re-rank runs first and adds its bonus to "score";
-            # report retrieval without it, or the UI shows that bonus as "Semantic".
-            updated["semantic_score"] = running_score - float(updated.get("preference_bonus") or 0.0)
+            # Retrieval now records its own semantic score (and None for a name or
+            # title match). Only when it did not is it reconstructed here: the
+            # running score minus the personalisation bonus added before this step.
+            if "semantic_score" not in updated:
+                updated["semantic_score"] = running_score - float(updated.get("preference_bonus") or 0.0)
             updated["graph_score"] = graph_score
             if graph_score is not None:
                 updated["score"] = running_score + graph_weight * graph_score

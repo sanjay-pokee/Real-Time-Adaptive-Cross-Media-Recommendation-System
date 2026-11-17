@@ -106,6 +106,8 @@ export default function Home({ authenticatedUser, onLogout, onAccountDeleted }) 
   // What the backend actually searched when it fixed a typo in resultQuery;
   // null when it searched the query as typed.
   const [correctedQuery, setCorrectedQuery] = useState(null);
+  // Why the title searched for is missing (age or safe-mode filter), when it is.
+  const [notice, setNotice] = useState(null);
   const [drawer, setDrawer] = useState({
     open: false,
     title: '',
@@ -308,6 +310,7 @@ export default function Home({ authenticatedUser, onLogout, onAccountDeleted }) 
       const nextResults = data.results || [];
       setResults(nextResults);
       setCorrectedQuery(data.corrected_query || null);
+      setNotice(data.notice || null);
       // The advisory is a property of the response, not of the selector: the
       // backend decides whether this particular result set needs one.
       setAdvisory(data.advisory || null);
@@ -513,6 +516,7 @@ export default function Home({ authenticatedUser, onLogout, onAccountDeleted }) 
               onSearch={(value) => handleSearch(value)}
               loading={loading}
               disabled={backendStatus === 'offline'}
+              audience={{ age, safeMode, domain }}
             />
           </div>
 
@@ -741,6 +745,14 @@ export default function Home({ authenticatedUser, onLogout, onAccountDeleted }) 
                       >
                         {resultQuery}
                       </button>
+                    </p>
+                  )}
+                  {/* The title exists but this profile's age or safe mode
+                      withholds it: say so, or the page looks like a bad search. */}
+                  {notice && (
+                    <p className="mt-2 flex items-start gap-1.5 text-[13px] text-ink-muted" role="status">
+                      <ShieldAlert size={14} className="mt-0.5 shrink-0" style={{ color: 'var(--warn)' }} />
+                      <span>{notice}</span>
                     </p>
                   )}
                 </div>

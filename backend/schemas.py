@@ -106,14 +106,27 @@ class RecommendationItem(BaseModel):
     # "keyword" for a token or phrase match. Absent on a purely semantic result.
     # Declared here or Pydantic drops it before the client ever sees it.
     match_kind: str | None = None
+    # Fixed score of a creator or title match (weight 1); None on a semantic result.
+    match_score: float | None = None
     semantic_score: float | None = None
+    # Prominence in [0, 1] (backend/prominence.py), weighted by POPULARITY_WEIGHT.
+    popularity_score: float | None = None
     # Category / content-type affinity and repeat-item penalties from the
     # interaction history; already included in "score".
     preference_bonus: float | None = None
     graph_score: float | None = None
     ema_score: float | None = None
     kg_score: float | None = None
+    # Best knowledge-graph path behind kg_score, e.g. item -DIRECTED_BY-> person
+    # <-DIRECTED_BY- liked item, and the same path as one readable sentence.
+    kg_path: list[dict[str, Any]] | None = None
+    kg_explanation: str | None = None
     profile_score: float | None = None
+    # Per-signal weight overrides for this result, e.g. {"kg": 0.8} on
+    # "more like this", where the graph weighs more than on a text query.
+    signal_weights: dict[str, float] | None = None
+    # Set when the query was "movies like X": the title the results resemble.
+    similar_to: str | None = None
 
 
 class RecommendResponse(BaseModel):
@@ -126,6 +139,9 @@ class RecommendResponse(BaseModel):
     domain: str | None = None
     # Set when the request targets a regulated domain, so the UI can show it.
     advisory: str | None = None
+    # Set when the exact title searched for exists but the audience filter
+    # withholds it, so an empty or substituted page is never unexplained.
+    notice: str | None = None
     results: list[RecommendationItem]
 
 

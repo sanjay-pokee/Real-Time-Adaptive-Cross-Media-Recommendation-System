@@ -15,7 +15,7 @@ function SuggestionIcon({ kind, hint }) {
   return <Search size={14} className="shrink-0 text-ink-faint" />;
 }
 
-export default function SearchBar({ value, onChange, onSearch, loading, disabled }) {
+export default function SearchBar({ value, onChange, onSearch, loading, disabled, audience }) {
   const [suggestions, setSuggestions] = useState([]);
   const [sugLoading, setSugLoading] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
@@ -23,6 +23,11 @@ export default function SearchBar({ value, onChange, onSearch, loading, disabled
   const debounceRef = useRef(null);
   const containerRef = useRef(null);
   const inputRef = useRef(null);
+  // Read at request time, so a debounced fetch uses the viewer's current age.
+  const audienceRef = useRef(audience);
+  useEffect(() => {
+    audienceRef.current = audience;
+  }, [audience]);
 
   // ── Fetch suggestions with 250 ms debounce ──────────────────────────────
   const fetchSuggestions = useCallback(async (q) => {
@@ -33,7 +38,7 @@ export default function SearchBar({ value, onChange, onSearch, loading, disabled
     }
     setSugLoading(true);
     try {
-      const data = await getSuggestions(q.trim(), 8);
+      const data = await getSuggestions(q.trim(), 8, audienceRef.current || {});
       setSuggestions(data.suggestions || []);
       setOpen((data.suggestions || []).length > 0);
     } catch {

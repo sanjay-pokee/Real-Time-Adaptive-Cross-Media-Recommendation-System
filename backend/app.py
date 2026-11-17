@@ -9,7 +9,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend import auth
@@ -148,6 +148,9 @@ def root() -> dict[str, str]:
 def search_suggest(
     q: str,
     limit: int = 8,
+    age: int | None = Query(None, ge=0, le=120),
+    safe_mode: bool = False,
+    domain: str | None = None,
     recommender: QdrantRecommender = Depends(get_recommender),
 ) -> SuggestResponse:
     """Fast prefix-based autocomplete over titles and creator names.
@@ -155,8 +158,18 @@ def search_suggest(
     Returns up to `limit` suggestions mixing:
     - content titles that contain the query substring
     - creator / cast / director names that contain the query substring
+
+    Only what this viewer may open is suggested, under the same audience
+    policy as /recommend (no age means the teen ceiling). Suggesting "The
+    Godfather" to a profile that cannot open it offered a title the search
+    would then withhold.
     """
     import unicodedata
+
+    try:
+        audience = AudienceContext(age=age, domain=domain, safe_mode=safe_mode)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     def _norm(text: str) -> str:
         decomposed = unicodedata.normalize("NFKD", text)
@@ -169,6 +182,9 @@ def search_suggest(
 
     q_norm = _norm(q_stripped)
     catalog = recommender.catalog
+    visible = getattr(recommender, "eligible_mask", None)
+    if callable(visible):
+        catalog = catalog[visible(audience)]
 
     suggestions: list[SuggestItem] = []
     seen_labels: set[str] = set()
@@ -264,6 +280,12 @@ def domains() -> DomainsResponse:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/kg/stats")
+def kg_stats(recommender: QdrantRecommender = Depends(get_recommender)) -> dict[str, Any]:
+    """Node and edge counts of the typed knowledge graph, by type."""
+    return recommender.knowledge_graph.graph.stats()
 
 
 # ---------------------------------------------------------------------------
@@ -499,6 +521,12 @@ def recommend(
             user_id=payload.user_id,
             audience=audience,
         )
+        explain_hidden = getattr(recommender, "hidden_title_notice", None)
+        notice = (
+            explain_hidden(corrected or payload.query, payload.content_type, audience, results)
+            if callable(explain_hidden)
+            else None
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except FileNotFoundError as exc:
@@ -515,6 +543,7 @@ def recommend(
         content_type=payload.content_type,
         domain=payload.domain,
         advisory=audience.advisory() if audience else None,
+        notice=notice if isinstance(notice, str) else None,
         results=results,
     )
 

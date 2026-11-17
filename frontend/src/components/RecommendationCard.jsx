@@ -7,6 +7,7 @@ import {
   HeartPulse,
   Landmark,
   Music,
+  Network,
   Package,
   Star,
   Tv,
@@ -295,6 +296,20 @@ export default function RecommendationCard({
 
       {/* ---------- score explanation (pushed to the bottom so cards align) ---------- */}
       <div className="mt-auto pt-4">
+        {result.kg_explanation && (
+          <p
+            className="mb-3 flex items-start gap-1.5 text-[12px] leading-snug text-ink-muted"
+            title={(result.kg_path || [])
+              .map((step) => step.node || `-${step.edge}->`)
+              .join(' ')}
+          >
+            <Network size={13} className="mt-[1px] shrink-0" style={{ color: 'var(--sig-kg)' }} aria-hidden="true" />
+            <span>
+              <span className="font-medium text-ink">Why: </span>
+              {result.kg_explanation}
+            </span>
+          </p>
+        )}
         <div className="border-t border-line pt-3.5">
           <ScoreBreakdown result={result} />
         </div>

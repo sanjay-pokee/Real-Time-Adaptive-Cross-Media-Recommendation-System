@@ -1,19 +1,22 @@
-"""Lightweight catalog knowledge graph and profile-aware reranking.
+"""Knowledge-graph and profile-aware reranking.
 
-This module keeps the first knowledge-graph implementation deliberately local:
-it builds useful edges from the existing processed catalog instead of requiring
-Neo4j or another graph database. The graph can later be moved to a graph DB
-without changing the recommender contract.
+The knowledge-graph signal comes from ``backend.kg_graph.TypedKnowledgeGraph``:
+a typed entity graph (items, people, brands, genres, franchises, keywords)
+built in memory from the catalogue and scored by query-entity links and 2-hop
+paths from the items a user likes. ``scripts/export_kg_neo4j.py`` writes the
+same graph out for Neo4j. The declared-profile match lives here as well.
 """
 
 from __future__ import annotations
 
 import re
 import unicodedata
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, Iterable
 
 import pandas as pd
+
+from backend.kg_graph import TypedKnowledgeGraph
 
 
 ROLE_TERMS: dict[str, list[str]] = {
@@ -39,28 +42,49 @@ AGE_AVOID_TERMS: dict[str, list[str]] = {
 
 @dataclass
 class CatalogKnowledgeGraph:
-    """In-memory graph-like scorer from catalog and user profile metadata."""
+    """Knowledge-graph signal: typed entity graph with path scoring, plus profile matching.
+
+    The graph itself is ``backend.kg_graph.TypedKnowledgeGraph``, built once from
+    the catalogue. Items it does not know (or an empty catalogue, as in unit
+    tests) fall back to the original query/item term overlap.
+    """
 
     catalog: pd.DataFrame
+    _graph: TypedKnowledgeGraph | None = field(default=None, init=False, repr=False)
+
+    @property
+    def graph(self) -> TypedKnowledgeGraph:
+        if self._graph is None:
+            self._graph = TypedKnowledgeGraph.from_catalog(self.catalog)
+        return self._graph
 
     def rerank(
         self,
         query: str,
         results: list[dict[str, Any]],
         user_profile: dict[str, Any] | None = None,
-        kg_weight: float = 0.08,
+        kg_weight: float = 0.2,
         profile_weight: float = 0.10,
+        seed_ids: Iterable[str] = (),
+        seed_role: str = "liked",
     ) -> list[dict[str, Any]]:
         if not results:
             return []
 
         profile = user_profile or {}
+        graph_hits = self.graph.score(
+            query, [str(item.get("global_id", "")) for item in results], seed_ids=seed_ids, seed_role=seed_role
+        )
         reranked = []
         for item in results:
-            kg_score = self.score_item(query, item)
+            hit = graph_hits.get(str(item.get("global_id", "")))
+            kg_score = hit["kg_score"] if hit is not None else self.score_item(query, item)
             profile_score = self.score_profile(item, profile)
 
             updated = dict(item)
+            if hit is not None:
+                updated["kg_path"] = hit["kg_path"]
+                updated["kg_explanation"] = hit["kg_explanation"]
             updated["kg_score"] = kg_score
             updated["profile_score"] = profile_score
             updated["score"] = (

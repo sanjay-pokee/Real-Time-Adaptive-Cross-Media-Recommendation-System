@@ -32,8 +32,16 @@ function Stop-Demo {
     $pids = Get-Content $pidFile | ConvertFrom-Json
     foreach ($name in $pids.PSObject.Properties.Name) {
         $id = $pids.$name
+        if (-not (Get-Process -Id $id -ErrorAction SilentlyContinue)) {
+            Write-Host "$name (pid $id) had already exited"
+            continue
+        }
         # /T kills the child processes too (npm.cmd -> node, python -> workers).
-        & taskkill /PID $id /T /F 2>$null | Out-Null
+        # A process can still exit between the check and the kill, so a failure here is not fatal.
+        $previous = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        & taskkill /PID $id /T /F *> $null
+        $ErrorActionPreference = $previous
         Write-Host "stopped $name (pid $id)"
     }
     Remove-Item $pidFile
@@ -65,7 +73,7 @@ $api = Start-Process -FilePath $python -WorkingDirectory $root -WindowStyle Hidd
 $pids = [ordered]@{ api = $api.Id }
 $pids | ConvertTo-Json | Set-Content $pidFile
 
-Write-Host "[3/4] Starting the API (loads SBERT, the catalogue and Qdrant; about 40 s)..."
+Write-Host "[3/4] Starting the API (loads the BGE-small encoder, the catalogue and Qdrant; about 40 s)..."
 $deadline = (Get-Date).AddSeconds(180)
 $ready = $false
 while ((Get-Date) -lt $deadline) {
