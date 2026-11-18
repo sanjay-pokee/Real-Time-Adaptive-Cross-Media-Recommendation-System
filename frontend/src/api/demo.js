@@ -115,13 +115,25 @@ export async function demoRecommend({ query, user_id, top_k = 10, content_type =
   });
 }
 
+// "More like this" is recorded as "<id>|<age>" for All and "<id>|<age>|<type>"
+// for one type; another age's list is the fallback, re-filtered by eligible().
+function recordedSimilar(snap, globalId, age, type) {
+  const exact = snap.similar[`${globalId}|${age ?? ''}${type ? `|${type}` : ''}`];
+  if (exact) return exact;
+  return Object.entries(snap.similar).find(([key]) => {
+    const [id, , keyType] = key.split('|');
+    return id === globalId && (keyType || null) === (type || null);
+  })?.[1];
+}
+
 export async function demoSimilar({ global_id, top_k = 10, content_type = null, domain = null, age = null, safe_mode = false }) {
   const snap = await loadSnapshot();
   const scope = { domain, content_type, age, safe_mode };
-  const recorded = snap.similar[`${global_id}|${safe_mode ? 7 : age ?? ''}`]
-    || Object.entries(snap.similar).find(([key]) => key.startsWith(`${global_id}|`))?.[1];
+  const recorded = recordedSimilar(snap, global_id, safe_mode ? 7 : age, content_type);
   let results = recorded ? hydrate(snap, recorded).filter((item) => eligible(item, scope)) : [];
-  if (!results.length) {
+  // A list recorded for one type can be empty on purpose: the engine found
+  // nothing close enough. Padding it with keyword matches would undo that.
+  if (!results.length && !(content_type && recorded)) {
     const source = snap.items[global_id];
     results = source
       ? keywordSearch(snap, `${source.categories} ${source.creators}`, scope).filter((r) => r.global_id !== global_id)

@@ -146,7 +146,8 @@ class GatedPathBugRecommender:
     def recommend(self, query, top_k=10, content_type=None, user_id=None, audience=None):
         return self._respond(audience)
 
-    def recommend_from_item(self, global_id, top_k=10, content_type=None, user_id=None, audience=None):
+    def recommend_from_item(self, global_id, top_k=10, content_type=None, user_id=None, audience=None,
+                            close_only=False):
         return self._respond(audience)
 
     def _respond(self, audience):
@@ -175,6 +176,26 @@ def test_internal_error_is_not_retried_without_the_eligibility_gate(path, body):
     assert response.status_code == 500
     # Exactly one call, and it carried the viewer's gate.
     assert [audience.age for audience in fake.audiences] == [8]
+
+def test_similar_items_of_a_picked_type_ask_for_close_matches_only():
+    calls = []
+
+    class Recorder(FakeRecommender):
+        def recommend_from_item(self, global_id, top_k=10, content_type=None, user_id=None, audience=None,
+                                close_only=False):
+            calls.append((content_type, close_only))
+            return []
+
+    app.dependency_overrides[get_recommender] = lambda: Recorder()
+    client = TestClient(app)
+    try:
+        for body in ({"global_id": "movie:test:1"}, {"global_id": "movie:test:1", "content_type": "music"}):
+            assert client.post("/recommend/item", json=body).status_code == 200
+    finally:
+        app.dependency_overrides.clear()
+
+    assert calls == [(None, False), ("music", True)]
+
 
 class FakeModel:
     def encode(self, values, convert_to_numpy=True, normalize_embeddings=True):

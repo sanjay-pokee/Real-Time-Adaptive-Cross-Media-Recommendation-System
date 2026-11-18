@@ -562,7 +562,15 @@ class QdrantRecommender:
         user_id: str | None = None,
         audience: AudienceContext | None = None,
         years: tuple[int, int] | None = None,
+        close_only: bool = False,
     ) -> list[dict[str, Any]]:
+        """Items most like ``global_id``.
+
+        ``close_only`` drops candidates with no knowledge-graph link to the seed
+        whose cosine is below ``SIMILAR_MIN_COSINE``, and may return fewer than
+        ``top_k`` or none. The "Find similar" drawer sets it when the viewer picks
+        a type, where the nearest ten of that type can all be unrelated.
+        """
         if not global_id.strip():
             raise ValueError("global_id cannot be empty.")
         if top_k <= 0:
@@ -608,6 +616,18 @@ class QdrantRecommender:
 
         graph = self._knowledge_graph().graph
         paths = graph.score("", [str(item["global_id"]) for item in pool], seed_ids=[global_id], seed_role="selected")
+        if close_only:
+            # Asked for songs like Inception, the nearest ten songs by text were
+            # Lucid Dream, Cinderella and Simulation Swarm: the closest of a type,
+            # not close. Keep what the graph can explain or what reads close;
+            # an empty list says more than a padded one.
+            floor = weights["similar_floor"]
+            pool = [
+                item
+                for item in pool
+                if (paths.get(str(item["global_id"])) or {}).get("kg_explanation")
+                or float(item.get("score") or 0.0) >= floor
+            ]
         ranked = self._rank_candidates(
             pool,
             keep=search_k,
@@ -725,6 +745,7 @@ class QdrantRecommender:
             "kg": float(getattr(settings, "kg_weight", 0.2)),
             "kg_similar": float(getattr(settings, "kg_similar_weight", 0.8)),
             "popularity": float(getattr(settings, "popularity_weight", 0.3)),
+            "similar_floor": float(getattr(settings, "similar_min_cosine", 0.63)),
             "pool": int(getattr(settings, "candidate_pool", 300)),
             "entity_pool": ENTITY_CANDIDATES,
             "plot_pool": PLOT_CANDIDATES,

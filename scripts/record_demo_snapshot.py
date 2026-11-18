@@ -1,12 +1,14 @@
 """Record the hosted demo's snapshot from the current ranking engine.
 
-    python -m scripts.record_demo_snapshot
+    python -m scripts.record_demo_snapshot [--similar-only]
 
 The static demo (``npm run build:demo``, published on GitHub Pages) has no API
 server: it answers from ``frontend/public/demo-snapshot.json``. This replays
 every scope the previous snapshot recorded (each demo profile, query chip, domain
 and age) plus the SHOWCASE searches through the real ranking code, and records
-"more like this" for the top results so "Find similar" works on what is shown.
+"more like this" for the top results so "Find similar" works on what is shown:
+once for All ("<id>|<age>") and once per type of the item's domain
+("<id>|<age>|<type>", close matches only, as the API answers the drawer).
 
 Qdrant is the one part swapped out: the embedded store allows a single process,
 so vectors are searched exactly over the in-memory item matrix, behind the same
@@ -17,6 +19,7 @@ the API does, so the MySQL80 service must be running.
 from __future__ import annotations
 
 import json
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -25,7 +28,7 @@ import numpy as np
 import pandas as pd
 
 from backend.audience import AudienceContext
-from backend.domains import normalize_content_type
+from backend.domains import get_registry, normalize_content_type
 from backend.knowledge_graph import CatalogKnowledgeGraph
 from backend.qdrant_recommender import QdrantRecommender
 
@@ -164,16 +167,19 @@ def main() -> None:
     rec.warm_up()
     print(f"engine ready in {time.perf_counter() - started:.0f}s")
 
-    recommend_keys = list(old["recommend"])
-    for query in SHOWCASE:
+    # --similar-only keeps the recorded searches and re-records "more like this" alone.
+    similar_only = "--similar-only" in sys.argv[1:]
+    recommend_keys = [] if similar_only else list(old["recommend"])
+    for query in [] if similar_only else SHOWCASE:
         for age in SHOWCASE_AGES:
             key = f"*|{query}||{'' if age is None else age}"
             if key not in old["recommend"]:
                 recommend_keys.append(key)
 
-    recommend: dict[str, Any] = {}
-    similar_wanted: dict[str, None] = dict.fromkeys(old["similar"])
-    shown: set[str] = set()
+    recommend: dict[str, Any] = dict(old["recommend"]) if similar_only else {}
+    # Seeds only; the per-type lists are re-recorded for each below.
+    similar_wanted: dict[str, None] = dict.fromkeys(key for key in old["similar"] if key.count("|") == 1)
+    shown: set[str] = {str(r["global_id"]) for entry in recommend.values() for r in entry["results"]}
     for number, key in enumerate(recommend_keys, 1):
         user, query, domain, age = key.split("|")
         audience = AudienceContext(age=_age(age), domain=domain or None)
@@ -198,16 +204,26 @@ def main() -> None:
             print(f"  searches {number}/{len(recommend_keys)}")
 
     similar: dict[str, Any] = {}
+    registry = get_registry()
     keys = list(similar_wanted)
     for number, key in enumerate(keys, 1):
         global_id, age = key.rsplit("|", 1)
-        if global_id not in rec._catalog_position():
+        position = rec._catalog_position().get(global_id)
+        if position is None:
             continue
         audience = AudienceContext(age=_age(age))
         results = rec.recommend_from_item(global_id, top_k=SIMILAR_TOP_K, audience=audience)
         similar[key] = {"advisory": None, "results": [_slim(r) for r in results]}
         shown.update(str(r["global_id"]) for r in results)
         shown.add(global_id)
+        # The drawer's type chips: every type of the seed's domain, when it has more than one.
+        types = registry.domain_of(str(rec.catalog.iloc[position]["content_type"])).content_types
+        for content_type in types if len(types) > 1 else ():
+            typed = rec.recommend_from_item(
+                global_id, top_k=SIMILAR_TOP_K, content_type=content_type, audience=audience, close_only=True
+            )
+            similar[f"{key}|{content_type}"] = {"advisory": None, "results": [_slim(r) for r in typed]}
+            shown.update(str(r["global_id"]) for r in typed)
         if number % 50 == 0:
             print(f"  more-like-this {number}/{len(keys)}")
 

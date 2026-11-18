@@ -1,5 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, GitBranch, Loader2, X } from 'lucide-react';
+import { contentTypeLabel } from '../utils/contentTypes';
+import ContentFilter from './ContentFilter';
 import RecommendationCard from './RecommendationCard';
 
 export default function SimilarDrawer({
@@ -14,6 +16,11 @@ export default function SimilarDrawer({
   onSimilar,
   onView,
   onToast,
+  // The types this item can be narrowed to (its own domain's), the one picked
+  // (null = All) and the handler that refetches. No row when there is only one.
+  types = [],
+  type = null,
+  onTypeChange,
 }) {
   return (
     <AnimatePresence>
@@ -50,6 +57,17 @@ export default function SimilarDrawer({
               </button>
             </div>
 
+            {types.length > 1 && onTypeChange && (
+              <div className="border-b border-line px-4 py-3">
+                <ContentFilter
+                  value={type}
+                  onChange={(next) => next !== type && onTypeChange(next)}
+                  contentTypes={types}
+                  className="flex flex-wrap gap-1.5"
+                />
+              </div>
+            )}
+
             <div className="flex flex-col gap-3 p-4">
               {loading && (
                 <div className="flex flex-col items-center gap-3 py-20 text-ink-muted">
@@ -66,9 +84,21 @@ export default function SimilarDrawer({
               )}
 
               {!loading && !error && results.length === 0 && (
-                <div className="flex flex-col items-center gap-2.5 py-16 text-ink-faint">
+                <div className="flex flex-col items-center gap-2.5 py-16 text-center text-ink-faint">
                   <GitBranch size={26} />
-                  <p className="text-[13px]">No similar items found</p>
+                  {type ? (
+                    <>
+                      <p className="text-[13px] font-semibold text-ink-muted">
+                        No close {contentTypeLabel(type).toLowerCase()} matches
+                      </p>
+                      <p className="max-w-xs text-[12px] leading-relaxed">
+                        Nothing in {contentTypeLabel(type)} shares a person, franchise or theme with
+                        “{title}”, or reads close enough to it.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-[13px]">No similar items found</p>
+                  )}
                 </div>
               )}
 

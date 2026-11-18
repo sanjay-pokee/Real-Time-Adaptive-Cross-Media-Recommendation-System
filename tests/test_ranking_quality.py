@@ -239,6 +239,45 @@ def test_more_like_this_uses_graph_neighbours_and_stays_in_the_medium():
     assert results[0]["kg_explanation"] == "Directed by Christopher Nolan, like Inception"
 
 
+def _frozen_and_songs(without=(), moved=None):
+    rows = [
+        _row("movie:f:1", "Frozen", creators="Chris Buck, Idina Menzel", categories="Animation, princess",
+             popularity=900.0),
+        _row("music:f:2", "Let It Go", ctype="music", creators="Idina Menzel", categories="soundtrack",
+             popularity=80.0),
+        _row("music:f:3", "Cinderella", ctype="music", creators="Some Rapper", categories="hip hop",
+             popularity=95.0),
+        _row("music:f:4", "Winter Song", ctype="music", creators="Other Band", categories="folk", popularity=40.0),
+    ]
+    # Cosines to Frozen: Let It Go 0.55 (but shares Idina Menzel), Cinderella 0.61
+    # (nothing shared), Winter Song 0.89 (nothing shared, reads close).
+    vectors = {"movie:f:1": [1, 0, 0], "music:f:2": [1, 1.5, 0], "music:f:3": [1, 1.3, 0], "music:f:4": [1, 0.5, 0]}
+    vectors.update(moved or {})
+    rows = [row for row in rows if row["global_id"] not in without]
+    return _recommender(rows, {gid: v for gid, v in vectors.items() if gid not in without}, query_vector=[1, 0, 0])
+
+
+def test_more_like_this_of_one_type_keeps_only_linked_or_close_items():
+    rec = _frozen_and_songs()
+    audience = AudienceContext(age=30)
+    padded = QdrantRecommender.recommend_from_item(rec, "movie:f:1", top_k=5, content_type="music", audience=audience)
+    assert "Cinderella" in [item["title"] for item in padded]          # without the cutoff: nearest songs, related or not
+
+    close = QdrantRecommender.recommend_from_item(rec, "movie:f:1", top_k=5, content_type="music", audience=audience,
+                                                  close_only=True)
+    assert sorted(item["title"] for item in close) == ["Let It Go", "Winter Song"]
+    linked = next(item for item in close if item["title"] == "Let It Go")
+    assert "Idina Menzel" in linked["kg_explanation"]
+
+
+def test_more_like_this_of_one_type_can_honestly_be_empty():
+    # No Let It Go, and Winter Song reads no closer than Cinderella (0.61).
+    rec = _frozen_and_songs(without=("music:f:2",), moved={"music:f:4": [1, 1.3, 0]})
+    results = QdrantRecommender.recommend_from_item(rec, "movie:f:1", top_k=5, content_type="music",
+                                                    audience=AudienceContext(age=30), close_only=True)
+    assert results == []
+
+
 # ------------------------------------------------------------------ years
 @pytest.mark.parametrize("query, years, rest, bare", [
     ("90s movies", (1990, 1999), "movies", False),

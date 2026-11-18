@@ -1,47 +1,27 @@
 import { motion } from 'framer-motion';
-import {
-  BookOpen,
-  Factory,
-  Film,
-  HeartPulse,
-  LayoutGrid,
-  Music,
-  Tv,
-  Landmark,
-} from 'lucide-react';
+import { LayoutGrid } from 'lucide-react';
+import { FALLBACK_TYPE_STYLE, TYPE_STYLE, contentTypeLabel } from '../utils/contentTypes';
 
 /**
  * Narrow results to one content type.
  *
  * The list follows the selected domain rather than being fixed: picking Health
  * should not still offer Movies. When no domain is selected every known type is
- * offered. Types come from /domains, so a new one needs only an icon and tint
- * here — and falls back to a neutral pair if even that is missing.
+ * offered. Labels, icons and tints live in utils/contentTypes.js.
  */
-const TYPE_STYLE = {
-  movie:      { label: 'Movies',     icon: Film,       tint: 'var(--type-movie)' },
-  show:       { label: 'Shows',      icon: Tv,         tint: 'var(--type-show)' },
-  book:       { label: 'Books',      icon: BookOpen,   tint: 'var(--type-book)' },
-  music:      { label: 'Music',      icon: Music,      tint: 'var(--type-music)' },
-  health:     { label: 'Health',     icon: HeartPulse, tint: 'var(--type-health)' },
-  industrial: { label: 'Industrial', icon: Factory,    tint: 'var(--type-industrial)' },
-  finance:    { label: 'Finance',    icon: Landmark,   tint: 'var(--type-finance)' },
-};
-
-const FALLBACK = { icon: LayoutGrid, tint: 'var(--accent)' };
-
-function titleise(name) {
-  return String(name).charAt(0).toUpperCase() + String(name).slice(1);
-}
-
-export default function ContentFilter({ value, onChange, contentTypes = [] }) {
+export default function ContentFilter({
+  value,
+  onChange,
+  contentTypes = [],
+  className = 'grid grid-cols-2 gap-1.5',
+}) {
   const options = [
     { value: null, label: 'All', icon: LayoutGrid, tint: 'var(--accent)' },
     ...contentTypes.map((name) => {
-      const style = TYPE_STYLE[name] || FALLBACK;
+      const style = TYPE_STYLE[name] || FALLBACK_TYPE_STYLE;
       return {
         value: name,
-        label: style.label || titleise(name),
+        label: contentTypeLabel(name),
         icon: style.icon,
         tint: style.tint,
       };
@@ -49,7 +29,7 @@ export default function ContentFilter({ value, onChange, contentTypes = [] }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-1.5">
+    <div className={className}>
       {options.map(({ label, value: filterValue, icon: Icon, tint }) => {
         const active = filterValue === value;
         return (

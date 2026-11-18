@@ -110,11 +110,17 @@ export default function Home({ authenticatedUser, onLogout, onAccountDeleted }) 
   const [notice, setNotice] = useState(null);
   const [drawer, setDrawer] = useState({
     open: false,
+    item: null,
     title: '',
+    type: null,
+    types: [],
     results: [],
     loading: false,
     error: null,
   });
+  // Newest "Find similar" request, so a slow answer for a type the viewer has
+  // already clicked away from cannot replace the one they are looking at.
+  const similarRequest = useRef(0);
   const hasRunDefault = useRef(false);
   // Monotonic id of the newest search, so an out-of-order response can be
   // discarded rather than overwriting fresher results.
@@ -355,8 +361,29 @@ export default function Home({ authenticatedUser, onLogout, onAccountDeleted }) 
     setScopeNonce((value) => value + 1);
   }
 
-  async function handleSimilar(item) {
-    setDrawer({ open: true, title: item.title, results: [], loading: true, error: null });
+  // What "Find similar" can be narrowed to: the types of the item's own domain.
+  // A film can be asked for books or songs; a vitamin has only its own kind.
+  function similarTypesFor(item) {
+    const home = (domainCatalog.domains || []).find((entry) =>
+      entry.content_types?.includes(item?.content_type),
+    );
+    return home && home.content_types.length > 1 ? home.content_types : [];
+  }
+
+  // similarType null is "All": the item's own family of media, as before. A
+  // picked type asks the backend for close matches only, which may be none.
+  async function handleSimilar(item, similarType = null) {
+    const request = ++similarRequest.current;
+    setDrawer({
+      open: true,
+      item,
+      title: item.title,
+      type: similarType,
+      types: similarTypesFor(item),
+      results: [],
+      loading: true,
+      error: null,
+    });
     try {
       // The audience scope has to travel with this call too. Without it the
       // drawer was a hole straight through the eligibility layer: a viewer set
@@ -369,12 +396,14 @@ export default function Home({ authenticatedUser, onLogout, onAccountDeleted }) 
         global_id: item.global_id,
         user_id: userId,
         top_k: 10,
-        content_type: null,
+        content_type: similarType,
         age,
         safe_mode: safeMode,
       });
+      if (request !== similarRequest.current) return;
       setDrawer((current) => ({ ...current, results: data.results || [], loading: false }));
     } catch (err) {
+      if (request !== similarRequest.current) return;
       setDrawer((current) => ({ ...current, loading: false, error: err.message }));
       addToast({ type: 'error', title: 'Similar search failed', message: err.message });
     }
@@ -1032,6 +1061,9 @@ export default function Home({ authenticatedUser, onLogout, onAccountDeleted }) 
         onSimilar={handleSimilar}
         onView={setSelectedItem}
         onToast={addToast}
+        types={drawer.types}
+        type={drawer.type}
+        onTypeChange={(next) => drawer.item && handleSimilar(drawer.item, next)}
       />
 
       <ItemDetailModal

@@ -41,6 +41,12 @@ class Settings:
     kg_weight: float = float(os.getenv("KG_WEIGHT", "0.2"))
     kg_similar_weight: float = float(os.getenv("KG_SIMILAR_WEIGHT", "0.8"))
     popularity_weight: float = float(os.getenv("POPULARITY_WEIGHT", "0.3"))
+    # "Find similar" narrowed to one type keeps an item only when the knowledge
+    # graph links it to the seed or its text cosine reaches this. Measured on
+    # BGE-small over 14 seed titles: every film's "Music" list was unrelated
+    # songs at 0.47-0.62, while the right films for a book (Harry Potter, Dune)
+    # scored 0.66-0.79. Re-measure if the encoder changes.
+    similar_min_cosine: float = float(os.getenv("SIMILAR_MIN_COSINE", "0.63"))
     # How many vector neighbours the reranker sees. With only the final page,
     # an established title one place below the cut could never be promoted.
     candidate_pool: int = int(os.getenv("CANDIDATE_POOL", "300"))

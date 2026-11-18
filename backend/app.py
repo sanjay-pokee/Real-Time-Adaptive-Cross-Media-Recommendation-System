@@ -565,6 +565,9 @@ def recommend_from_item(
             content_type=payload.content_type,
             user_id=payload.user_id,
             audience=audience,
+            # A type picked in the "Find similar" drawer: only what is linked
+            # to the item or reads close to it, even if that is fewer than top_k.
+            close_only=payload.content_type is not None,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
