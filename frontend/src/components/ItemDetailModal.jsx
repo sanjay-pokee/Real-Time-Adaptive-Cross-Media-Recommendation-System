@@ -19,6 +19,7 @@ import { useEffect } from 'react';
 import InteractionButtons from './InteractionButtons';
 import MaturityBadge from './MaturityBadge';
 import ExplainPanel from './ExplainPanel';
+import { splitCategories } from '../utils/categories';
 import { coverFor, imageFor, monogram } from '../utils/cover';
 
 
@@ -67,10 +68,7 @@ export default function ItemDetailModal({
   // crop of it, so a banner can use its real aspect ratio instead of blurring
   // and over-scaling a poster to fill the strip.
   const backdropUrl = String(item.backdrop_url || '').trim();
-  const categories = String(item.categories || '')
-    .split(/[,|;]+/)
-    .map((entry) => entry.trim())
-    .filter(Boolean);
+  const categories = splitCategories(item.categories);
 
   return (
     <AnimatePresence>

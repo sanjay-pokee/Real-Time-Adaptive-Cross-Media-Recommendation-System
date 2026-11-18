@@ -16,6 +16,7 @@ import InteractionButtons from './InteractionButtons';
 import MaturityBadge from './MaturityBadge';
 import ScoreBreakdown from './ScoreBreakdown';
 
+import { splitCategories } from '../utils/categories';
 import { coverFor, imageFor, monogram } from '../utils/cover';
 
 /**
@@ -44,14 +45,6 @@ const TYPE_META = {
 // A content type this build has no styling for should still render, rather
 // than silently borrowing the Movie identity.
 const FALLBACK_META = { label: 'Item', icon: Package, color: 'var(--accent)' };
-
-function splitCategories(value, limit = 3) {
-  return String(value || '')
-    .split(/[,|;]+/)
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-    .slice(0, limit);
-}
 
 /** "John Schultz, Carter Jenkins, ..." -> "John Schultz +5" */
 function leadCreator(value) {
@@ -88,7 +81,7 @@ export default function RecommendationCard({
   // case, because "why is this here" has a precise answer for them.
   const matchKind = String(result.match_kind || '').trim();
   const matchLabel = MATCH_LABELS[matchKind] || null;
-  const categories = splitCategories(result.categories);
+  const categories = splitCategories(result.categories, 3);
   const creator = leadCreator(result.creators);
   const year = result.release_date ? String(result.release_date).slice(0, 4) : null;
   const rating = result.rating != null && result.rating !== '' ? Number(result.rating) : null;
