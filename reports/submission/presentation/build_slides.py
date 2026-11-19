@@ -218,7 +218,7 @@ body.append(aff)
 body.append(pid)
 from pptx.text.text import _Paragraph  # noqa: E402
 for p_el, text in ((aff, "Department of Computer Science and Engineering, Amrita School of Computing, "
-                         "Amrita Vishwa Vidyapeetham, Coimbatore, India"),
+                         "Coimbatore, Amrita Vishwa Vidyapeetham, India"),
                    (pid, "Paper ID: ICMLDE-2026-1343")):
     runs = p_el.findall(A + "r")
     for r in runs[1:]:
@@ -233,7 +233,7 @@ notes(s, "(~20 s) Good morning. I am Sanjay A. K. from Amrita Vishwa Vidyapeetha
 s = S[1]
 fill(shape(s, 45), [
     "Recommenders usually stay in one medium: films, music or books",
-    "Interests cross media: Interstellar, a space novel, its soundtrack",
+    "Interests cross media: Interstellar, a space novel, a similar soundtrack",
     "We built one real-time recommender for 7 content types (120,747 items)",
     "It joins semantic search, a knowledge graph, LightGCN and live feedback",
 ], size=17, spc_after=10)
@@ -274,11 +274,11 @@ notes(s, "(~50 s) Recommender systems are how people find content, but each plat
 
 # ---------------------------------------------------------------- 3 Problem
 s = S[2]
-fill(shape(s, 59), ["Recommenders are built per medium. No running system ranks films, books, music "
-                    "and products together using meaning, collaborative signals, entity links and "
-                    "instant feedback."], size=17)
+fill(shape(s, 59), ["Recommenders are built per medium. None of the compared methods ranks films, books, "
+                    "music and products in one running system using meaning, collaborative signals, "
+                    "entity links and instant feedback."], size=17)
 fill(shape(s, 64), ["Users whose tastes span films, books, music and products"])
-fill(shape(s, 69), ["120,747 items in 7 content types; interaction graphs ~0.04% dense"])
+fill(shape(s, 69), ["120,747 items in 7 content types; benchmark graphs ~0.04% dense"])
 fill(shape(s, 74), ["Models cover one or a fixed set of domains and are trained offline"])
 notes(s, "(~50 s) The problem: most deployed recommenders serve a single medium, and research "
          "models rarely combine meaning-based retrieval, collaborative learning, knowledge-graph "
@@ -313,8 +313,8 @@ for sid in (95, 96, 97):
     shape(s, sid).height = Inches(1.9)
 fill(shape(s, 95), ["Sentence-BERT cosine, LightGCN with BPR loss, entity-overlap KG scores and an EMA "
                     "user profile"], size=15)
-fill(shape(s, 96), ["No system joins text retrieval, a collaborative graph, KG/profile scores and "
-                    "per-event adaptation over one multi-domain catalog"], size=15)
+fill(shape(s, 96), ["None of these joins text retrieval, a collaborative graph, KG/profile scores and "
+                    "per-event adaptation in one running system"], size=15)
 fill(shape(s, 97), ["Unified 7-type cross-media platform", "Explainable 4-signal hybrid ranker",
                     "16-combination ablation and live tests"], size=15)
 notes(s, "(~60 s) LightGCN simplifies graph convolution to neighbourhood propagation, but on one "
@@ -322,7 +322,8 @@ notes(s, "(~60 s) LightGCN simplifies graph convolution to neighbourhood propaga
          "per domain. LLM4CDSR uses large language models across domains, trained offline on a fixed "
          "set of domains. We build on Sentence-BERT similarity, LightGCN trained with the BPR loss, "
          "entity-overlap knowledge-graph scores and an exponential moving average of item embeddings. "
-         "The gap: no system joins all four in one running multi-domain catalog. Our contributions "
+         "The gap: none of these joins all four in one running system over a multi-domain catalog. "
+         "Our contributions "
          "are the unified platform, the explainable hybrid ranker, and an evaluation with all 16 "
          "signal combinations, latency measurements and live scenario tests. Our contribution is "
          "this combination, not a new neural layer.")
@@ -346,7 +347,7 @@ fill(shape(s, 124), [
 notes(s, "(~90 s) Every source is mapped into one schema, so adding a domain only needs a new "
          "mapper. Each item's title, categories, description and creators are encoded by "
          "Sentence-BERT into 384-dimensional vectors, and Qdrant searches them with an HNSW index; "
-         "creator and title matching runs alongside, so a query like Christopher Nolan returns his "
+         "creator and title matching run first, so a query like Christopher Nolan returns his "
          "films. Candidates are then reranked by the hybrid score: semantic similarity, a short-term "
          "preference bonus, the LightGCN graph score, the EMA profile score, the knowledge-graph "
          "score and the declared-profile score. Feedback is logged in MySQL; each event moves the "
@@ -412,12 +413,13 @@ fill(b, ["Tuned hybrid is best of all 16 combinations on 2 of 3 datasets",
          "Health & Household: KG overlap alone is best"], size=14, spc_after=6)
 notes(s, "(~90 s) This chart shows NDCG at 20 for popularity, the best single signal, the best pair "
          "and the tuned four-signal hybrid. On Movies and TV and on Industrial and Scientific the "
-         "hybrid is the best of all 16 combinations on every measure at both cut-offs, improving "
-         "NDCG@20 over the strongest single signal, semantic similarity, by 21.6 and 26.9 percent, "
-         "about twice popularity. Semantic plus LightGCN is the strongest pair on all three datasets, "
-         "even though LightGCN alone is weaker than semantic retrieval. Health and Household is the "
-         "exception: knowledge-graph overlap alone, matching category paths and brands, is best, "
-         "14.4 percent above the hybrid; we attribute this to repeat purchases within a brand. "
+         "hybrid is the best of all 16 combinations on recall, NDCG, MAP and MRR at both cut-offs, "
+         "improving NDCG@20 over the strongest single signal, semantic similarity, by 21.6 and 26.9 "
+         "percent, and reaching 2.3 and 1.9 times popularity. Semantic plus LightGCN is the strongest "
+         "pair on all three datasets, even though LightGCN alone is weaker than semantic retrieval. "
+         "Health and Household is the exception: knowledge-graph overlap alone, matching category "
+         "paths and brands, is best, 14.4 percent above the hybrid; we attribute this to repeat "
+         "purchases within the same brand or category. "
          "Validation-tuned weights beat our hand-set weights by 3.6 to 6.5 percent. Absolute values "
          "are low, as usual for full-catalog ranking on sparse purchase data.")
 
@@ -486,16 +488,17 @@ notes(s, "(~70 s) Figure 1 removes one signal at a time from the tuned hybrid. D
 s = S[8]
 fill(shape(s, 198), ["Each signal sees different evidence (meaning, co-interaction, shared entities, "
                      "recent taste), so a tuned mix should beat any one alone"], size=15)
-fill(shape(s, 203), ["Best of 16 on two datasets and every removal costs NDCG@20 (p < 0.01); on "
-                     "Health & Household, repeat brand purchases favour KG overlap"], size=15)
+fill(shape(s, 203), ["On two datasets: best of 16, and removing any signal costs NDCG@20 (p < 0.01). "
+                     "Health & Household favours KG overlap, likely from repeat brand purchases"], size=15)
 fill(shape(s, 208), ["Runs live: 363 ms over 120,747 items, feedback applied in 0.05 ms; no unsuitable "
                      "item in 17 live scenarios"], size=15)
 for sid in (198, 203, 208):
     shape(s, sid).height = Inches(0.6)
 notes(s, "(~50 s) We expected the signals to be complementary because each sees different evidence. "
          "The evidence supports this on two of three datasets: the tuned hybrid is best and every "
-         "removal costs NDCG. Health and Household shows the limit: with repeat purchases inside one "
-         "brand or category, simple entity overlap wins, so weights should be tuned per domain. "
+         "removal costs NDCG. Health and Household shows the limit: simple entity overlap wins there, "
+         "which we attribute to repeat purchases inside one brand or category, so weights should be "
+         "tuned per domain. "
          "In practice the system runs in real time. In 17 live scenarios through the API, person "
          "queries reach a mean precision at 10 of 0.84, eight of the eleven unfiltered scenarios "
          "return more than one content type, and the eligibility filter keeps unsuitable items out. "
@@ -504,8 +507,8 @@ notes(s, "(~50 s) We expected the signals to be complementary because each sees 
 # ---------------------------------------------------------------- 10 Conclusion
 s = S[9]
 fill(shape(s, 220), ["One real-time ranker for 7 content types and 120,747 items",
-                     "+21.6% / +26.9% NDCG@20 over the best single signal",
-                     "363 ms per request; feedback applied at once"], size=16, spc_after=8)
+                     "+21.6% / +26.9% NDCG@20 over the best single signal on 2 datasets",
+                     "363 ms median per request; feedback applied at once"], size=16, spc_after=8)
 fill(shape(s, 225), [
     "Tune the weights per domain",
     "Inverted title index; more worker processes",
